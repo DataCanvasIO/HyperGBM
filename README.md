@@ -3,6 +3,7 @@
 [![Downloads](https://pepy.tech/badge/hypergbm)](https://pepy.tech/project/hypergbm)
 [![PyPI Version](https://img.shields.io/pypi/v/hypergbm.svg)](https://pypi.org/project/hypergbm)
 
+[中文](README_zh_CN.md)
 
 ## What is HyperGBM
 HyperGBM is a library that supports full-pipeline AutoML, which completely covers the end-to-end stages of data cleaning, preprocessing, feature generation and selection, model selection and hyperparameter optimization.It is a real-AutoML tool for tabular data.
