@@ -13,7 +13,7 @@ Unlike most AutoML approaches that focus on tackling the hyperparameter optimiza
 
 As the name implies, the ML algorithms used in HyperGBM are all GBM models, and more precisely the gradient boosting tree model, which currently includes XGBoost, LightGBM and Catboost.
 
-The underlying search space representation and search algorithm in HyperGBM are supported by the [Hypernets](https://github.com/DataCanvasIO/Hypernets) project a general AutoML framework.
+The underlying search space representation and search algorithm in HyperGBM are powered by the [Hypernets](https://github.com/DataCanvasIO/Hypernets) project a general AutoML framework.
 
 
 ## Installation
