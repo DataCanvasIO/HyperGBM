@@ -4,13 +4,16 @@ Adapted from: https://github.com/scikit-learn-contrib/sklearn-pandas
 1. Fix the problem of confusion of column names
 2. Support `columns` is a callable object
 """
-import sys
 import contextlib
-import pandas as pd
+import sys
+
 import numpy as np
+import pandas as pd
+import six
+from dask import array as da
+from dask import dataframe as dd
 from scipy import sparse
 from sklearn.base import BaseEstimator, TransformerMixin
-import six
 from sklearn.pipeline import _name_estimators, Pipeline
 from sklearn.utils import tosequence
 
@@ -118,7 +121,10 @@ def _handle_feature(fea):
     Convert 1-dimensional arrays to 2-dimensional column vectors.
     """
     if len(fea.shape) == 1:
-        fea = np.array([fea]).T
+        if isinstance(fea, dd.DataFrame):
+            fea = da.stack([fea], axis=-1)
+        else:
+            fea = np.array([fea]).T
 
     return fea
 
@@ -374,9 +380,9 @@ class DataFrameMapper(BaseEstimator, TransformerMixin):
                 for dtype in dtype_feature]
 
     def get_dtype(self, ex):
-        if isinstance(ex, np.ndarray) or sparse.issparse(ex):
+        if isinstance(ex, (np.ndarray, da.Array)) or sparse.issparse(ex):
             return [ex.dtype] * ex.shape[1]
-        elif isinstance(ex, pd.DataFrame):
+        elif isinstance(ex, (pd.DataFrame, dd.DataFrame)):
             return list(ex.dtypes)
         else:
             raise TypeError(type(ex))
@@ -456,7 +462,9 @@ class DataFrameMapper(BaseEstimator, TransformerMixin):
 
         # If any of the extracted features is sparse, combine sparsely.
         # Otherwise, combine as normal arrays.
-        if any(sparse.issparse(fea) for fea in extracted):
+        if isinstance(X, dd.DataFrame):
+            stacked = da.hstack(extracted, allow_unknown_chunksizes=True)
+        elif any(sparse.issparse(fea) for fea in extracted):
             stacked = sparse.hstack(extracted).tocsr()
             # return a sparse matrix only if the mapper was initialized
             # with sparse=True
@@ -468,18 +476,25 @@ class DataFrameMapper(BaseEstimator, TransformerMixin):
         if self.df_out:
             # if no rows were dropped preserve the original index,
             # otherwise use a new integer one
-            no_rows_dropped = len(X) == len(stacked)
-            if no_rows_dropped:
-                index = X.index
+            if isinstance(X, dd.DataFrame):
+                df_out = dd.from_dask_array(
+                    stacked,
+                    columns=self.transformed_names_,
+                    index=None)
             else:
-                index = None
+                no_rows_dropped = len(X) == len(stacked)
+                if no_rows_dropped:
+                    index = X.index
+                else:
+                    index = None
+                df_out = pd.DataFrame(
+                    stacked,
+                    columns=self.transformed_names_,
+                    index=index)
 
             # output different data types, if appropriate
             dtypes = self.get_dtypes(extracted)
-            df_out = pd.DataFrame(
-                stacked,
-                columns=self.transformed_names_,
-                index=index)
+
             # preserve types
             for col, dtype in zip(self.transformed_names_, dtypes):
                 df_out[col] = df_out[col].astype(dtype)
@@ -506,7 +521,7 @@ class DataFrameMapper(BaseEstimator, TransformerMixin):
         """
         return self._transform(X)
 
-    def fit_transform(self, X, y=None):
+    def fit_transform(self, X, y=None, *fit_args):
         """
         Fit a transformation from the pipeline and directly apply
         it to the given data.

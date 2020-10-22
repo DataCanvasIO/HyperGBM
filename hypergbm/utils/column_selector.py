@@ -2,23 +2,46 @@
 """
 
 """
-
-from sklearn.compose import make_column_selector
-from scipy.stats import skew, kurtosis
 import numpy as np
+from dask import dataframe as dd
+from scipy.stats import skew, kurtosis
+from sklearn.compose import make_column_selector
 
-column_object_category_bool = make_column_selector(dtype_include=['object', 'category', 'bool'])
-column_object = make_column_selector(dtype_include=['object'])
-column_category = make_column_selector(dtype_include=['category'])
-column_bool = make_column_selector(dtype_include=['bool'])
-column_number = make_column_selector(dtype_include='number')
-column_number_exclude_timedelta = make_column_selector(dtype_include='number', dtype_exclude='timedelta')
 
-column_timedelta = make_column_selector(dtype_include='timedelta')
-column_datetimetz = make_column_selector(dtype_include='datetimetz')
-column_datetime = make_column_selector(dtype_include='datetime')
-column_all_datetime = make_column_selector(dtype_include=['datetime', 'datetimetz'])
-column_int = make_column_selector(dtype_include=['int16', 'int32', 'int64'])
+class HyperColumnSelector(make_column_selector):
+    __doc__ = make_column_selector.__doc__
+
+    def __call__(self, df):
+        if isinstance(df, dd.DataFrame):
+            # if not hasattr(df, 'iloc'):
+            #     raise ValueError("make_column_selector can only be applied to "
+            #                      "pandas dataframes")
+            # df_row = df.iloc[:1]
+            df_row = df
+
+            if self.dtype_include is not None or self.dtype_exclude is not None:
+                df_row = df_row.select_dtypes(include=self.dtype_include,
+                                              exclude=self.dtype_exclude)
+            cols = df_row.columns
+            if self.pattern is not None:
+                cols = cols[cols.str.contains(self.pattern, regex=True)]
+            return cols.tolist()
+
+        return super(HyperColumnSelector, self).__call__(df)
+
+
+column_object_category_bool = HyperColumnSelector(dtype_include=['object', 'category', 'bool'])
+column_object = HyperColumnSelector(dtype_include=['object'])
+column_category = HyperColumnSelector(dtype_include=['category'])
+column_bool = HyperColumnSelector(dtype_include=['bool'])
+column_number = HyperColumnSelector(dtype_include='number')
+column_number_exclude_timedelta = HyperColumnSelector(dtype_include='number', dtype_exclude='timedelta')
+
+column_timedelta = HyperColumnSelector(dtype_include='timedelta')
+column_datetimetz = HyperColumnSelector(dtype_include='datetimetz')
+column_datetime = HyperColumnSelector(dtype_include='datetime')
+column_all_datetime = HyperColumnSelector(dtype_include=['datetime', 'datetimetz'])
+column_int = HyperColumnSelector(dtype_include=['int16', 'int32', 'int64'])
 
 
 def column_skewness_kurtosis(X, skew_threshold=0.5, kurtosis_threshold=0.5, columns=None):

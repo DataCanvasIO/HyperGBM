@@ -4,3 +4,7 @@ lightgbm
 xgboost
 catboost
 featuretools
+dask
+dask-ml
+dask-lightgbm
+dask-xgboost
