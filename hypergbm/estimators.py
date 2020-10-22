@@ -3,8 +3,8 @@
 
 """
 
-from hypernets.core.search_space import ModuleSpace, Choice
 import numpy as np
+from hypernets.core.search_space import ModuleSpace
 
 
 class HyperEstimator(ModuleSpace):
@@ -89,6 +89,18 @@ class LightGBMEstimator(HyperEstimator):
         return lgbm
 
 
+class LightGBMDaskEstimator(LightGBMEstimator):
+    def _build_estimator(self, kwargs):
+        # import lightgbm
+        import dask_lightgbm as lightgbm
+
+        if self.task == 'regression':
+            lgbm = lightgbm.LGBMRegressor(**kwargs)
+        else:
+            lgbm = lightgbm.LGBMClassifier(**kwargs)
+        return lgbm
+
+
 class XGBoostEstimator(HyperEstimator):
     def __init__(self, task, fit_kwargs, max_depth=None, learning_rate=None, n_estimators=100,
                  verbosity=None, objective=None, booster=None,
@@ -160,6 +172,17 @@ class XGBoostEstimator(HyperEstimator):
 
     def _build_estimator(self, kwargs):
         import xgboost
+        if self.task == 'regression':
+            xgb = xgboost.XGBRegressor(**kwargs)
+        else:
+            xgb = xgboost.XGBClassifier(**kwargs)
+        return xgb
+
+
+class XGBoostDaskEstimator(XGBoostEstimator):
+    def _build_estimator(self, kwargs):
+        # import xgboost
+        from dask_ml import xgboost
         if self.task == 'regression':
             xgb = xgboost.XGBRegressor(**kwargs)
         else:

@@ -139,3 +139,4 @@ catboost_info/
 
 #dispatchers
 logs/
+dask-worker-space/

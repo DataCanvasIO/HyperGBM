@@ -8,7 +8,7 @@ from hypergbm.sklearn_ex import DataCleaner
 from .transformers import *
 from .estimators import HyperEstimator
 from sklearn import pipeline as sk_pipeline
-from .sklearn_ex import calc_score
+from .metrics import calc_score
 import pickle
 import time
 
