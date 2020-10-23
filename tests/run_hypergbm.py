@@ -2,12 +2,13 @@
 """
 
 """
-from hypergbm.hyper_gbm import HyperGBM
-from hypergbm.search_space import search_space_general
+
 from hypernets.searchers.random_searcher import RandomSearcher
 from hypernets.core.callbacks import *
 from hypernets.core.searcher import OptimizeDirection
 from hypergbm.datasets import dsutils
+from hypergbm.hyper_gbm import HyperGBM
+from hypergbm.search_space import search_space_general
 from sklearn.model_selection import train_test_split
 from tests import test_output_dir
 

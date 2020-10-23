@@ -13,7 +13,11 @@ requirements = [
     'lightgbm',
     'xgboost',
     'catboost',
-    'featuretools'
+    'featuretools',
+    'dask',
+    'dask-ml',
+    'dask-lightgbm',
+    'dask-xgboost',
 ]
 
 MIN_PYTHON_VERSION = '>=3.6.*'

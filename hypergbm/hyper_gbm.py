@@ -5,7 +5,6 @@
 from hypernets.model.estimator import Estimator
 from hypernets.model.hyper_model import HyperModel
 from hypergbm.sklearn.sklearn_ex import DataCleaner
-from hypergbm.sklearn.transformers import *
 from hypergbm.pipeline import ComposeTransformer
 from .estimators import HyperEstimator
 from sklearn import pipeline as sk_pipeline
@@ -18,6 +17,7 @@ import os
 import shutil
 import hashlib
 import pandas as pd
+import numpy as np
 
 try:
     import shap

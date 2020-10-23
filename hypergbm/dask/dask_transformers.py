@@ -3,8 +3,6 @@
 
 """
 
-# from sklearn import impute, pipeline, compose, preprocessing as sk_pre, decomposition
-# from . import sklearn_ex
 import numpy as np
 from dask_ml import impute as dimp
 from dask_ml import preprocessing as dpre

@@ -41,43 +41,29 @@ def get_df():
     y = [1, 1, 0]
     return X, y
 
+
 class Test_search_space():
 
     def test_general(self):
         global ids
-
         space = search_space_general()
-        space.random_sample()
-        assert space.vectors
-        space.assign_by_vectors([0, 1, 1, 1, 1, 0, 0, 0.1, 1, 1])
-        # [0, 1, 1, 0, 1, 0, 3, 0.01, 1]
+        space.assign_by_vectors([0, 0, 0, 0, 1, 1, 2, 1, 1])
         space, _ = space.compile_and_forward()
         ids = []
         space.traverse(get_id)
-        assert ids == ['ID_input1', 'ID_categorical_pipeline_complex_0_input', 'ID_numeric_pipeline_complex_0_input',
-                       'ID_categorical_imputer_0', 'ID_numeric_imputer_0', 'ID_categorical_onehot_0',
-                       'ID_numeric_minmax_scaler_0', 'ID_categorical_svd_0', 'ID_numeric_pipeline_complex_0_output',
-                       'ID_categorical_pipeline_complex_0_output', 'Module_DataFrameMapper_1',
+        assert ids == ['ID_input1',
+                       'ID_categorical_pipeline_simple_0_input',
+                       'ID_numeric_pipeline_complex_0_input',
+                       'ID_categorical_imputer_0',
+                       'ID_numeric_imputer_0',
+                       'ID_categorical_label_encoder_0',
+                       'ID_numeric_pipeline_complex_0_output',
+                       'ID_categorical_pipeline_simple_0_output',
+                       'Module_DataFrameMapper_1',
                        'Module_LightGBMEstimator_1']
 
         next, (name, p) = space.Module_DataFrameMapper_1.compose()
         X, y = get_df()
         df_1 = p.fit_transform(X, y)
-        assert list(df_1.columns) == ['a_e_f_0', 'a_e_f_1', 'a_e_f_2', 'b', 'c', 'd', 'l']
+        assert list(df_1.columns) == ['a', 'e', 'f', 'b', 'c', 'd', 'l']
         assert df_1.shape == (3, 7)
-
-        space = search_space_general()
-        space.assign_by_vectors([0, 1, 1, 1, 1, 0, 0, 0.1, 1, 0])
-        space, _ = space.compile_and_forward()
-        ids = []
-        space.traverse(get_id)
-        assert ids == ['ID_input1', 'ID_categorical_pipeline_complex_0_input', 'ID_numeric_pipeline_complex_0_input',
-                       'ID_categorical_imputer_0', 'ID_numeric_imputer_0', 'ID_categorical_onehot_0',
-                       'ID_numeric_minmax_scaler_0', 'ID_categorical_pipeline_complex_0_output',
-                       'ID_numeric_pipeline_complex_0_output', 'Module_DataFrameMapper_1', 'Module_LightGBMEstimator_1']
-
-        next, (name, p) = space.Module_DataFrameMapper_1.compose()
-        X, y = get_df()
-        df_1 = p.fit_transform(X, y)
-        assert list(df_1.columns) == ['a_a', 'a_b', 'e_False', 'e_True', 'f_c', 'f_d', 'b', 'c', 'd', 'l']
-        assert df_1.shape == (3, 10)
