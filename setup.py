@@ -10,6 +10,7 @@ version = '0.1.1'
 requirements = [
     'hypernets>=0.1.2',
     'tables>=3.6.1',
+    'fsspec>=0.3.3',
     'lightgbm',
     'xgboost',
     'catboost',
