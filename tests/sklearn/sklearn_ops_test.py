@@ -6,12 +6,12 @@
 from pandas import DataFrame
 import pandas as pd
 import numpy as np
-from hypergbm.transformers import ColumnTransformer, DataFrameMapper
-from hypergbm.utils.column_selector import column_number, column_object_category_bool, column_object
-from hypergbm.estimators import LightGBMEstimator, XGBoostEstimator, CatBoostEstimator
-from hypergbm.common_ops import categorical_pipeline_simple, categorical_pipeline_complex, \
-    numeric_pipeline, numeric_pipeline_complex,get_space_num_cat_pipeline_complex
-from hypernets.core.ops import Choice, ModuleChoice, Int, Real, HyperSpace, HyperInput
+from hypergbm.pipeline import DataFrameMapper
+from hypergbm.utils.column_selector import column_number, column_object_category_bool
+from hypergbm.estimators import LightGBMEstimator
+from hypergbm.sklearn.sklearn_ops import categorical_pipeline_simple, categorical_pipeline_complex, \
+    numeric_pipeline, numeric_pipeline_complex
+from hypernets.core.ops import HyperSpace, HyperInput
 
 ids = []
 
@@ -308,39 +308,4 @@ class Test_CommonOps():
         assert df_1.shape == (3, 12)
         assert list(df_1.columns) == ['a', 'e', 'f', 'b', 'c', 'd', 'l', 'g', 'h', 'i', 'j', 'k']
 
-    def test_num_cat_pipeline_complex(self):
-        global ids
 
-        space = get_space_num_cat_pipeline_complex()
-        space.assign_by_vectors([0, 1, 1, 1, 1, 0, 0, 0.1, 1, 1])
-        # [0, 1, 1, 0, 1, 0, 3, 0.01, 1]
-        space, _ = space.compile_and_forward()
-        ids = []
-        space.traverse(get_id)
-        assert ids == ['ID_input1', 'ID_categorical_pipeline_complex_0_input', 'ID_numeric_pipeline_complex_0_input',
-                       'ID_categorical_imputer_0', 'ID_numeric_imputer_0', 'ID_categorical_onehot_0',
-                       'ID_numeric_minmax_scaler_0', 'ID_categorical_svd_0', 'ID_numeric_pipeline_complex_0_output',
-                       'ID_categorical_pipeline_complex_0_output', 'Module_DataFrameMapper_1',
-                       'Module_LightGBMEstimator_1']
-
-        next, (name, p) = space.Module_DataFrameMapper_1.compose()
-        X, y = get_df()
-        df_1 = p.fit_transform(X, y)
-        assert list(df_1.columns) == ['a_e_f_0', 'a_e_f_1', 'a_e_f_2', 'b', 'c', 'd', 'l']
-        assert df_1.shape == (3, 7)
-
-        space = get_space_num_cat_pipeline_complex()
-        space.assign_by_vectors([0, 1, 1, 1, 1, 0, 0, 0.1, 1, 0])
-        space, _ = space.compile_and_forward()
-        ids = []
-        space.traverse(get_id)
-        assert ids == ['ID_input1', 'ID_categorical_pipeline_complex_0_input', 'ID_numeric_pipeline_complex_0_input',
-                       'ID_categorical_imputer_0', 'ID_numeric_imputer_0', 'ID_categorical_onehot_0',
-                       'ID_numeric_minmax_scaler_0', 'ID_categorical_pipeline_complex_0_output',
-                       'ID_numeric_pipeline_complex_0_output', 'Module_DataFrameMapper_1', 'Module_LightGBMEstimator_1']
-
-        next, (name, p) = space.Module_DataFrameMapper_1.compose()
-        X, y = get_df()
-        df_1 = p.fit_transform(X, y)
-        assert list(df_1.columns) == ['a_a', 'a_b', 'e_False', 'e_True', 'f_c', 'f_d', 'b', 'c', 'd', 'l']
-        assert df_1.shape == (3, 10)

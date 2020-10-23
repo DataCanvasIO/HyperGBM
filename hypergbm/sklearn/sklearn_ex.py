@@ -2,12 +2,13 @@
 """
 
 """
-from sklearn.utils.validation import check_is_fitted
-from sklearn.utils import column_or_1d
-from sklearn.preprocessing import LabelEncoder
 import numpy as np
 import pandas as pd
 import copy
+
+from sklearn.utils.validation import check_is_fitted
+from sklearn.utils import column_or_1d
+from sklearn.preprocessing import LabelEncoder
 from hypergbm.utils.column_selector import column_skewness_kurtosis, column_object, column_int
 
 
@@ -209,4 +210,3 @@ class DataCleaner:
             X = X.replace([np.inf, -np.inf], self.replace_inf_values)
 
         return X, y
-

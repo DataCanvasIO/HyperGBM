@@ -4,8 +4,9 @@
 """
 
 from hypernets.core.ops import *
-from hypergbm.transformers import Pipeline, SimpleImputer, StandardScaler, ColumnTransformer
-from hypergbm.sklearn_ex import SkewnessKurtosisTransformer
+from hypergbm.sklearn.transformers import SimpleImputer, StandardScaler
+from hypergbm.pipeline import ColumnTransformer,Pipeline
+from hypergbm.sklearn.sklearn_ex import SkewnessKurtosisTransformer
 from hypergbm.utils.column_selector import column_skewness_kurtosis
 import pytest
 from sklearn import pipeline
@@ -79,7 +80,7 @@ def get_space_column_transformer():
     return space
 
 
-class Test_HyperGBM:
+class Test_Pipeline:
 
     def test_pipeline(self):
         global ids

@@ -2,15 +2,14 @@
 """
 
 """
-from sklearn.compose import ColumnTransformer, make_column_transformer
+from sklearn.compose import make_column_transformer
 from sklearn.decomposition import PCA
-from sklearn.preprocessing import OneHotEncoder, PolynomialFeatures, FunctionTransformer
+from sklearn.preprocessing import OneHotEncoder, PolynomialFeatures
 from sklearn.impute import SimpleImputer
-from hypergbm.sklearn_pandas import DataFrameMapper
-import numpy as np
+from hypergbm.dataframe_mapper import DataFrameMapper
 import pandas as pd
 from hypergbm.utils.column_selector import *
-from hypergbm.sklearn_ex import MultiLabelEncoder
+from hypergbm.sklearn.sklearn_ex import MultiLabelEncoder
 from sklearn import preprocessing
 import pytest
 

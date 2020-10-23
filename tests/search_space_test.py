@@ -3,57 +3,81 @@ __author__ = 'yangjian'
 """
 
 """
-from hypernets.core.ops import Choice, ModuleChoice, Real, Int, HyperSpace, HyperInput
+from hypernets.core.ops import Choice, ModuleChoice, Real, HyperSpace, HyperInput
 from hypergbm.utils.column_selector import column_object
-from hypergbm.common_ops import categorical_pipeline_simple, \
+from hypergbm.sklearn.sklearn_ops import categorical_pipeline_simple, \
     numeric_pipeline_complex
 from hypergbm.estimators import LightGBMEstimator, XGBoostEstimator, CatBoostEstimator
-from hypergbm.transformers import DataFrameMapper
+from hypergbm.pipeline import DataFrameMapper
+from hypergbm.search_space import search_space_general
+import pandas as pd
+import numpy as np
+
+ids = []
 
 
-def get_space_num_cat_pipeline_complex(dataframe_mapper_default=False,
-                                       lightgbm_fit_kwargs={},
-                                       xgb_fit_kwargs={},
-                                       catboost_fit_kwargs={}):
-    space = HyperSpace()
-    with space.as_default():
-        input = HyperInput(name='input1')
-        p1 = numeric_pipeline_complex()(input)
-        p2 = categorical_pipeline_simple()(input)
-        p3 = DataFrameMapper(default=dataframe_mapper_default, input_df=True, df_out=True,
-                             df_out_dtype_transforms=[(column_object, 'int')])([p1, p2])
+def get_id(m):
+    ids.append(m.id)
+    return True
 
-        lightgbm_init_kwargs = {
-            'boosting_type': Choice(['gbdt', 'dart', 'goss']),
-            'num_leaves': Choice([11, 31, 101, 301, 501]),
-            'learning_rate': Real(0.001, 0.1, step=0.005),
-            'n_estimators': Choice([100, 300, 500, 800]),
-            'max_depth': Choice([-1, 3, 5, 9]),
-            'class_weight': Choice(['balanced', None]),
-            # subsample_for_bin = 200000, objective = None, class_weight = None,
-            #  min_split_gain = 0., min_child_weight = 1e-3, min_child_samples = 20,
+
+def get_df():
+    X = pd.DataFrame(
+        {
+            "a": ['a', 'b', np.nan],
+            "b": list(range(1, 4)),
+            "c": np.arange(3, 6).astype("u1"),
+            "d": np.arange(4.0, 7.0, dtype="float64"),
+            "e": [True, False, True],
+            "f": pd.Categorical(['c', 'd', np.nan]),
+            "g": pd.date_range("20130101", periods=3),
+            "h": pd.date_range("20130101", periods=3, tz="US/Eastern"),
+            "i": pd.date_range("20130101", periods=3, tz="CET"),
+            "j": pd.period_range("2013-01", periods=3, freq="M"),
+            "k": pd.timedelta_range("1 day", periods=3),
+            "l": [1, 10, 1000]
         }
-        lightgbm_est = LightGBMEstimator(task='binary', fit_kwargs=lightgbm_fit_kwargs, **lightgbm_init_kwargs)
-        xgb_init_kwargs = {
-            'max_depth': Choice([3, 5, 9]),
-            'n_estimators': Choice([100, 300, 500, 800]),
-            'learning_rate': Real(0.001, 0.1, step=0.005),
-            'min_child_weight': Choice([1, 5, 10]),
-            'gamma': Choice([0.5, 1, 1.5, 2, 5]),
-            'subsample': Choice([0.6, 0.8, 1.0]),
-            'colsample_bytree': Choice([0.6, 0.8, 1.0]),
-        }
-        xgb_est = XGBoostEstimator(task='binary', fit_kwargs=xgb_fit_kwargs, **xgb_init_kwargs)
+    )
+    y = [1, 1, 0]
+    return X, y
 
-        catboost_init_kwargs = {
-            'silent': True,
-            'depth': Choice([3, 5, 9]),
-            'learning_rate': Real(0.001, 0.1, step=0.005),
-            'iterations': Choice([30, 50, 100]),
-            'l2_leaf_reg': Choice([1, 3, 5, 7, 9]),
-            # 'border_count': Choice([5, 10, 20, 32, 50, 100, 200]),
-        }
-        catboost_est = CatBoostEstimator(task='binary', fit_kwargs=catboost_fit_kwargs, **catboost_init_kwargs)
-        or_est = ModuleChoice([lightgbm_est, xgb_est, catboost_est], name='estimator_options')(p3)
-        space.set_inputs(input)
-    return space
+class Test_search_space():
+
+    def test_general(self):
+        global ids
+
+        space = search_space_general()
+        space.random_sample()
+        assert space.vectors
+        space.assign_by_vectors([0, 1, 1, 1, 1, 0, 0, 0.1, 1, 1])
+        # [0, 1, 1, 0, 1, 0, 3, 0.01, 1]
+        space, _ = space.compile_and_forward()
+        ids = []
+        space.traverse(get_id)
+        assert ids == ['ID_input1', 'ID_categorical_pipeline_complex_0_input', 'ID_numeric_pipeline_complex_0_input',
+                       'ID_categorical_imputer_0', 'ID_numeric_imputer_0', 'ID_categorical_onehot_0',
+                       'ID_numeric_minmax_scaler_0', 'ID_categorical_svd_0', 'ID_numeric_pipeline_complex_0_output',
+                       'ID_categorical_pipeline_complex_0_output', 'Module_DataFrameMapper_1',
+                       'Module_LightGBMEstimator_1']
+
+        next, (name, p) = space.Module_DataFrameMapper_1.compose()
+        X, y = get_df()
+        df_1 = p.fit_transform(X, y)
+        assert list(df_1.columns) == ['a_e_f_0', 'a_e_f_1', 'a_e_f_2', 'b', 'c', 'd', 'l']
+        assert df_1.shape == (3, 7)
+
+        space = search_space_general()
+        space.assign_by_vectors([0, 1, 1, 1, 1, 0, 0, 0.1, 1, 0])
+        space, _ = space.compile_and_forward()
+        ids = []
+        space.traverse(get_id)
+        assert ids == ['ID_input1', 'ID_categorical_pipeline_complex_0_input', 'ID_numeric_pipeline_complex_0_input',
+                       'ID_categorical_imputer_0', 'ID_numeric_imputer_0', 'ID_categorical_onehot_0',
+                       'ID_numeric_minmax_scaler_0', 'ID_categorical_pipeline_complex_0_output',
+                       'ID_numeric_pipeline_complex_0_output', 'Module_DataFrameMapper_1', 'Module_LightGBMEstimator_1']
+
+        next, (name, p) = space.Module_DataFrameMapper_1.compose()
+        X, y = get_df()
+        df_1 = p.fit_transform(X, y)
+        assert list(df_1.columns) == ['a_a', 'a_b', 'e_False', 'e_True', 'f_c', 'f_d', 'b', 'c', 'd', 'l']
+        assert df_1.shape == (3, 10)

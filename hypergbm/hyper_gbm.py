@@ -4,8 +4,9 @@
 """
 from hypernets.model.estimator import Estimator
 from hypernets.model.hyper_model import HyperModel
-from hypergbm.sklearn_ex import DataCleaner
-from .transformers import *
+from hypergbm.sklearn.sklearn_ex import DataCleaner
+from hypergbm.sklearn.transformers import *
+from hypergbm.pipeline import ComposeTransformer
 from .estimators import HyperEstimator
 from sklearn import pipeline as sk_pipeline
 from .metrics import calc_score

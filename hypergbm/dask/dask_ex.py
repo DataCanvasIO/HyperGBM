@@ -8,7 +8,6 @@ import numpy as np
 import pandas as pd
 from dask_ml import decomposition as dm_dec
 from dask_ml import preprocessing as dm_pre
-from dask_ml.metrics import accuracy_score, log_loss
 from sklearn import preprocessing as sk_pre
 from sklearn.base import BaseEstimator, TransformerMixin
 

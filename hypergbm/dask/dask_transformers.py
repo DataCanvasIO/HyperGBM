@@ -5,14 +5,13 @@
 
 # from sklearn import impute, pipeline, compose, preprocessing as sk_pre, decomposition
 # from . import sklearn_ex
-from . import sklearn_pandas
 import numpy as np
-from dask_ml import decomposition
 from dask_ml import impute as dimp
 from dask_ml import preprocessing as dpre
 
-from . import dask_ex as dex
-from .transformers import HyperTransformer, ComposeTransformer, PipelineOutput
+from hypergbm import dataframe_mapper
+from hypergbm.dask import dask_ex as dex
+from hypergbm.pipeline import HyperTransformer, ComposeTransformer, PipelineOutput
 
 
 class StandardScaler(HyperTransformer):
@@ -158,5 +157,5 @@ class DataFrameMapper(ComposeTransformer):
             transformers.append((p.columns, transformer))
 
         pv = self.param_values
-        ct = sklearn_pandas.DataFrameMapper(features=transformers, **pv)
+        ct = dataframe_mapper.DataFrameMapper(features=transformers, **pv)
         return next, (self.name, ct)

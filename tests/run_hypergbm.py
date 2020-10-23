@@ -3,7 +3,7 @@
 
 """
 from hypergbm.hyper_gbm import HyperGBM
-from hypergbm.common_ops import get_space_num_cat_pipeline_complex
+from hypergbm.search_space import search_space_general
 from hypernets.searchers.random_searcher import RandomSearcher
 from hypernets.core.callbacks import *
 from hypernets.core.searcher import OptimizeDirection
@@ -11,7 +11,7 @@ from hypergbm.datasets import dsutils
 from sklearn.model_selection import train_test_split
 from tests import test_output_dir
 
-rs = RandomSearcher(get_space_num_cat_pipeline_complex, optimize_direction=OptimizeDirection.Maximize)
+rs = RandomSearcher(search_space_general, optimize_direction=OptimizeDirection.Maximize)
 hk = HyperGBM(rs, task='classification', reward_metric='auc',
               cache_dir=f'{test_output_dir}/hypergbm_cache',
               callbacks=[SummaryCallback(), FileLoggingCallback(rs, output_dir=f'{test_output_dir}/hyn_logs')])

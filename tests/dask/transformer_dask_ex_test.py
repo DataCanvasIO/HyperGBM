@@ -16,7 +16,7 @@ def prepare_dataframe():
 
 def test_max_abs_scale():
     from sklearn import preprocessing as sk_pre
-    import hypergbm.dask_ex as de
+    import hypergbm.dask.dask_ex as de
 
     TOL = 0.00001
 
