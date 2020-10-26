@@ -6,7 +6,7 @@ __author__ = 'yangjian'
 
 from sklearn import pipeline, compose
 
-from hypergbm import dataframe_mapper
+from tabular_toolbox import dataframe_mapper
 from hypernets.core.ops import ConnectionSpace
 from hypernets.core.search_space import ModuleSpace, Choice
 

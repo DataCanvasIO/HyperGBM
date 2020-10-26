@@ -5,7 +5,7 @@ __author__ = 'yangjian'
 """
 
 from hypergbm.pipeline import DataFrameMapper
-from hypergbm.utils.column_selector import column_object
+from tabular_toolbox.column_selector import column_object
 from hypergbm.sklearn.sklearn_ops import numeric_pipeline, numeric_pipeline_complex, categorical_pipeline_simple, \
     categorical_pipeline_complex
 from hypernets.core.search_space import Choice

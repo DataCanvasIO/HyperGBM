@@ -9,9 +9,9 @@ from hypernets.core.callbacks import *
 from hypernets.core.searcher import OptimizeDirection
 from hypernets.searchers.random_searcher import RandomSearcher
 from sklearn import preprocessing as sk_pre
+from tabular_toolbox.datasets import dsutils
 
 from hypergbm.dask.dask_ops import get_space_num_cat_pipeline_complex
-from hypergbm.datasets import dsutils
 from hypergbm.hyper_gbm import HyperGBM
 from tests import test_output_dir
 

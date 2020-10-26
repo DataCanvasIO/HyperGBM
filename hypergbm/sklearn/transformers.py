@@ -7,7 +7,7 @@ import numpy as np
 from sklearn import impute, preprocessing as sk_pre, decomposition
 
 from hypergbm.pipeline import HyperTransformer
-from hypergbm.sklearn import sklearn_ex
+from tabular_toolbox import sklearn_ex
 
 
 class StandardScaler(HyperTransformer):

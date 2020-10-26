@@ -7,7 +7,7 @@ from pandas import DataFrame
 import pandas as pd
 import numpy as np
 from hypergbm.pipeline import DataFrameMapper
-from hypergbm.utils.column_selector import column_number, column_object_category_bool
+from tabular_toolbox.column_selector import column_number, column_object_category_bool
 from hypergbm.estimators import LightGBMEstimator
 from hypergbm.sklearn.sklearn_ops import categorical_pipeline_simple, categorical_pipeline_complex, \
     numeric_pipeline, numeric_pipeline_complex
