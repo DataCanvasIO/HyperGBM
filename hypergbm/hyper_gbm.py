@@ -28,26 +28,219 @@ except:
     has_shap = False
 
 
-class HyperGBMModel():
-    def __init__(self, data_pipeline, pipeline_signature, estimator, task, cache_dir,
-                 clear_cache=True, data_cleaner=None, fit_kwargs=None):
-        self.data_pipeline = data_pipeline
-        self.pipeline_signature = pipeline_signature
-        self.estimator = estimator
-        self.task = task
-        self.data_cleaner = data_cleaner
-        self.fit_kwargs = fit_kwargs
+# class HyperGBMModel():
+#     def __init__(self, data_pipeline, pipeline_signature, estimator, task, cache_dir,
+#                  clear_cache=True, data_cleaner=None, fit_kwargs=None):
+#         self.data_pipeline = data_pipeline
+#         self.pipeline_signature = pipeline_signature
+#         self.estimator = estimator
+#         self.task = task
+#         self.data_cleaner = data_cleaner
+#         self.fit_kwargs = fit_kwargs
+#
+#     def fit(self, X, y, **kwargs):
+#         X = self.transform_data(X, y, fit=True, **kwargs)
+#         if self.fit_kwargs is not None:
+#             kwargs = self.fit_kwargs
+#
+#         starttime = time.time()
+#         print('Estimator is fitting the data')
+#         self.estimator.fit(X, y, **kwargs)
+#         print(f'Taken {time.time() - starttime}s')
+#
+#     def transform_data(self, X, y=None, fit=False, **kwargs):
+#         use_cache = kwargs.get('use_cache')
+#         if use_cache is None:
+#             use_cache = True
+#         if use_cache:
+#             X_cache = self.get_X_from_cache(X, load_pipeline=True)
+#         else:
+#             X_cache = None
+#
+#         if X_cache is None:
+#             starttime = time.time()
+#             if fit:
+#                 if self.data_cleaner is not None:
+#                     print('Cleaning')
+#                     X, y = self.data_cleaner.fit_transform(X, y)
+#                 print('Fitting and transforming')
+#                 X = self.data_pipeline.fit_transform(X, y)
+#             else:
+#                 if self.data_cleaner is not None:
+#                     print('Cleaning')
+#                     X, _ = self.data_cleaner.transform(X)
+#                 print('Transforming')
+#                 X = self.data_pipeline.transform(X)
+#
+#             print(f'Taken {time.time() - starttime}s')
+#             if use_cache:
+#                 self.save_X_to_cache(X, save_pipeline=True)
+#         else:
+#             X = X_cache
+#
+#         return X
+#
+#     def predict(self, X, **kwargs):
+#         X = self.transform_data(X, **kwargs)
+#         starttime = time.time()
+#         print('Estimator is predicting the data')
+#         preds = self.estimator.predict(X, **kwargs)
+#         print(f'Taken {time.time() - starttime}s')
+#         return preds
+#
+#     def proba2predict(self, proba, proba_threshold=0.5):
+#         if self.task != 'classification':
+#             return proba
+#         if proba.shape[-1] > 2:
+#             predict = proba.argmax(axis=-1)
+#         elif proba.shape[-1] == 2:
+#             predict = (proba[:, 1] > proba_threshold).astype('int32')
+#         else:
+#             predict = (proba > proba_threshold).astype('int32')
+#         return predict
+#
+#     def predict_proba(self, X, **kwargs):
+#         X = self.transform_data(X, **kwargs)
+#         starttime = time.time()
+#         print('Estimator is predicting probability')
+#         proba = self.estimator.predict_proba(X, **kwargs)
+#         print(f'Taken {time.time() - starttime}s')
+#         return proba
+#
+#     def evaluate(self, X, y, metrics=None, **kwargs):
+#         if metrics is None:
+#             metrics = ['accuracy']
+#         proba = self.predict_proba(X, **kwargs)
+#         preds = self.predict(X, **kwargs)
+#         scores = calc_score(y, preds, proba, metrics, self.task)
+#         return scores
+#
+#     def _prepare_cache_dir(self, cache_dir, clear_cache):
+#         if cache_dir is None:
+#             cache_dir = 'tmp/cache'
+#         if cache_dir[-1] == '/':
+#             cache_dir = cache_dir[:-1]
+#
+#         cache_dir = os.path.expanduser(f'{cache_dir}')
+#         if not os.path.exists(cache_dir):
+#             os.makedirs(cache_dir)
+#         else:
+#             if clear_cache:
+#                 shutil.rmtree(cache_dir)
+#                 os.makedirs(cache_dir)
+#         return cache_dir
+#
+#     def summary(self):
+#         s = f"{self.data_pipeline.__repr__(1000000)}\r\n{self.estimator.__repr__()}"
+#         return s
+
+
+class HyperGBMExplainer:
+    def __init__(self, hypergbm_estimator, data=None):
+        if not has_shap:
+            raise RuntimeError('Please install `shap` package first. command: pip install shap')
+        self.hypergbm_estimator = hypergbm_estimator
+        if data is not None:
+            data = self.hypergbm_estimator.transform_data(data)
+        self.explainer = TreeExplainer(self.hypergbm_estimator.estimator, data)
+
+    @property
+    def expected_value(self):
+        return self.explainer.expected_value
+
+    def shap_values(self, X, y=None, tree_limit=None, approximate=False, check_additivity=True, from_call=False,
+                    **kwargs):
+        X = self.hypergbm_estimator.transform_data(X, **kwargs)
+        return self.explainer.shap_values(X, y, tree_limit=tree_limit, approximate=approximate,
+                                          check_additivity=check_additivity, from_call=from_call)
+
+    def shap_interaction_values(self, X, y=None, tree_limit=None, **kwargs):
+        X = self.hypergbm_estimator.transform_data(X, **kwargs)
+        return self.explainer.shap_interaction_values(X, y, tree_limit)
+
+    def transform_data(self, X, **kwargs):
+        X = self.hypergbm_estimator.transform_data(X, **kwargs)
+        return X
+
+
+class HyperGBMEstimator(Estimator):
+    def __init__(self, task, space_sample, data_cleaner_params=None, cache_dir=None, clear_cache=True):
+        self.data_pipeline = None
+        self.clear_cache = clear_cache
         self.cache_dir = self._prepare_cache_dir(cache_dir, clear_cache)
+        self.task = task
+        self.data_cleaner_params = data_cleaner_params
+        self.gbm_model = None
+        self.data_clearner = None
+        self.pipeline_signature = None
+        self.fit_kwargs = None
+        Estimator.__init__(self, space_sample=space_sample)
+        self._build_model(space_sample)
 
-    def fit(self, X, y, **kwargs):
-        X = self.transform_data(X, y, fit=True, **kwargs)
-        if self.fit_kwargs is not None:
-            kwargs = self.fit_kwargs
+    def _prepare_cache_dir(self, cache_dir, clear_cache):
+        if cache_dir is None:
+            cache_dir = 'tmp/cache'
+        if cache_dir[-1] == '/':
+            cache_dir = cache_dir[:-1]
 
-        starttime = time.time()
-        print('Estimator is fitting the data')
-        self.estimator.fit(X, y, **kwargs)
-        print(f'Taken {time.time() - starttime}s')
+        cache_dir = os.path.expanduser(f'{cache_dir}')
+        if not os.path.exists(cache_dir):
+            os.makedirs(cache_dir)
+        else:
+            if clear_cache:
+                shutil.rmtree(cache_dir)
+                os.makedirs(cache_dir)
+        return cache_dir
+
+    def _build_model(self, space_sample):
+        space, _ = space_sample.compile_and_forward()
+
+        outputs = space.get_outputs()
+        assert len(outputs) == 1, 'The space can only contains 1 output.'
+        assert isinstance(outputs[0], HyperEstimator), 'The output of space must be `HyperEstimator`.'
+        self.gbm_model = outputs[0].estimator
+        self.fit_kwargs = outputs[0].fit_kwargs
+
+        pipeline_module = space.get_inputs(outputs[0])
+        assert len(pipeline_module) == 1, 'The `HyperEstimator` can only contains 1 input.'
+        assert isinstance(pipeline_module[0],
+                          ComposeTransformer), 'The upstream node of `HyperEstimator` must be `ComposeTransformer`.'
+        # next, (name, p) = pipeline_module[0].compose()
+        self.data_pipeline = self.build_pipeline(space, pipeline_module[0])
+        self.pipeline_signature = self.get_pipeline_signature(self.data_pipeline)
+        if self.data_cleaner_params is not None:
+            self.data_cleaner = DataCleaner(**self.data_cleaner_params)
+        else:
+            self.data_cleaner = None
+
+    def get_pipeline_signature(self, pipeline):
+        repr = self.data_pipeline.__repr__(1000000)
+        repr = re.sub(r'object at 0x(.*)>', "", repr)
+        md5 = hashlib.md5(repr.encode('utf-8')).hexdigest()
+        return md5
+
+    def build_pipeline(self, space, last_transformer):
+        transformers = []
+        while True:
+            next, (name, p) = last_transformer.compose()
+            transformers.insert(0, (name, p))
+            inputs = space.get_inputs(next)
+            if inputs == space.get_inputs():
+                break
+            assert len(inputs) == 1, 'The `ComposeTransformer` can only contains 1 input.'
+            assert isinstance(inputs[0],
+                              ComposeTransformer), 'The upstream node of `ComposeTransformer` must be `ComposeTransformer`.'
+            last_transformer = inputs[0]
+        assert len(transformers) > 0
+        if len(transformers) == 1:
+            return transformers[0][1]
+        else:
+            pipeline = sk_pipeline.Pipeline(steps=transformers)
+            return pipeline
+
+    def summary(self):
+        s = f"{self.data_pipeline.__repr__(1000000)}\r\n{self.gbm_model.__repr__()}"
+        return s
 
     def transform_data(self, X, y=None, fit=False, **kwargs):
         use_cache = kwargs.get('use_cache')
@@ -81,55 +274,54 @@ class HyperGBMModel():
 
         return X
 
+    def fit(self, X, y, **kwargs):
+        X = self.transform_data(X, y, fit=True, **kwargs)
+        if self.fit_kwargs is not None:
+            kwargs = self.fit_kwargs
+
+        starttime = time.time()
+        print('Estimator is fitting the data')
+        self.gbm_model.fit(X, y, **kwargs)
+        print(f'Taken {time.time() - starttime}s')
+
     def predict(self, X, **kwargs):
         X = self.transform_data(X, **kwargs)
         starttime = time.time()
         print('Estimator is predicting the data')
-        preds = self.estimator.predict(X, **kwargs)
+        preds = self.gbm_model.predict(X, **kwargs)
         print(f'Taken {time.time() - starttime}s')
         return preds
 
-    def proba2predict(self, proba, proba_threshold=0.5):
-        if self.task != 'classification':
-            return proba
-        if proba.shape[-1] > 2:
-            predict = proba.argmax(axis=-1)
-        elif proba.shape[-1] == 2:
-            predict = (proba[:, 1] > proba_threshold).astype('int32')
-        else:
-            predict = (proba > proba_threshold).astype('int32')
-        return predict
+    # def predict(self, X, proba_threshold=0.5, **kwargs):
+    #     proba = self.predict_proba(X, **kwargs)
+    #     return self.proba2predict(proba, proba_threshold)
 
     def predict_proba(self, X, **kwargs):
         X = self.transform_data(X, **kwargs)
         starttime = time.time()
-        print('Estimator is predicting probability')
-        proba = self.estimator.predict_proba(X, **kwargs)
+        print('Estimator is predicting the data')
+        preds = self.gbm_model.predict_proba(X, **kwargs)
         print(f'Taken {time.time() - starttime}s')
-        return proba
+        return preds
 
     def evaluate(self, X, y, metrics=None, **kwargs):
         if metrics is None:
             metrics = ['accuracy']
+
         proba = self.predict_proba(X, **kwargs)
         preds = self.predict(X, **kwargs)
         scores = calc_score(y, preds, proba, metrics, self.task)
         return scores
 
-    def _prepare_cache_dir(self, cache_dir, clear_cache):
-        if cache_dir is None:
-            cache_dir = 'tmp/cache'
-        if cache_dir[-1] == '/':
-            cache_dir = cache_dir[:-1]
+    def save(self, model_file):
+        with open(f'{model_file}', 'wb') as output:
+            pickle.dump(self, output, protocol=2)
 
-        cache_dir = os.path.expanduser(f'{cache_dir}')
-        if not os.path.exists(cache_dir):
-            os.makedirs(cache_dir)
-        else:
-            if clear_cache:
-                shutil.rmtree(cache_dir)
-                os.makedirs(cache_dir)
-        return cache_dir
+    @staticmethod
+    def load(model_file):
+        with open(f'{model_file}', 'rb') as input:
+            model = pickle.load(input)
+            return model
 
     def get_X_filepath(self, X):
         file_path = f'{self.cache_dir}/{X.shape[0]}_{X.shape[1]}_{self.pipeline_signature}.h5'
@@ -190,123 +382,9 @@ class HyperGBMModel():
             if os.path.exists(filepath):
                 os.remove(filepath)
 
-    def summary(self):
-        s = f"{self.data_pipeline.__repr__(1000000)}\r\n{self.estimator.__repr__()}"
-        return s
-
-    def save_model(self, filepath):
-        with open(f'{filepath}', 'wb') as output:
-            pickle.dump(self, output, protocol=2)
-
-    @staticmethod
-    def load_model(filepath):
-        with open(f'{filepath}', 'rb') as input:
-            model = pickle.load(input)
-            return model
-
     def get_explainer(self, data=None):
         explainer = HyperGBMExplainer(self, data=data)
         return explainer
-
-
-class HyperGBMExplainer:
-    def __init__(self, hypergbm_model, data=None):
-        if not has_shap:
-            raise RuntimeError('Please install `shap` package first. command: pip install shap')
-        self.hypergbm_model = hypergbm_model
-        if data is not None:
-            data = self.hypergbm_model.transform_data(data)
-        self.explainer = TreeExplainer(self.hypergbm_model.estimator, data)
-
-    @property
-    def expected_value(self):
-        return self.explainer.expected_value
-
-    def shap_values(self, X, y=None, tree_limit=None, approximate=False, check_additivity=True, from_call=False,
-                    **kwargs):
-        X = self.hypergbm_model.transform_data(X, **kwargs)
-        return self.explainer.shap_values(X, y, tree_limit=tree_limit, approximate=approximate,
-                                          check_additivity=check_additivity, from_call=from_call)
-
-    def shap_interaction_values(self, X, y=None, tree_limit=None, **kwargs):
-        X = self.hypergbm_model.transform_data(X, **kwargs)
-        return self.explainer.shap_interaction_values(X, y, tree_limit)
-
-    def transform_data(self, X, **kwargs):
-        X = self.hypergbm_model.transform_data(X, **kwargs)
-        return X
-
-
-class HyperGBMEstimator(Estimator):
-    def __init__(self, task, space_sample, data_cleaner_params=None, cache_dir=None, clear_cache=True):
-        self.pipeline = None
-        self.cache_dir = cache_dir
-        self.clear_cache = clear_cache
-        self.task = task
-        self.data_cleaner_params = data_cleaner_params
-        Estimator.__init__(self, space_sample=space_sample)
-
-    def _build_model(self, space_sample):
-        space, _ = space_sample.compile_and_forward()
-
-        outputs = space.get_outputs()
-        assert len(outputs) == 1, 'The space can only contains 1 output.'
-        assert isinstance(outputs[0], HyperEstimator), 'The output of space must be `HyperEstimator`.'
-        estimator = outputs[0].estimator
-        fit_kwargs = outputs[0].fit_kwargs
-
-        pipeline_module = space.get_inputs(outputs[0])
-        assert len(pipeline_module) == 1, 'The `HyperEstimator` can only contains 1 input.'
-        assert isinstance(pipeline_module[0],
-                          ComposeTransformer), 'The upstream node of `HyperEstimator` must be `ComposeTransformer`.'
-        # next, (name, p) = pipeline_module[0].compose()
-        self.pipeline = self.build_pipeline(space, pipeline_module[0])
-        pipeline_signature = self.get_pipeline_signature(self.pipeline)
-        if self.data_cleaner_params is not None:
-            data_cleaner = DataCleaner(**self.data_cleaner_params)
-        else:
-            data_cleaner = None
-        model = HyperGBMModel(self.pipeline, pipeline_signature, estimator, self.task, self.cache_dir, self.clear_cache,
-                              data_cleaner, fit_kwargs)
-        return model
-
-    def get_pipeline_signature(self, pipeline):
-        repr = self.pipeline.__repr__(1000000)
-        repr = re.sub(r'object at 0x(.*)>', "", repr)
-        md5 = hashlib.md5(repr.encode('utf-8')).hexdigest()
-        return md5
-
-    def build_pipeline(self, space, last_transformer):
-        transformers = []
-        while True:
-            next, (name, p) = last_transformer.compose()
-            transformers.insert(0, (name, p))
-            inputs = space.get_inputs(next)
-            if inputs == space.get_inputs():
-                break
-            assert len(inputs) == 1, 'The `ComposeTransformer` can only contains 1 input.'
-            assert isinstance(inputs[0],
-                              ComposeTransformer), 'The upstream node of `ComposeTransformer` must be `ComposeTransformer`.'
-            last_transformer = inputs[0]
-        assert len(transformers) > 0
-        if len(transformers) == 1:
-            return transformers[0][1]
-        else:
-            pipeline = sk_pipeline.Pipeline(steps=transformers)
-            return pipeline
-
-    def summary(self):
-        self.model.summary()
-
-    def fit(self, X, y, **kwargs):
-        self.model.fit(X, y, **kwargs)
-
-    def predict(self, X, **kwargs):
-        return self.model.predict(X, **kwargs)
-
-    def evaluate(self, X, y, **kwargs):
-        scores = self.model.evaluate(X, y, **kwargs)
-        return scores
 
 
 class HyperGBM(HyperModel):
@@ -326,6 +404,10 @@ class HyperGBM(HyperModel):
                                       cache_dir=self.cache_dir, clear_cache=self.clear_cache)
         return estimator
 
+    def load_estimator(self, model_file):
+        assert model_file is not None
+        return HyperGBMEstimator.load(model_file)
+
     def export_trail_configuration(self, trail):
         return '`export_trail_configuration` does not implemented'
 
@@ -333,7 +415,7 @@ class HyperGBM(HyperModel):
         models = []
         for sample in samples:
             estimator = self.final_train(sample, X, y, **kwargs)
-            models.append(estimator.model)
+            models.append(estimator)
         blends = BlendModel(models, self.task)
         return blends
 

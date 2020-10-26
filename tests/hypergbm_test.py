@@ -2,7 +2,7 @@
 """
 
 """
-from hypergbm.hyper_gbm import HyperGBM, HyperGBMModel
+from hypergbm.hyper_gbm import HyperGBM
 from hypergbm.search_space import search_space_general
 from hypernets.searchers.random_searcher import RandomSearcher
 from hypernets.core.callbacks import *
@@ -46,11 +46,11 @@ class Test_HyperGBM():
         def f():
             return X_train, X_test, y_train, y_test
 
-        est, _ = self.train_bankdata(f)
+        est, hypergbm = self.train_bankdata(f)
         filepath = test_output_dir + '/hypergbm_model.pkl'
-        est.model.save_model(filepath)
+        est.save(filepath)
         assert os.path.isfile(filepath) == True
-        model = HyperGBMModel.load_model(filepath)
+        model = hypergbm.load_estimator(filepath)
         score = model.evaluate(X_test, y_test, ['AUC'])
         assert score
 
