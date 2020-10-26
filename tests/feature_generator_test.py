@@ -9,8 +9,8 @@ import featuretools as ft
 import pandas as pd
 import pytest
 from sklearn.model_selection import train_test_split
+from tabular_toolbox.datasets import dsutils
 
-from hypergbm.datasets import dsutils
 from hypergbm.feature_generators import FeatureToolsTransformer
 
 

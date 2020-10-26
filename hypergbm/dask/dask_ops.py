@@ -7,7 +7,7 @@ from hypernets.core.ops import ModuleChoice, Optional, HyperInput, Real
 from hypernets.core.search_space import Choice
 from hypernets.core.search_space import HyperSpace
 from hypergbm.estimators import LightGBMDaskEstimator, XGBoostDaskEstimator
-from hypergbm.utils.column_selector import column_object_category_bool, column_number_exclude_timedelta, column_object
+from tabular_toolbox.column_selector import column_object_category_bool, column_number_exclude_timedelta, column_object
 from .dask_transformers import *
 from hypergbm.pipeline import Pipeline
 

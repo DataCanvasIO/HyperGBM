@@ -1,4 +1,5 @@
 hypernets>=0.1.2
+tabular-toolbox
 tables>=3.6.1
 fsspec>=0.3.3
 lightgbm

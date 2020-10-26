@@ -7,8 +7,8 @@ import numpy as np
 from dask_ml import impute as dimp
 from dask_ml import preprocessing as dpre
 
-from hypergbm import dataframe_mapper
-from hypergbm.dask import dask_ex as dex
+from tabular_toolbox import dataframe_mapper
+from tabular_toolbox import dask_ex as dex
 from hypergbm.pipeline import HyperTransformer, ComposeTransformer, PipelineOutput
 
 
