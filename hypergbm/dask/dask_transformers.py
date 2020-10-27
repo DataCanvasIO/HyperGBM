@@ -84,8 +84,6 @@ class SimpleImputer(HyperTransformer):
             kwargs['strategy'] = strategy
         if fill_value is not None:
             kwargs['fill_value'] = fill_value
-        elif strategy == 'constant':
-            print('eeeeeeeeeeeeeeeee')
         if verbose is not None and verbose != 0:
             kwargs['verbose'] = verbose
         if copy is not None and copy != True:
