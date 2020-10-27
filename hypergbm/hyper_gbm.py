@@ -168,13 +168,13 @@ class HyperGBMEstimator(Estimator):
         self.data_pipeline = None
         self.clear_cache = clear_cache
         self.cache_dir = self._prepare_cache_dir(cache_dir, clear_cache)
-        self.task = task
+        # self.task = task
         self.data_cleaner_params = data_cleaner_params
         self.gbm_model = None
         self.data_clearner = None
         self.pipeline_signature = None
         self.fit_kwargs = None
-        Estimator.__init__(self, space_sample=space_sample)
+        Estimator.__init__(self, space_sample=space_sample, task=task)
         self._build_model(space_sample)
 
     def _prepare_cache_dir(self, cache_dir, clear_cache):
@@ -307,8 +307,10 @@ class HyperGBMEstimator(Estimator):
     def evaluate(self, X, y, metrics=None, **kwargs):
         if metrics is None:
             metrics = ['accuracy']
-
-        proba = self.predict_proba(X, **kwargs)
+        if self.task != 'regression':
+            proba = self.predict_proba(X, **kwargs)
+        else:
+            proba = None
         preds = self.predict(X, **kwargs)
         scores = calc_score(y, preds, proba, metrics, self.task)
         return scores
