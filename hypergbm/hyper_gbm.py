@@ -11,13 +11,14 @@ import time
 
 import numpy as np
 import pandas as pd
-from hypernets.model.estimator import Estimator
-from hypernets.model.hyper_model import HyperModel
+from hypergbm.pipeline import ComposeTransformer
 from sklearn import pipeline as sk_pipeline
 from tabular_toolbox.metrics import calc_score
 from tabular_toolbox.sklearn_ex import DataCleaner
 
-from hypergbm.pipeline import ComposeTransformer
+from hypernets.model.estimator import Estimator
+from hypernets.model.hyper_model import HyperModel
+from hypernets.utils import logging
 from .estimators import HyperEstimator
 
 try:
@@ -27,6 +28,8 @@ try:
     has_shap = True
 except:
     has_shap = False
+
+logger = logging.get_logger(__name__)
 
 
 # class HyperGBMModel():
@@ -45,9 +48,9 @@ except:
 #             kwargs = self.fit_kwargs
 #
 #         starttime = time.time()
-#         print('Estimator is fitting the data')
+#         logger.info('Estimator is fitting the data')
 #         self.estimator.fit(X, y, **kwargs)
-#         print(f'Taken {time.time() - starttime}s')
+#         logger.info(f'Taken {time.time() - starttime}s')
 #
 #     def transform_data(self, X, y=None, fit=False, **kwargs):
 #         use_cache = kwargs.get('use_cache')
@@ -62,18 +65,18 @@ except:
 #             starttime = time.time()
 #             if fit:
 #                 if self.data_cleaner is not None:
-#                     print('Cleaning')
+#                     logger.info('Cleaning')
 #                     X, y = self.data_cleaner.fit_transform(X, y)
-#                 print('Fitting and transforming')
+#                 logger.info('Fitting and transforming')
 #                 X = self.data_pipeline.fit_transform(X, y)
 #             else:
 #                 if self.data_cleaner is not None:
-#                     print('Cleaning')
+#                     logger.info('Cleaning')
 #                     X, _ = self.data_cleaner.transform(X)
-#                 print('Transforming')
+#                 logger.info('Transforming')
 #                 X = self.data_pipeline.transform(X)
 #
-#             print(f'Taken {time.time() - starttime}s')
+#             logger.info(f'Taken {time.time() - starttime}s')
 #             if use_cache:
 #                 self.save_X_to_cache(X, save_pipeline=True)
 #         else:
@@ -84,9 +87,9 @@ except:
 #     def predict(self, X, **kwargs):
 #         X = self.transform_data(X, **kwargs)
 #         starttime = time.time()
-#         print('Estimator is predicting the data')
+#         logger.info('Estimator is predicting the data')
 #         preds = self.estimator.predict(X, **kwargs)
-#         print(f'Taken {time.time() - starttime}s')
+#         logger.info(f'Taken {time.time() - starttime}s')
 #         return preds
 #
 #     def proba2predict(self, proba, proba_threshold=0.5):
@@ -103,9 +106,9 @@ except:
 #     def predict_proba(self, X, **kwargs):
 #         X = self.transform_data(X, **kwargs)
 #         starttime = time.time()
-#         print('Estimator is predicting probability')
+#         logger.info('Estimator is predicting probability')
 #         proba = self.estimator.predict_proba(X, **kwargs)
-#         print(f'Taken {time.time() - starttime}s')
+#         logger.info(f'Taken {time.time() - starttime}s')
 #         return proba
 #
 #     def evaluate(self, X, y, metrics=None, **kwargs):
@@ -256,18 +259,18 @@ class HyperGBMEstimator(Estimator):
             starttime = time.time()
             if fit:
                 if self.data_cleaner is not None:
-                    print('Cleaning')
+                    logger.info('Cleaning')
                     X, y = self.data_cleaner.fit_transform(X, y)
-                print('Fitting and transforming')
+                logger.info('Fitting and transforming')
                 X = self.data_pipeline.fit_transform(X, y)
             else:
                 if self.data_cleaner is not None:
-                    print('Cleaning')
+                    logger.info('Cleaning')
                     X, _ = self.data_cleaner.transform(X)
-                print('Transforming')
+                logger.info('Transforming')
                 X = self.data_pipeline.transform(X)
 
-            print(f'Taken {time.time() - starttime}s')
+            logger.info(f'Taken {time.time() - starttime}s')
             if use_cache:
                 self.save_X_to_cache(X, save_pipeline=True)
         else:
@@ -281,16 +284,16 @@ class HyperGBMEstimator(Estimator):
             kwargs = self.fit_kwargs
 
         starttime = time.time()
-        print('Estimator is fitting the data')
+        logger.info('Estimator is fitting the data')
         self.gbm_model.fit(X, y, **kwargs)
-        print(f'Taken {time.time() - starttime}s')
+        logger.info(f'Taken {time.time() - starttime}s')
 
     def predict(self, X, **kwargs):
         X = self.transform_data(X, **kwargs)
         starttime = time.time()
-        print('Estimator is predicting the data')
+        logger.info('Estimator is predicting the data')
         preds = self.gbm_model.predict(X, **kwargs)
-        print(f'Taken {time.time() - starttime}s')
+        logger.info(f'Taken {time.time() - starttime}s')
         return preds
 
     # def predict(self, X, proba_threshold=0.5, **kwargs):
@@ -300,9 +303,9 @@ class HyperGBMEstimator(Estimator):
     def predict_proba(self, X, **kwargs):
         X = self.transform_data(X, **kwargs)
         starttime = time.time()
-        print('Estimator is predicting the data')
+        logger.info('Estimator is predicting the data')
         preds = self.gbm_model.predict_proba(X, **kwargs)
-        print(f'Taken {time.time() - starttime}s')
+        logger.info(f'Taken {time.time() - starttime}s')
         return preds
 
     def evaluate(self, X, y, metrics=None, **kwargs):
@@ -358,7 +361,7 @@ class HyperGBMEstimator(Estimator):
                 with open(f'{pipeline_file_path}', 'wb') as output:
                     pickle.dump((self.data_pipeline, self.data_cleaner), output, protocol=2)
             except Exception as e:
-                print(e)
+                logger.error(e)
                 if os.path.exists(pipeline_file_path):
                     os.remove(pipeline_file_path)
 
@@ -378,7 +381,7 @@ class HyperGBMEstimator(Estimator):
         try:
             df.to_hdf(filepath, key='data', mode='w', format='t')
         except Exception as e:
-            print(e)
+            logger.error(e)
             # traceback.print_exc()
             if os.path.exists(filepath):
                 os.remove(filepath)
