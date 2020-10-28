@@ -12,7 +12,7 @@ import pytest
 import numpy as np
 from sklearn.model_selection import train_test_split
 from tabular_toolbox.datasets import dsutils
-
+from tabular_toolbox.sklearn_ex import FeatureSelectionTransformer
 from hypergbm.feature_generators import FeatureToolsTransformer, CrossCategorical
 
 
@@ -56,9 +56,26 @@ class Test_FeatureGenerator():
         x_t = ftt.transform(X_train)
         assert x_t is not None
 
+    def test_feature_selection(self):
+        df = dsutils.load_bank().head(1000)
+        df.drop(['id'], axis=1, inplace=True)
+        y = df.pop('y')
+        cross_cat = CrossCategorical()
+        ftt = FeatureToolsTransformer(trans_primitives=['add_numeric', 'divide_numeric', cross_cat])
+        ftt.fit(df)
+        x_t = ftt.transform(df)
+
+        fst = FeatureSelectionTransformer('classification', ratio_max_cols=0.2)
+        fst.fit(x_t, y)
+        assert len(fst.scores_.items()) == 115
+        assert len(fst.columns_) == 23
+        x_t2 = fst.transform(x_t)
+        assert x_t2.shape[1] == 23
+
     @pytest.mark.parametrize('fix_input', [True, False])
     def test_fix_input(self, fix_input: bool):
         df = pd.DataFrame(data={"x1": [None, 2, 3], 'x2': [4, 5, 6]})
+
         ftt = FeatureToolsTransformer(trans_primitives=['add_numeric', 'divide_numeric'], fix_input=fix_input,
                                       fix_output=False)
         ftt.fit(df)
