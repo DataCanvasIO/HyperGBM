@@ -6,9 +6,27 @@ import sys
 
 import numpy as np
 import featuretools as ft
-from featuretools import IdentityFeature, variable_types
+from featuretools import IdentityFeature, variable_types, primitives
 from datetime import datetime
 import pandas as pd
+from tabular_toolbox.column_selector import column_all_datetime, column_number_exclude_timedelta
+
+
+class CrossCategorical(primitives.TransformPrimitive):
+    name = "cross_categorical"
+    input_types = [variable_types.Categorical, variable_types.Categorical]
+    return_type = variable_types.Categorical
+    commutative = True
+    dask_compatible = True
+
+    def get_function(self):
+        return self.char_add
+
+    def char_add(self, x1, x2):
+        return np.char.add(np.array(x1, 'U'), np.char.add('__', np.array(x2, 'U')))
+
+    def generate_name(self, base_feature_names):
+        return "%s__%s" % (base_feature_names[0], base_feature_names[1])
 
 
 class FeatureToolsTransformer():
@@ -62,10 +80,9 @@ class FeatureToolsTransformer():
         fields = X.dtypes.to_dict().items()
 
         if self.continuous_cols is None:
-            self.continuous_cols = self._filter_by_type(fields, [np.int, np.int32, np.int64, np.float, np.float32, np.float64])
-
+            self.continuous_cols = column_number_exclude_timedelta(X)
         if self.datetime_cols is None:
-            self.datetime_cols = self._filter_by_type(fields, [datetime, pd.datetime])
+            self.datetime_cols = column_all_datetime(X)
 
         if self.fix_input:
             _mean = X[self.continuous_cols].mean().to_dict()
@@ -92,7 +109,8 @@ class FeatureToolsTransformer():
         self._feature_defs = feature_defs
 
         if self.fix_output:
-            derived_cols = list(map(lambda _: _._name, filter(lambda _: not isinstance(_, IdentityFeature), feature_defs)))
+            derived_cols = list(
+                map(lambda _: _._name, filter(lambda _: not isinstance(_, IdentityFeature), feature_defs)))
             invalid_cols = self._checkout_invalid_cols(feature_matrix)
             self._valid_cols = set(derived_cols) - set(invalid_cols)
             # td:  check no valid cols
@@ -125,7 +143,7 @@ class FeatureToolsTransformer():
 
     def _contains_null_cols(self, df):
         _df = df.replace([np.inf, -np.inf], np.nan)
-        return list(map(lambda _: _[0], filter(lambda _: _[1] > 0,  _df.isnull().sum().to_dict().items())))
+        return list(map(lambda _: _[0], filter(lambda _: _[1] > 0, _df.isnull().sum().to_dict().items())))
 
     def _check_values(self, df):
         nan_cols = self._contains_null_cols(df)
