@@ -15,6 +15,7 @@ from hypergbm.pipeline import ComposeTransformer
 from sklearn import pipeline as sk_pipeline
 from tabular_toolbox.metrics import calc_score
 from tabular_toolbox.sklearn_ex import DataCleaner
+from tabular_toolbox.column_selector import column_object_category_bool, column_int
 
 from hypernets.model.estimator import Estimator
 from hypernets.model.hyper_model import HyperModel
@@ -30,113 +31,6 @@ except:
     has_shap = False
 
 logger = logging.get_logger(__name__)
-
-
-# class HyperGBMModel():
-#     def __init__(self, data_pipeline, pipeline_signature, estimator, task, cache_dir,
-#                  clear_cache=True, data_cleaner=None, fit_kwargs=None):
-#         self.data_pipeline = data_pipeline
-#         self.pipeline_signature = pipeline_signature
-#         self.estimator = estimator
-#         self.task = task
-#         self.data_cleaner = data_cleaner
-#         self.fit_kwargs = fit_kwargs
-#
-#     def fit(self, X, y, **kwargs):
-#         X = self.transform_data(X, y, fit=True, **kwargs)
-#         if self.fit_kwargs is not None:
-#             kwargs = self.fit_kwargs
-#
-#         starttime = time.time()
-#         logger.info('Estimator is fitting the data')
-#         self.estimator.fit(X, y, **kwargs)
-#         logger.info(f'Taken {time.time() - starttime}s')
-#
-#     def transform_data(self, X, y=None, fit=False, **kwargs):
-#         use_cache = kwargs.get('use_cache')
-#         if use_cache is None:
-#             use_cache = True
-#         if use_cache:
-#             X_cache = self.get_X_from_cache(X, load_pipeline=True)
-#         else:
-#             X_cache = None
-#
-#         if X_cache is None:
-#             starttime = time.time()
-#             if fit:
-#                 if self.data_cleaner is not None:
-#                     logger.info('Cleaning')
-#                     X, y = self.data_cleaner.fit_transform(X, y)
-#                 logger.info('Fitting and transforming')
-#                 X = self.data_pipeline.fit_transform(X, y)
-#             else:
-#                 if self.data_cleaner is not None:
-#                     logger.info('Cleaning')
-#                     X, _ = self.data_cleaner.transform(X)
-#                 logger.info('Transforming')
-#                 X = self.data_pipeline.transform(X)
-#
-#             logger.info(f'Taken {time.time() - starttime}s')
-#             if use_cache:
-#                 self.save_X_to_cache(X, save_pipeline=True)
-#         else:
-#             X = X_cache
-#
-#         return X
-#
-#     def predict(self, X, **kwargs):
-#         X = self.transform_data(X, **kwargs)
-#         starttime = time.time()
-#         logger.info('Estimator is predicting the data')
-#         preds = self.estimator.predict(X, **kwargs)
-#         logger.info(f'Taken {time.time() - starttime}s')
-#         return preds
-#
-#     def proba2predict(self, proba, proba_threshold=0.5):
-#         if self.task != 'classification':
-#             return proba
-#         if proba.shape[-1] > 2:
-#             predict = proba.argmax(axis=-1)
-#         elif proba.shape[-1] == 2:
-#             predict = (proba[:, 1] > proba_threshold).astype('int32')
-#         else:
-#             predict = (proba > proba_threshold).astype('int32')
-#         return predict
-#
-#     def predict_proba(self, X, **kwargs):
-#         X = self.transform_data(X, **kwargs)
-#         starttime = time.time()
-#         logger.info('Estimator is predicting probability')
-#         proba = self.estimator.predict_proba(X, **kwargs)
-#         logger.info(f'Taken {time.time() - starttime}s')
-#         return proba
-#
-#     def evaluate(self, X, y, metrics=None, **kwargs):
-#         if metrics is None:
-#             metrics = ['accuracy']
-#         proba = self.predict_proba(X, **kwargs)
-#         preds = self.predict(X, **kwargs)
-#         scores = calc_score(y, preds, proba, metrics, self.task)
-#         return scores
-#
-#     def _prepare_cache_dir(self, cache_dir, clear_cache):
-#         if cache_dir is None:
-#             cache_dir = 'tmp/cache'
-#         if cache_dir[-1] == '/':
-#             cache_dir = cache_dir[:-1]
-#
-#         cache_dir = os.path.expanduser(f'{cache_dir}')
-#         if not os.path.exists(cache_dir):
-#             os.makedirs(cache_dir)
-#         else:
-#             if clear_cache:
-#                 shutil.rmtree(cache_dir)
-#                 os.makedirs(cache_dir)
-#         return cache_dir
-#
-#     def summary(self):
-#         s = f"{self.data_pipeline.__repr__(1000000)}\r\n{self.estimator.__repr__()}"
-#         return s
 
 
 class HyperGBMExplainer:
@@ -278,6 +172,14 @@ class HyperGBMEstimator(Estimator):
 
         return X
 
+    def get_categorical_features(self, X):
+        cat_cols = column_object_category_bool(X)
+        int_cols = column_int(X)
+        for c in int_cols:
+            if X[c].min()>=0 and X[c].max()<np.iinfo(np.int32).max:
+                cat_cols.append(c)
+        return cat_cols
+
     def fit(self, X, y, **kwargs):
         X = self.transform_data(X, y, fit=True, **kwargs)
         if self.fit_kwargs is not None:
@@ -285,6 +187,13 @@ class HyperGBMEstimator(Estimator):
 
         starttime = time.time()
         logger.info('Estimator is fitting the data')
+        if is_lightgbm_model(self.gbm_model):
+            cat_cols = self.get_categorical_features(X)
+            kwargs['categorical_feature'] = cat_cols
+        elif is_catboost_model(self.gbm_model):
+            cat_cols = self.get_categorical_features(X)
+            kwargs['cat_features'] = cat_cols
+
         self.gbm_model.fit(X, y, **kwargs)
         logger.info(f'Taken {time.time() - starttime}s')
 
@@ -480,3 +389,22 @@ class BlendModel():
         with open(f'{filepath}', 'rb') as input:
             model = pickle.load(input)
             return model
+
+
+def is_lightgbm_model(model):
+    try:
+        if model.__class__.__name__ in ['LGBMClassifier','LGBMRegressor','LGBMModel']:
+            return True
+        else:
+            return False
+    except:
+        return False
+
+def is_catboost_model(model):
+    try:
+        if model.__class__.__name__ in ['CatBoostClassifier','CatBoostRegressor']:
+            return True
+        else:
+            return False
+    except:
+        return False

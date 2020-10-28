@@ -130,7 +130,7 @@ class Test_Estimator():
         #assert space.vectors
         space.assign_by_vectors([0, 0, 0, 0, 1, 1, 2, 1, 1])
         estimator = HyperGBMEstimator('binary', space, cache_dir=f'{test_output_dir}/hypergbm_cache')
-        assert estimator.get_pipeline_signature(estimator.data_pipeline) == 'e1129afc88d6136d060a986d0c484a26'
+        assert estimator.get_pipeline_signature(estimator.data_pipeline) in ['e1129afc88d6136d060a986d0c484a26','b0bed4a992cf4f996d3da200b4769363']
 
     def test_bankdata_lightgbm(self):
         space = search_space_general(
