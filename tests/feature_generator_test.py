@@ -6,14 +6,14 @@ import math
 from datetime import datetime
 
 import featuretools as ft
-from featuretools.variable_types import Numeric, Categorical
+import numpy as np
 import pandas as pd
 import pytest
-import numpy as np
 from sklearn.model_selection import train_test_split
+
+from hypergbm.feature_generators import FeatureGenerationTransformer, CrossCategorical
 from tabular_toolbox.datasets import dsutils
 from tabular_toolbox.sklearn_ex import FeatureSelectionTransformer
-from hypergbm.feature_generators import FeatureGenerationTransformer, CrossCategorical
 
 
 class Test_FeatureGenerator():
