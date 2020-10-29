@@ -10,6 +10,7 @@ from featuretools import IdentityFeature, variable_types, primitives
 from datetime import datetime
 import pandas as pd
 from tabular_toolbox.column_selector import column_all_datetime, column_number_exclude_timedelta
+from tabular_toolbox.sklearn_ex import FeatureSelectionTransformer
 
 
 class CrossCategorical(primitives.TransformPrimitive):
@@ -29,14 +30,14 @@ class CrossCategorical(primitives.TransformPrimitive):
         return "%s__%s" % (base_feature_names[0], base_feature_names[1])
 
 
-class FeatureToolsTransformer():
+class FeatureGenerationTransformer():
 
-    def __init__(self, trans_primitives=None,
+    def __init__(self, task, trans_primitives=None,
                  fix_input=True,
                  fix_output=True,
                  continuous_cols=None,
                  datetime_cols=None,
-                 max_depth=1):
+                 max_depth=1, feature_selection_args=None):
         """
 
         Args:
@@ -48,7 +49,7 @@ class FeatureToolsTransformer():
         """
         self.trans_primitives = trans_primitives
         self.max_depth = max_depth
-        self._feature_defs = None
+        self.task = task
 
         self._imputed_output = None
         self._imputed_input = None
@@ -62,6 +63,9 @@ class FeatureToolsTransformer():
         self.continuous_cols = continuous_cols
         self.datetime_cols = datetime_cols
         self.original_cols = []
+        self.selection_transformer = None
+        self.selection_args = feature_selection_args
+        self.feature_defs_ = None
 
     def _filter_by_type(self, fields, types):
         result = []
@@ -76,8 +80,12 @@ class FeatureToolsTransformer():
             for k, v in d.items():
                 dest_dict.setdefault(k, v)
 
-    def fit(self, X, **kwargs):
+    def fit(self, X, y=None, **kwargs):
         self.original_cols = X.columns.to_list()
+        if self.selection_args is not None:
+            assert y is not None, '`y` must be provided for feature selection.'
+            self.selection_args['reserved_cols'] = self.original_cols
+            self.selection_transformer = FeatureSelectionTransformer(task=self.task, **self.selection_args)
         # self._check_values(X)
         if self.continuous_cols is None:
             self.continuous_cols = column_number_exclude_timedelta(X)
@@ -106,7 +114,7 @@ class FeatureToolsTransformer():
                                               max_depth=self.max_depth,
                                               features_only=False,
                                               max_features=-1)
-        self._feature_defs = feature_defs
+        self.feature_defs_ = feature_defs
 
         if self.fix_output:
             derived_cols = list(
@@ -116,6 +124,13 @@ class FeatureToolsTransformer():
             # td:  check no valid cols
             self._imputed_output = feature_matrix[self._valid_cols].replace([np.inf, -np.inf], np.nan).mean().to_dict()
 
+        if self.selection_transformer is not None:
+            self.selection_transformer.fit(feature_matrix, y)
+            selected_defs = []
+            for fea in self.feature_defs_:
+                if fea._name in self.selection_transformer.columns_:
+                    selected_defs.append(fea)
+            self.feature_defs_ = selected_defs
         return self
 
     def _replace_invalid_values(self, df: pd.DataFrame, imputed_dict):
@@ -124,7 +139,7 @@ class FeatureToolsTransformer():
 
     def transform(self, X):
         # 1. check is fitted and values
-        assert self._feature_defs is not None, 'Please fit it first.'
+        assert self.feature_defs_ is not None, 'Please fit it first.'
 
         # 2. fix input
         if self.fix_input:
@@ -133,7 +148,7 @@ class FeatureToolsTransformer():
         # 3. transform
         es = ft.EntitySet(id='es_hypernets_transform')
         es.entity_from_dataframe(entity_id='e_hypernets_ft', dataframe=X, make_index=False)
-        feature_matrix = ft.calculate_feature_matrix(self._feature_defs, entityset=es, n_jobs=1, verbose=10)
+        feature_matrix = ft.calculate_feature_matrix(self.feature_defs_, entityset=es, n_jobs=1, verbose=10)
 
         # 4. fix output
         if self.fix_output:

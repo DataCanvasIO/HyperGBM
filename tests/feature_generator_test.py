@@ -13,7 +13,7 @@ import numpy as np
 from sklearn.model_selection import train_test_split
 from tabular_toolbox.datasets import dsutils
 from tabular_toolbox.sklearn_ex import FeatureSelectionTransformer
-from hypergbm.feature_generators import FeatureToolsTransformer, CrossCategorical
+from hypergbm.feature_generators import FeatureGenerationTransformer, CrossCategorical
 
 
 class Test_FeatureGenerator():
@@ -32,7 +32,7 @@ class Test_FeatureGenerator():
         df.drop(['id'], axis=1, inplace=True)
         cross_cat = CrossCategorical()
         X_train, X_test = train_test_split(df.head(100), test_size=0.2, random_state=42)
-        ftt = FeatureToolsTransformer(trans_primitives=[cross_cat])
+        ftt = FeatureGenerationTransformer(task='classification', trans_primitives=[cross_cat])
         ftt.fit(X_train)
         x_t = ftt.transform(X_train)
         assert len(set(x_t.columns.to_list()) - set(
@@ -50,8 +50,9 @@ class Test_FeatureGenerator():
     def test_feature_tools_transformer(self):
         df = dsutils.load_bank()
         df.drop(['id'], axis=1, inplace=True)
+        y = df.pop('y')
         X_train, X_test = train_test_split(df.head(100), test_size=0.2, random_state=42)
-        ftt = FeatureToolsTransformer(trans_primitives=['add_numeric', 'divide_numeric'])
+        ftt = FeatureGenerationTransformer(task='classification', trans_primitives=['add_numeric', 'divide_numeric'])
         ftt.fit(X_train)
         x_t = ftt.transform(X_train)
         assert x_t is not None
@@ -61,7 +62,8 @@ class Test_FeatureGenerator():
         df.drop(['id'], axis=1, inplace=True)
         y = df.pop('y')
         cross_cat = CrossCategorical()
-        ftt = FeatureToolsTransformer(trans_primitives=['add_numeric', 'divide_numeric', cross_cat])
+        ftt = FeatureGenerationTransformer(task='classification',
+                                           trans_primitives=['add_numeric', 'divide_numeric', cross_cat])
         ftt.fit(df)
         x_t = ftt.transform(df)
 
@@ -72,12 +74,28 @@ class Test_FeatureGenerator():
         x_t2 = fst.transform(x_t)
         assert x_t2.shape[1] == 35
 
+    def test_feature_generation_with_selection(self):
+        df = dsutils.load_bank().head(1000)
+        df.drop(['id'], axis=1, inplace=True)
+        y = df.pop('y')
+        cross_cat = CrossCategorical()
+        ftt = FeatureGenerationTransformer(task='classification',
+                                           trans_primitives=['add_numeric', 'divide_numeric', cross_cat],
+                                           feature_selection_args={'ratio_select_cols': 0.2})
+        with pytest.raises(AssertionError) as err:
+            ftt.fit(df)
+            assert err.value == '`y` must be provided for feature selection.'
+        ftt.fit(df, y)
+        x_t = ftt.transform(df)
+        assert x_t.shape[1] == 35
+
     @pytest.mark.parametrize('fix_input', [True, False])
     def test_fix_input(self, fix_input: bool):
         df = pd.DataFrame(data={"x1": [None, 2, 3], 'x2': [4, 5, 6]})
 
-        ftt = FeatureToolsTransformer(trans_primitives=['add_numeric', 'divide_numeric'], fix_input=fix_input,
-                                      fix_output=False)
+        ftt = FeatureGenerationTransformer(task='classification', trans_primitives=['add_numeric', 'divide_numeric'],
+                                           fix_input=fix_input,
+                                           fix_output=False)
         ftt.fit(df)
         x_t = ftt.transform(df)
         assert "x1 + x2" in x_t
@@ -95,7 +113,8 @@ class Test_FeatureGenerator():
     @pytest.mark.parametrize('fix_output', [True, False])
     def test_fix_output(self, fix_output: bool):
         df = pd.DataFrame(data={"x1": [1, 2, 3], 'x2': [0, 5, 6]})
-        ftt = FeatureToolsTransformer(trans_primitives=['add_numeric', 'divide_numeric'], fix_output=fix_output)
+        ftt = FeatureGenerationTransformer(task='classification', trans_primitives=['add_numeric', 'divide_numeric'],
+                                           fix_output=fix_output)
         ftt.fit(df)
         x_t = ftt.transform(df)
         assert "x1 + x2" in x_t
@@ -109,7 +128,7 @@ class Test_FeatureGenerator():
     def test_datetime_derivation(self):
 
         df = pd.DataFrame(data={"x1": [datetime.now()]})
-        ftt = FeatureToolsTransformer(trans_primitives=["year", "month", "week"])
+        ftt = FeatureGenerationTransformer(task='classification', trans_primitives=["year", "month", "week"])
         ftt.fit(df)
 
         x_t = ftt.transform(df)
@@ -122,7 +141,7 @@ class Test_FeatureGenerator():
         tmp_path = P.join(tmp_path, 'fft.pkl')
 
         df = pd.DataFrame(data={"x1": [datetime.now()]})
-        ftt = FeatureToolsTransformer(trans_primitives=["year", "month", "week"])
+        ftt = FeatureGenerationTransformer(task='classification', trans_primitives=["year", "month", "week"])
         ftt.fit(df)
         import pickle
 
