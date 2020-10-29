@@ -65,12 +65,12 @@ class Test_FeatureGenerator():
         ftt.fit(df)
         x_t = ftt.transform(df)
 
-        fst = FeatureSelectionTransformer('classification', ratio_max_cols=0.2)
+        fst = FeatureSelectionTransformer('classification', ratio_select_cols=0.2, reserved_cols=ftt.original_cols)
         fst.fit(x_t, y)
-        assert len(fst.scores_.items()) == 115
-        assert len(fst.columns_) == 23
+        assert len(fst.scores_.items()) == 99
+        assert len(fst.columns_) == 35
         x_t2 = fst.transform(x_t)
-        assert x_t2.shape[1] == 23
+        assert x_t2.shape[1] == 35
 
     @pytest.mark.parametrize('fix_input', [True, False])
     def test_fix_input(self, fix_input: bool):

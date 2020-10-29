@@ -61,6 +61,7 @@ class FeatureToolsTransformer():
 
         self.continuous_cols = continuous_cols
         self.datetime_cols = datetime_cols
+        self.original_cols = []
 
     def _filter_by_type(self, fields, types):
         result = []
@@ -76,9 +77,8 @@ class FeatureToolsTransformer():
                 dest_dict.setdefault(k, v)
 
     def fit(self, X, **kwargs):
+        self.original_cols = X.columns.to_list()
         # self._check_values(X)
-        fields = X.dtypes.to_dict().items()
-
         if self.continuous_cols is None:
             self.continuous_cols = column_number_exclude_timedelta(X)
         if self.datetime_cols is None:
