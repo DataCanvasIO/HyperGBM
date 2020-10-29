@@ -33,8 +33,8 @@ class CrossCategorical(primitives.TransformPrimitive):
 class FeatureGenerationTransformer():
 
     def __init__(self, task, trans_primitives=None,
-                 fix_input=True,
-                 fix_output=True,
+                 fix_input=False,
+                 fix_output=False,
                  continuous_cols=None,
                  datetime_cols=None,
                  max_depth=1, feature_selection_args=None):

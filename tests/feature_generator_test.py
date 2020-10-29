@@ -21,7 +21,7 @@ class Test_FeatureGenerator():
         x1 = ['1', '2']
         x2 = ['c', 'd']
         x3 = np.char.add(x1, x2)
-        assert x3
+        assert list(x3) == ['1c', '2d']
 
     def test_ft_primitives(self):
         tps = ft.primitives.get_transform_primitives()
