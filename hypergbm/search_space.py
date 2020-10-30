@@ -15,6 +15,8 @@ from hypergbm.estimators import LightGBMEstimator, XGBoostEstimator, CatBoostEst
 
 
 def search_space_general(dataframe_mapper_default=False,
+                         eval_set=None,
+                         early_stopping_rounds=None,
                          lightgbm_fit_kwargs=None,
                          xgb_fit_kwargs=None,
                          catboost_fit_kwargs=None):
@@ -24,6 +26,16 @@ def search_space_general(dataframe_mapper_default=False,
         xgb_fit_kwargs = {}
     if catboost_fit_kwargs is None:
         catboost_fit_kwargs = {}
+
+    if eval_set is not None:
+        lightgbm_fit_kwargs['eval_set'] = eval_set
+        xgb_fit_kwargs['eval_set'] = eval_set
+        catboost_fit_kwargs['eval_set'] = eval_set
+
+    if early_stopping_rounds is not None:
+        lightgbm_fit_kwargs['early_stopping_rounds'] = early_stopping_rounds
+        xgb_fit_kwargs['early_stopping_rounds'] = early_stopping_rounds
+        catboost_fit_kwargs['early_stopping_rounds'] = early_stopping_rounds
 
     space = HyperSpace()
     with space.as_default():

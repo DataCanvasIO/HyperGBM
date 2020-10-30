@@ -176,14 +176,32 @@ class HyperGBMEstimator(Estimator):
         cat_cols = column_object_category_bool(X)
         int_cols = column_int(X)
         for c in int_cols:
-            if X[c].min()>=0 and X[c].max()<np.iinfo(np.int32).max:
+            if X[c].min() >= 0 and X[c].max() < np.iinfo(np.int32).max:
                 cat_cols.append(c)
         return cat_cols
 
     def fit(self, X, y, **kwargs):
+        logger.info('Estimator is transforming the train set')
         X = self.transform_data(X, y, fit=True, **kwargs)
+
         if self.fit_kwargs is not None:
             kwargs = self.fit_kwargs
+
+        eval_set = kwargs.get('eval_set')
+        if eval_set is not None:
+            if isinstance(eval_set, tuple):
+                X_eval, y_eval = eval_set
+                logger.info('Estimator is transforming the eval set')
+                X_eval = self.transform_data(X_eval)
+                kwargs['eval_set'] = [(X_eval, y_eval)]
+            elif isinstance(eval_set, list):
+                es = []
+                for i, eval_set_ in enumerate(eval_set):
+                    X_eval, y_eval = eval_set_
+                    logger.info(f'Estimator is transforming the eval set({i})')
+                    X_eval = self.transform_data(X_eval)
+                    es.append((X_eval, y_eval))
+                    kwargs['eval_set'] = es
 
         starttime = time.time()
         logger.info('Estimator is fitting the data')
@@ -393,16 +411,17 @@ class BlendModel():
 
 def is_lightgbm_model(model):
     try:
-        if model.__class__.__name__ in ['LGBMClassifier','LGBMRegressor','LGBMModel']:
+        if model.__class__.__name__ in ['LGBMClassifier', 'LGBMRegressor', 'LGBMModel']:
             return True
         else:
             return False
     except:
         return False
 
+
 def is_catboost_model(model):
     try:
-        if model.__class__.__name__ in ['CatBoostClassifier','CatBoostRegressor']:
+        if model.__class__.__name__ in ['CatBoostClassifier', 'CatBoostRegressor']:
             return True
         else:
             return False

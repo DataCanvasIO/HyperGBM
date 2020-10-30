@@ -16,7 +16,7 @@ class Test_data_split():
         y = df.pop('y')
         X_train, X_test, y_train, y_test = train_test_split(df, y, train_size=0.8, random_state=9527)
 
-        X_train, X_eval, y_train, y_eval = split_by_model(X_train, y_train, X_test, eval_size=0.3, max_trails=5)
+        X_train, X_eval, y_train, y_eval = split_by_model(X_train, y_train, X_test, eval_size=0.3, max_trails=10)
 
         assert X_train.shape == (5600, 17)
         assert X_eval.shape == (2400, 17)

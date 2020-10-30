@@ -34,9 +34,10 @@ def split_by_model(X_train, y_train, X_test, eval_size=0.3, max_test_samples=Non
         X_test, _ = train_test_split(X_test, train_size=max_test_samples, shuffle=True, random_state=random_state)
 
     train_size = np.min([X_test.shape[0], int(X_train.shape[0] * 0.2)])
-    X_train_train, X_train_remained, y_train_train, y_train_remained = train_test_split(X_train, y_train, train_size=train_size,
-                                                                            shuffle=True,
-                                                                            random_state=random_state)
+    X_train_train, X_train_remained, y_train_train, y_train_remained = train_test_split(X_train, y_train,
+                                                                                        train_size=train_size,
+                                                                                        shuffle=True,
+                                                                                        random_state=random_state)
 
     X_train_train[target_col] = 0
     X_test[target_col] = 1
@@ -46,12 +47,16 @@ def split_by_model(X_train, y_train, X_test, eval_size=0.3, max_test_samples=Non
 
     X_train, X_eval, y_train, y_eval = train_test_split(X_merge, y, train_size=0.7, shuffle=True, stratify=y,
                                                         random_state=random_state)
-    searcher = EvolutionSearcher(search_space_general, 20, 10, regularized=True, optimize_direction='max')
+
+    searcher = EvolutionSearcher(
+        lambda: search_space_general(eval_set=[(X_eval, y_eval)], early_stopping_rounds=100)
+        , 20, 10, regularized=True, optimize_direction='max')
 
     hypermodel = HyperGBM(searcher, task='classification', reward_metric='auc', cache_dir=cache_dir)
 
     hypermodel.search(X_train, y_train, X_eval, y_eval, max_trails=max_trails)
-    estimator = hypermodel.final_train(hypermodel.get_best_trail().space_sample, X_merge, y)
+    best_trail = hypermodel.get_best_trail()
+    estimator = hypermodel.final_train(best_trail.space_sample, X_merge, y)
 
     proba = estimator.predict_proba(X_train_remained)[:, 1]
 
