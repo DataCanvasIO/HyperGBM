@@ -15,7 +15,7 @@ from hypergbm.pipeline import ComposeTransformer
 from sklearn import pipeline as sk_pipeline
 from tabular_toolbox.metrics import calc_score
 from tabular_toolbox.sklearn_ex import DataCleaner
-from tabular_toolbox.column_selector import column_object_category_bool, column_int
+from tabular_toolbox.column_selector import column_object_category_bool, column_zero_or_positive_int32
 
 from hypernets.model.estimator import Estimator
 from hypernets.model.hyper_model import HyperModel
@@ -174,10 +174,11 @@ class HyperGBMEstimator(Estimator):
 
     def get_categorical_features(self, X):
         cat_cols = column_object_category_bool(X)
-        int_cols = column_int(X)
-        for c in int_cols:
-            if X[c].min() >= 0 and X[c].max() < np.iinfo(np.int32).max:
-                cat_cols.append(c)
+        # int_cols = column_int(X)
+        # for c in int_cols:
+        #     if X[c].min() >= 0 and X[c].max() < np.iinfo(np.int32).max:
+        #         cat_cols.append(c)
+        cat_cols += column_zero_or_positive_int32(X)
         return cat_cols
 
     def fit(self, X, y, **kwargs):
