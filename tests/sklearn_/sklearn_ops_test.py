@@ -10,7 +10,7 @@ from hypergbm.pipeline import DataFrameMapper
 from tabular_toolbox.column_selector import column_number, column_object_category_bool
 from hypergbm.estimators import LightGBMEstimator
 from hypergbm.sklearn.sklearn_ops import categorical_pipeline_simple, categorical_pipeline_complex, \
-    numeric_pipeline, numeric_pipeline_complex
+    numeric_pipeline_simple, numeric_pipeline_complex
 from hypernets.core.ops import HyperSpace, HyperInput
 
 ids = []
@@ -47,7 +47,7 @@ def get_space_numeric_pipeline():
     space = HyperSpace()
     with space.as_default():
         input = HyperInput(name='input1')
-        p1 = numeric_pipeline()(input)
+        p1 = numeric_pipeline_simple()(input)
         p3 = DataFrameMapper(input_df=True, df_out=True)([p1])  # passthrough
         est = LightGBMEstimator(task='binary', fit_kwargs={})(p3)
         space.set_inputs(input)
@@ -69,7 +69,7 @@ def get_space_num_cat_pipeline(default=False):
     space = HyperSpace()
     with space.as_default():
         input = HyperInput(name='input1')
-        p1 = numeric_pipeline()(input)
+        p1 = numeric_pipeline_simple()(input)
         p2 = categorical_pipeline_simple()(input)
         p3 = DataFrameMapper(default=default, input_df=True, df_out=True)([p1, p2])  # passthrough
         est = LightGBMEstimator(task='binary', fit_kwargs={})(p3)

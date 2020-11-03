@@ -6,7 +6,7 @@ __author__ = 'yangjian'
 
 from hypergbm.pipeline import DataFrameMapper
 from tabular_toolbox.column_selector import column_object
-from hypergbm.sklearn.sklearn_ops import numeric_pipeline, numeric_pipeline_complex, categorical_pipeline_simple, \
+from hypergbm.sklearn.sklearn_ops import numeric_pipeline_simple, numeric_pipeline_complex, categorical_pipeline_simple, \
     categorical_pipeline_complex
 from hypernets.core.search_space import Choice
 from hypernets.core.ops import ModuleChoice, HyperInput, Real
@@ -83,6 +83,41 @@ def search_space_general(dataframe_mapper_default=False,
         }
         catboost_est = CatBoostEstimator(task='binary', fit_kwargs=catboost_fit_kwargs, **catboost_init_kwargs)
         ModuleChoice([lightgbm_est, xgb_est, catboost_est], name='estimator_options')(union_pipeline)
+        space.set_inputs(input)
+    return space
+
+
+def search_space_one_trail(dataframe_mapper_default=False,
+                           eval_set=None,
+                           early_stopping_rounds=None,
+                           lightgbm_fit_kwargs=None):
+    if lightgbm_fit_kwargs is None:
+        lightgbm_fit_kwargs = {}
+
+    if eval_set is not None:
+        lightgbm_fit_kwargs['eval_set'] = eval_set
+
+    if early_stopping_rounds is not None:
+        lightgbm_fit_kwargs['early_stopping_rounds'] = early_stopping_rounds
+
+    space = HyperSpace()
+    with space.as_default():
+        input = HyperInput(name='input1')
+        num_pipeline = numeric_pipeline_simple()(input)
+        cat_pipeline = categorical_pipeline_simple()(input)
+        union_pipeline = DataFrameMapper(default=dataframe_mapper_default, input_df=True, df_out=True,
+                                         df_out_dtype_transforms=[(column_object, 'int')])([num_pipeline, cat_pipeline])
+
+        lightgbm_init_kwargs = {
+            'boosting_type': 'gbdt',
+            'num_leaves': 5,
+            'learning_rate': 0.1,
+            'n_estimators': 100,
+            'max_depth': 5,
+            'class_weight': 'balanced',
+        }
+        lightgbm_est = LightGBMEstimator(task='binary', fit_kwargs=lightgbm_fit_kwargs, **lightgbm_init_kwargs)
+        lightgbm_est(union_pipeline)
         space.set_inputs(input)
     return space
 

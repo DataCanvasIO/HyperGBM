@@ -14,7 +14,7 @@ from hypergbm.estimators import LightGBMEstimator, XGBoostEstimator
 from hypergbm.hyper_gbm import HyperGBMEstimator
 from hypergbm.pipeline import DataFrameMapper
 from hypergbm.search_space import search_space_general
-from hypergbm.sklearn.sklearn_ops import categorical_pipeline_simple, numeric_pipeline, \
+from hypergbm.sklearn.sklearn_ops import categorical_pipeline_simple, numeric_pipeline_simple, \
     categorical_pipeline_complex, numeric_pipeline_complex
 from tests import test_output_dir
 
@@ -23,11 +23,11 @@ def get_space_multi_dataframemapper(default=False):
     space = HyperSpace()
     with space.as_default():
         input = HyperInput(name='input1')
-        p1 = numeric_pipeline(seq_no=0)(input)
+        p1 = numeric_pipeline_simple(seq_no=0)(input)
         p2 = categorical_pipeline_simple(seq_no=0)(input)
         p3 = DataFrameMapper(default=default, input_df=True, df_out=True)([p1, p2])  # passthrough
 
-        p4 = numeric_pipeline(seq_no=1)(p3)
+        p4 = numeric_pipeline_simple(seq_no=1)(p3)
         p5 = categorical_pipeline_simple(seq_no=1)(p3)
         p6 = DataFrameMapper(default=default, input_df=True, df_out=True)([p4, p5])
         est = LightGBMEstimator(task='binary', fit_kwargs={})(p6)

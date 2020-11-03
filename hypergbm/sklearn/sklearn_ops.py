@@ -46,7 +46,7 @@ def categorical_pipeline_complex(impute_strategy=None, svd_components=3, seq_no=
     return pipeline
 
 
-def numeric_pipeline(impute_strategy='mean', seq_no=0):
+def numeric_pipeline_simple(impute_strategy='mean', seq_no=0):
     pipeline = Pipeline([
         SimpleImputer(missing_values=np.nan, strategy=impute_strategy, name=f'numeric_imputer_{seq_no}'),
         StandardScaler(name=f'numeric_standard_scaler_{seq_no}')
