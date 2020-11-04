@@ -25,7 +25,6 @@ y_train = X_train.pop('y')
 y_test = X_test.pop('y')
 
 hk.search(X_train, y_train, X_test, y_test, max_trails=500)
-assert hk.best_model
 best_trial = hk.get_best_trail()
 print(f'best_train:{best_trial}')
 estimator = hk.final_train(best_trial.space_sample, X_train, y_train)

@@ -62,6 +62,8 @@ class HyperGBMExplainer:
 
 
 class HyperGBMEstimator(Estimator):
+    _prepared_cache_dir = set()
+
     def __init__(self, task, space_sample, data_cleaner_params=None, cache_dir=None, clear_cache=True):
         self.data_pipeline = None
         self.clear_cache = clear_cache
@@ -75,19 +77,30 @@ class HyperGBMEstimator(Estimator):
         Estimator.__init__(self, space_sample=space_sample, task=task)
         self._build_model(space_sample)
 
-    def _prepare_cache_dir(self, cache_dir, clear_cache):
+    @staticmethod
+    def _prepare_cache_dir(cache_dir, clear_cache):
         if cache_dir is None:
             cache_dir = 'tmp/cache'
         if cache_dir[-1] == '/':
             cache_dir = cache_dir[:-1]
 
         cache_dir = os.path.expanduser(f'{cache_dir}')
-        if not os.path.exists(cache_dir):
-            os.makedirs(cache_dir)
-        else:
-            if clear_cache:
-                shutil.rmtree(cache_dir)
-                os.makedirs(cache_dir)
+
+        if cache_dir not in HyperGBMEstimator._prepared_cache_dir:
+            try:
+                if not os.path.exists(cache_dir):
+                    os.makedirs(cache_dir, exist_ok=True)
+                else:
+                    if clear_cache:
+                        shutil.rmtree(cache_dir)
+                        os.makedirs(cache_dir, exist_ok=True)
+            except PermissionError:
+                pass  # ignore
+            except FileExistsError:
+                pass  # ignore
+
+            HyperGBMEstimator._prepared_cache_dir.add(cache_dir)
+
         return cache_dir
 
     def _build_model(self, space_sample):
@@ -410,21 +423,17 @@ class BlendModel():
             return model
 
 
-def is_lightgbm_model(model):
+def _is_any_class(model, classes):
     try:
-        if model.__class__.__name__ in ['LGBMClassifier', 'LGBMRegressor', 'LGBMModel']:
-            return True
-        else:
-            return False
+        model_classes = (model.__class__,) + model.__class__.__bases__
+        return any(c.__name__ in classes for c in model_classes)
     except:
         return False
+
+
+def is_lightgbm_model(model):
+    return _is_any_class(model, {'LGBMClassifier', 'LGBMRegressor', 'LGBMModel'})
 
 
 def is_catboost_model(model):
-    try:
-        if model.__class__.__name__ in ['CatBoostClassifier', 'CatBoostRegressor']:
-            return True
-        else:
-            return False
-    except:
-        return False
+    return _is_any_class(model, {'CatBoostClassifier', 'CatBoostRegressor'})

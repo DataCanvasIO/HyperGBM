@@ -5,11 +5,11 @@
 
 import numpy as np
 from dask_ml import impute as dimp
-from dask_ml import preprocessing as dpre
+from dask_ml import preprocessing as dm_pre
 
-from tabular_toolbox import dataframe_mapper
-from tabular_toolbox import dask_ex as dex
 from hypergbm.pipeline import HyperTransformer, ComposeTransformer, PipelineOutput
+from tabular_toolbox import dask_ex as dex
+from tabular_toolbox import dataframe_mapper
 
 
 class StandardScaler(HyperTransformer):
@@ -20,7 +20,7 @@ class StandardScaler(HyperTransformer):
             kwargs['with_mean'] = with_mean
         if with_std is not None and with_std != True:
             kwargs['with_std'] = with_std
-        HyperTransformer.__init__(self, dpre.StandardScaler, space, name, **kwargs)
+        HyperTransformer.__init__(self, dm_pre.StandardScaler, space, name, **kwargs)
 
 
 class OneHotEncoder(HyperTransformer):
@@ -49,7 +49,7 @@ class MinMaxScaler(HyperTransformer):
             kwargs['copy'] = copy
         if feature_range is not None and feature_range != (0, 1):
             kwargs['feature_range'] = feature_range
-        HyperTransformer.__init__(self, dpre.MinMaxScaler, space, name, **kwargs)
+        HyperTransformer.__init__(self, dm_pre.MinMaxScaler, space, name, **kwargs)
 
 
 class RobustScaler(HyperTransformer):
@@ -64,7 +64,7 @@ class RobustScaler(HyperTransformer):
         if quantile_range is not None and quantile_range != (25.0, 75.0):
             kwargs['quantile_range'] = quantile_range
 
-        HyperTransformer.__init__(self, dpre.RobustScaler, space, name, **kwargs)
+        HyperTransformer.__init__(self, dm_pre.RobustScaler, space, name, **kwargs)
 
 
 class MaxAbsScaler(HyperTransformer):
@@ -109,7 +109,7 @@ class OrdinalEncoder(HyperTransformer):
         if dtype is not None and dtype != True:
             kwargs['dtype'] = dtype
 
-        HyperTransformer.__init__(self, dpre.OrdinalEncoder, space, name, **kwargs)
+        HyperTransformer.__init__(self, dm_pre.OrdinalEncoder, space, name, **kwargs)
 
 
 class TruncatedSVD(HyperTransformer):
