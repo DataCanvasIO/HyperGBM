@@ -94,8 +94,7 @@ class Test_FeatureGenerator():
         df = pd.DataFrame(data={"x1": [None, 2, 3], 'x2': [4, 5, 6]})
 
         ftt = FeatureGenerationTransformer(task='classification', trans_primitives=['add_numeric', 'divide_numeric'],
-                                           fix_input=fix_input,
-                                           fix_output=False)
+                                           fix_input=fix_input)
         ftt.fit(df)
         x_t = ftt.transform(df)
         assert "x1 + x2" in x_t
@@ -110,20 +109,6 @@ class Test_FeatureGenerator():
             assert math.isnan(x_t["x1"][0])
             assert math.isnan(x_t["x1 / x2"][0])
 
-    @pytest.mark.parametrize('fix_output', [True, False])
-    def test_fix_output(self, fix_output: bool):
-        df = pd.DataFrame(data={"x1": [1, 2, 3], 'x2': [0, 5, 6]})
-        ftt = FeatureGenerationTransformer(task='classification', trans_primitives=['add_numeric', 'divide_numeric'],
-                                           fix_output=fix_output)
-        ftt.fit(df)
-        x_t = ftt.transform(df)
-        assert "x1 + x2" in x_t
-        assert "x1 / x2" in x_t
-
-        if fix_output is True:
-            assert not math.isinf(x_t["x1 / x2"][0])
-        else:
-            assert math.isinf(x_t["x1 / x2"][0])
 
     def test_datetime_derivation(self):
 

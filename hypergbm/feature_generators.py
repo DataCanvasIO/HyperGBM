@@ -31,10 +31,10 @@ class CrossCategorical(primitives.TransformPrimitive):
 
 
 class FeatureGenerationTransformer():
+    ft_index = 'e_hypernets_ft_index'
 
     def __init__(self, task, trans_primitives=None,
                  fix_input=False,
-                 fix_output=False,
                  continuous_cols=None,
                  datetime_cols=None,
                  max_depth=1, feature_selection_args=None):
@@ -51,15 +51,9 @@ class FeatureGenerationTransformer():
         self.max_depth = max_depth
         self.task = task
 
-        self._imputed_output = None
         self._imputed_input = None
-        self._valid_cols = None
 
         self.fix_input = fix_input
-        self.fix_output = fix_output
-        if self.fix_input is False and self.fix_output is True:
-            sys.stderr.write("May fill out of place values after derivation.")
-
         self.continuous_cols = continuous_cols
         self.datetime_cols = datetime_cols
         self.original_cols = []
@@ -106,7 +100,7 @@ class FeatureGenerationTransformer():
 
         es = ft.EntitySet(id='es_hypernets_fit')
         es.entity_from_dataframe(entity_id='e_hypernets_ft', dataframe=X, variable_types=feature_type_dict,
-                                 make_index=True, index='e_hypernets_ft_index')
+                                 make_index=True, index=self.ft_index)
         feature_matrix, feature_defs = ft.dfs(entityset=es, target_entity="e_hypernets_ft",
                                               ignore_variables={"e_hypernets_ft": []},
                                               return_variable_types="all",
@@ -114,15 +108,9 @@ class FeatureGenerationTransformer():
                                               max_depth=self.max_depth,
                                               features_only=False,
                                               max_features=-1)
-        self.feature_defs_ = feature_defs
+        X.pop(self.ft_index)
 
-        if self.fix_output:
-            derived_cols = list(
-                map(lambda _: _._name, filter(lambda _: not isinstance(_, IdentityFeature), feature_defs)))
-            invalid_cols = self._checkout_invalid_cols(feature_matrix)
-            self._valid_cols = set(derived_cols) - set(invalid_cols)
-            # td:  check no valid cols
-            self._imputed_output = feature_matrix[self._valid_cols].replace([np.inf, -np.inf], np.nan).mean().to_dict()
+        self.feature_defs_ = feature_defs
 
         if self.selection_transformer is not None:
             self.selection_transformer.fit(feature_matrix, y)
@@ -131,6 +119,7 @@ class FeatureGenerationTransformer():
                 if fea._name in self.selection_transformer.columns_:
                     selected_defs.append(fea)
             self.feature_defs_ = selected_defs
+
         return self
 
     def _replace_invalid_values(self, df: pd.DataFrame, imputed_dict):
@@ -147,12 +136,9 @@ class FeatureGenerationTransformer():
 
         # 3. transform
         es = ft.EntitySet(id='es_hypernets_transform')
-        es.entity_from_dataframe(entity_id='e_hypernets_ft', dataframe=X, make_index=False)
+        es.entity_from_dataframe(entity_id='e_hypernets_ft', dataframe=X, make_index=True, index=self.ft_index)
         feature_matrix = ft.calculate_feature_matrix(self.feature_defs_, entityset=es, n_jobs=1, verbose=10)
-
-        # 4. fix output
-        if self.fix_output:
-            self._replace_invalid_values(feature_matrix, self._imputed_output)
+        feature_matrix.replace([np.inf, -np.inf], np.nan, inplace=True)
 
         return feature_matrix
 
