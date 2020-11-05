@@ -143,7 +143,8 @@ class FeatureGenerationTransformer():
 
         # 3. transform
         es = ft.EntitySet(id='es_hypernets_transform')
-        es.entity_from_dataframe(entity_id='e_hypernets_ft', dataframe=X, make_index=True, index=self.ft_index)
+        es.entity_from_dataframe(entity_id='e_hypernets_ft', dataframe=X, make_index=(self.ft_index not in X),
+                                 index=self.ft_index)
         feature_matrix = ft.calculate_feature_matrix(self.feature_defs_, entityset=es, n_jobs=1, verbose=10)
         feature_matrix.replace([np.inf, -np.inf], np.nan, inplace=True)
 

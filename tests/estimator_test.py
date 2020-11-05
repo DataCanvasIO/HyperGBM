@@ -7,13 +7,13 @@ import pandas as pd
 from hypernets.core.ops import HyperSpace, HyperInput, Choice, Real, ModuleChoice
 from pandas import DataFrame
 from sklearn.model_selection import train_test_split
-from tabular_toolbox.column_selector import column_object
+from tabular_toolbox.column_selector import column_object, column_exclude_datetime
 from tabular_toolbox.datasets import dsutils
 
 from hypergbm.estimators import LightGBMEstimator, XGBoostEstimator
 from hypergbm.hyper_gbm import HyperGBMEstimator
 from hypergbm.pipeline import DataFrameMapper
-from hypergbm.search_space import search_space_general
+from hypergbm.search_space import search_space_general, search_space_feature_gen
 from hypergbm.sklearn.sklearn_ops import categorical_pipeline_simple, numeric_pipeline_simple, \
     categorical_pipeline_complex, numeric_pipeline_complex
 from tests import test_output_dir
@@ -122,15 +122,34 @@ class Test_Estimator():
         assert list(df_1.columns) == ['a', 'e', 'f', 'b', 'c', 'd', 'l']
         assert df_1.shape == (3, 7)
 
+    def test_build_pipeline_feature_gen(self):
+        space = search_space_feature_gen()
+        space.random_sample()
+        estimator = HyperGBMEstimator('binary', space, cache_dir=f'{test_output_dir}/hypergbm_cache')
+        X, y = get_df()
+        X = X[column_exclude_datetime(X)]
+        # X = dsutils.load_bank().head(100)
+        # y = X.pop('y')
+        df_1 = estimator.data_pipeline.fit_transform(X, y)
+        assert len(set(df_1.columns.to_list()) - {'a', 'e', 'f', 'a__f', 'b', 'c', 'd', 'l', 'd / c', 'l / b', 'd / l',
+                                                  'b / d', 'c / b', 'b / l', 'l / d', 'c / d', 'c / l', 'd / b',
+                                                  'b / c',
+                                                  'l / c'}) == 0
+        assert df_1.shape == (3, 20)
+
+        df_2 = estimator.data_pipeline.transform(X)
+        assert df_2.shape == (3, 20)
+
     def test_pipeline_signature(self):
         space = search_space_general(
             lightgbm_fit_kwargs=lightgbm_fit_kwargs,
         )
-        #space.random_sample()
-        #assert space.vectors
+        # space.random_sample()
+        # assert space.vectors
         space.assign_by_vectors([0, 0, 0, 0, 1, 1, 2, 1, 1])
         estimator = HyperGBMEstimator('binary', space, cache_dir=f'{test_output_dir}/hypergbm_cache')
-        assert estimator.get_pipeline_signature(estimator.data_pipeline) in ['e1129afc88d6136d060a986d0c484a26','b0bed4a992cf4f996d3da200b4769363']
+        assert estimator.get_pipeline_signature(estimator.data_pipeline) in ['e1129afc88d6136d060a986d0c484a26',
+                                                                             'b0bed4a992cf4f996d3da200b4769363']
 
     def test_bankdata_lightgbm(self):
         space = search_space_general(

@@ -8,6 +8,7 @@ from sklearn import impute, preprocessing as sk_pre, decomposition
 
 from hypergbm.pipeline import HyperTransformer
 from tabular_toolbox import sklearn_ex
+from .. import feature_generators
 
 
 class StandardScaler(HyperTransformer):
@@ -278,3 +279,23 @@ class SkewnessKurtosisTransformer(HyperTransformer):
             kwargs['transform_fn'] = transform_fn
 
         HyperTransformer.__init__(self, sklearn_ex.SkewnessKurtosisTransformer, space, name, **kwargs)
+
+
+class FeatureGenerationTransformer(HyperTransformer):
+    def __init__(self, task, trans_primitives=None, fix_input=False, continuous_cols=None, datetime_cols=None,
+                 max_depth=1, feature_selection_args=None, space=None, name=None, **kwargs):
+        kwargs['task'] = task
+        if trans_primitives is not None:
+            kwargs['trans_primitives'] = trans_primitives
+        if fix_input:
+            kwargs['fix_input'] = fix_input
+        if continuous_cols is not None:
+            kwargs['continuous_cols'] = continuous_cols
+        if datetime_cols is not None:
+            kwargs['datetime_cols'] = datetime_cols
+        if max_depth != 1:
+            kwargs['max_depth'] = max_depth
+        if feature_selection_args is not None:
+            kwargs['feature_selection_args'] = feature_selection_args
+
+        HyperTransformer.__init__(self, feature_generators.FeatureGenerationTransformer, space, name, **kwargs)
