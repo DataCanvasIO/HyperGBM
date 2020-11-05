@@ -122,6 +122,13 @@ class FeatureGenerationTransformer():
 
         return self
 
+    @property
+    def classes_(self):
+        if self.feature_defs_ is None:
+            return None
+        feats = [fea._name for fea in self.feature_defs_]
+        return feats
+
     def _replace_invalid_values(self, df: pd.DataFrame, imputed_dict):
         df.replace([np.inf, -np.inf], np.nan, inplace=True)
         df.fillna(imputed_dict, inplace=True)

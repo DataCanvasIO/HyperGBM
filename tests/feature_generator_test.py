@@ -9,11 +9,31 @@ import featuretools as ft
 import numpy as np
 import pandas as pd
 import pytest
-from sklearn.model_selection import train_test_split
-
 from hypergbm.feature_generators import FeatureGenerationTransformer, CrossCategorical
+from sklearn.impute import SimpleImputer
+from sklearn.metrics import roc_auc_score, matthews_corrcoef, make_scorer
+from sklearn.model_selection import train_test_split
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import OrdinalEncoder, StandardScaler
+from tabular_toolbox.column_selector import column_object_category_bool, column_number_exclude_timedelta
+from tabular_toolbox.dataframe_mapper import DataFrameMapper
 from tabular_toolbox.datasets import dsutils
 from tabular_toolbox.sklearn_ex import FeatureSelectionTransformer
+from tabular_toolbox.utils import logging
+
+logger = logging.getLogger(__name__)
+
+
+def general_preprocessor():
+    cat_transformer = Pipeline(
+        steps=[('imputer_cat', SimpleImputer(strategy='constant')), ('encoder', OrdinalEncoder())])
+    num_transformer = Pipeline(steps=[('imputer_num', SimpleImputer(strategy='mean')), ('scaler', StandardScaler())])
+
+    preprocessor = DataFrameMapper(features=[(column_object_category_bool, cat_transformer),
+                                             (column_number_exclude_timedelta, num_transformer)],
+                                   input_df=True,
+                                   df_out=True)
+    return preprocessor
 
 
 class Test_FeatureGenerator():
@@ -26,6 +46,29 @@ class Test_FeatureGenerator():
     def test_ft_primitives(self):
         tps = ft.primitives.get_transform_primitives()
         assert tps
+
+    def test_pipeline(self):
+        df = dsutils.load_bank()
+        df.drop(['id'], axis=1, inplace=True)
+        cross_cat = CrossCategorical()
+        X_train, X_test = train_test_split(df.head(100), test_size=0.2, random_state=42)
+        ftt = FeatureGenerationTransformer(task='classification', trans_primitives=[cross_cat])
+        preprocessor = general_preprocessor()
+        pipe = Pipeline(steps=[('feature_gen', ftt), ('processor', preprocessor)])
+        X_t = pipe.fit_transform(X_train)
+        assert X_t.shape == (80, 62)
+
+    def test_in_dataframe_mapper(self):
+        df = dsutils.load_bank()
+        df.drop(['id'], axis=1, inplace=True)
+        cross_cat = CrossCategorical()
+        X_train, X_test = train_test_split(df.head(100), test_size=0.2, random_state=42)
+        ftt = FeatureGenerationTransformer(task='classification', trans_primitives=[cross_cat])
+        dfm = DataFrameMapper(features=[(X_train.columns.to_list(), ftt)],
+                              input_df=True,
+                              df_out=True)
+        X_t = dfm.fit_transform(X_train)
+        assert X_t.shape == (80, 62)
 
     def test_feature_tools_categorical_cross(self):
         df = dsutils.load_bank()
@@ -108,7 +151,6 @@ class Test_FeatureGenerator():
             # x1 is NaN, it's children is NaN too.
             assert math.isnan(x_t["x1"][0])
             assert math.isnan(x_t["x1 / x2"][0])
-
 
     def test_datetime_derivation(self):
 
