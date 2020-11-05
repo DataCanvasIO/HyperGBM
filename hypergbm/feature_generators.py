@@ -2,13 +2,11 @@
 """
 
 """
-import sys
 
-import numpy as np
 import featuretools as ft
-from featuretools import IdentityFeature, variable_types, primitives
-from datetime import datetime
+import numpy as np
 import pandas as pd
+from featuretools import variable_types, primitives
 from tabular_toolbox.column_selector import column_all_datetime, column_number_exclude_timedelta
 from tabular_toolbox.sklearn_ex import FeatureSelectionTransformer
 
