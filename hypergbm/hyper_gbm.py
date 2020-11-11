@@ -19,7 +19,7 @@ from tabular_toolbox.column_selector import column_object_category_bool, column_
 
 from hypernets.model.estimator import Estimator
 from hypernets.model.hyper_model import HyperModel
-from hypernets.utils import logging
+from hypernets.utils import logging, fs
 from .estimators import HyperEstimator
 
 try:
@@ -261,12 +261,12 @@ class HyperGBMEstimator(Estimator):
         return scores
 
     def save(self, model_file):
-        with open(f'{model_file}', 'wb') as output:
+        with fs.open(f'{model_file}', 'wb') as output:
             pickle.dump(self, output, protocol=2)
 
     @staticmethod
     def load(model_file):
-        with open(f'{model_file}', 'rb') as input:
+        with fs.open(f'{model_file}', 'rb') as input:
             model = pickle.load(input)
             return model
 
@@ -413,12 +413,12 @@ class BlendModel():
         return scores
 
     def save_model(self, filepath):
-        with open(f'{filepath}', 'wb') as output:
+        with fs.open(f'{filepath}', 'wb') as output:
             pickle.dump(self, output)
 
     @staticmethod
     def load_model(filepath):
-        with open(f'{filepath}', 'rb') as input:
+        with fs.open(f'{filepath}', 'rb') as input:
             model = pickle.load(input)
             return model
 
