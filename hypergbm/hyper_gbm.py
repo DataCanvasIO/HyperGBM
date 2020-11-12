@@ -3,23 +3,21 @@
 
 """
 import hashlib
-import os
 import pickle
 import re
-import shutil
 import time
 
 import numpy as np
 import pandas as pd
-from hypergbm.pipeline import ComposeTransformer
 from sklearn import pipeline as sk_pipeline
-from tabular_toolbox.metrics import calc_score
-from tabular_toolbox.sklearn_ex import DataCleaner
-from tabular_toolbox.column_selector import column_object_category_bool, column_zero_or_positive_int32
 
+from hypergbm.pipeline import ComposeTransformer
 from hypernets.model.estimator import Estimator
 from hypernets.model.hyper_model import HyperModel
 from hypernets.utils import logging, fs
+from tabular_toolbox.column_selector import column_object_category_bool, column_zero_or_positive_int32
+from tabular_toolbox.metrics import calc_score
+from tabular_toolbox.sklearn_ex import DataCleaner
 from .estimators import HyperEstimator
 
 try:
@@ -62,46 +60,17 @@ class HyperGBMExplainer:
 
 
 class HyperGBMEstimator(Estimator):
-    _prepared_cache_dir = set()
-
-    def __init__(self, task, space_sample, data_cleaner_params=None, cache_dir=None, clear_cache=True):
+    def __init__(self, task, space_sample, data_cleaner_params=None, cache_dir=None):
         self.data_pipeline = None
-        self.clear_cache = clear_cache
-        self.cache_dir = self._prepare_cache_dir(cache_dir, clear_cache)
+        self.cache_dir = cache_dir
         # self.task = task
         self.data_cleaner_params = data_cleaner_params
         self.gbm_model = None
-        self.data_clearner = None
+        self.data_cleaner = None
         self.pipeline_signature = None
         self.fit_kwargs = None
         Estimator.__init__(self, space_sample=space_sample, task=task)
         self._build_model(space_sample)
-
-    @staticmethod
-    def _prepare_cache_dir(cache_dir, clear_cache):
-        if cache_dir is None:
-            cache_dir = 'tmp/cache'
-        if cache_dir[-1] == '/':
-            cache_dir = cache_dir[:-1]
-
-        cache_dir = os.path.expanduser(f'{cache_dir}')
-
-        if cache_dir not in HyperGBMEstimator._prepared_cache_dir:
-            try:
-                if not os.path.exists(cache_dir):
-                    os.makedirs(cache_dir, exist_ok=True)
-                else:
-                    if clear_cache:
-                        shutil.rmtree(cache_dir)
-                        os.makedirs(cache_dir, exist_ok=True)
-            except PermissionError:
-                pass  # ignore
-            except FileExistsError:
-                pass  # ignore
-
-            HyperGBMEstimator._prepared_cache_dir.add(cache_dir)
-
-        return cache_dir
 
     def _build_model(self, space_sample):
         space, _ = space_sample.compile_and_forward()
@@ -271,7 +240,8 @@ class HyperGBMEstimator(Estimator):
             return model
 
     def get_X_filepath(self, X):
-        file_path = f'{self.cache_dir}/{X.shape[0]}_{X.shape[1]}_{self.pipeline_signature}.h5'
+        # file_path = f'{self.cache_dir}/{X.shape[0]}_{X.shape[1]}_{self.pipeline_signature}.h5'
+        file_path = f'{self.cache_dir}/{X.shape[0]}_{X.shape[1]}_{self.pipeline_signature}.parquet'
         return file_path
 
     def get_pipeline_filepath(self, X):
@@ -280,16 +250,16 @@ class HyperGBMEstimator(Estimator):
 
     def get_X_from_cache(self, X, load_pipeline=False):
         file_path = self.get_X_filepath(X)
-        if os.path.exists(file_path):
+        if fs.exists(file_path):
             df = self.load_df(file_path)
             if load_pipeline:
                 pipeline_filepath = self.get_pipeline_filepath(X)
                 try:
-                    with open(f'{pipeline_filepath}', 'rb') as input:
+                    with fs.open(pipeline_filepath, 'rb') as input:
                         self.data_pipeline, self.data_cleaner = pickle.load(input)
                 except:
-                    if os.path.exists(file_path):
-                        os.remove(file_path)
+                    if fs.exists(file_path):
+                        fs.rm(file_path)
                     return None
             return df
         else:
@@ -301,33 +271,50 @@ class HyperGBMEstimator(Estimator):
         if save_pipeline:
             pipeline_file_path = self.get_pipeline_filepath(X)
             try:
-                with open(f'{pipeline_file_path}', 'wb') as output:
+                with fs.open(pipeline_file_path, 'wb') as output:
                     pickle.dump((self.data_pipeline, self.data_cleaner), output, protocol=2)
             except Exception as e:
                 logger.error(e)
-                if os.path.exists(pipeline_file_path):
-                    os.remove(pipeline_file_path)
+                if fs.exists(pipeline_file_path):
+                    fs.rm(pipeline_file_path)
 
     def load_df(self, filepath):
-        global h5
+        # global h5
+        # try:
+        #     h5 = pd.HDFStore(filepath)
+        #     df = h5['data']
+        #     return df
+        # except:
+        #     if os.path.exists(filepath):
+        #         os.remove(filepath)
+        # finally:
+        #     h5.close()
+        #
         try:
-            h5 = pd.HDFStore(filepath)
-            df = h5['data']
-            return df
+            with fs.open(filepath, 'rb') as f:
+                df = pd.read_parquet(f)
+                return df
         except:
-            if os.path.exists(filepath):
-                os.remove(filepath)
-        finally:
-            h5.close()
+            if fs.exists(filepath):
+                fs.rm(filepath)
+            return None
 
     def save_df(self, filepath, df):
+        # try:
+        #     df.to_hdf(filepath, key='data', mode='w', format='t')
+        # except Exception as e:
+        #     logger.error(e)
+        #     # traceback.print_exc()
+        #     if os.path.exists(filepath):
+        #         os.remove(filepath)
         try:
-            df.to_hdf(filepath, key='data', mode='w', format='t')
+            with fs.open(filepath, 'wb') as f:
+                df.to_parquet(f)
         except Exception as e:
             logger.error(e)
             # traceback.print_exc()
-            if os.path.exists(filepath):
-                os.remove(filepath)
+            if fs.exists(filepath):
+                fs.rm(filepath)
 
     def get_explainer(self, data=None):
         explainer = HyperGBMExplainer(self, data=data)
@@ -341,14 +328,14 @@ class HyperGBM(HyperModel):
             callbacks = []
         self.task = task
         self.data_cleaner_params = data_cleaner_params
-        self.cache_dir = cache_dir
+        self.cache_dir = self._prepare_cache_dir(cache_dir, clear_cache)
         self.clear_cache = clear_cache
         HyperModel.__init__(self, searcher, dispatcher=dispatcher, callbacks=callbacks, reward_metric=reward_metric)
 
     def _get_estimator(self, space_sample):
         estimator = HyperGBMEstimator(task=self.task, space_sample=space_sample,
                                       data_cleaner_params=self.data_cleaner_params,
-                                      cache_dir=self.cache_dir, clear_cache=self.clear_cache)
+                                      cache_dir=self.cache_dir)
         return estimator
 
     def load_estimator(self, model_file):
@@ -365,6 +352,29 @@ class HyperGBM(HyperModel):
             models.append(estimator)
         blends = BlendModel(models, self.task)
         return blends
+
+    @staticmethod
+    def _prepare_cache_dir(cache_dir, clear_cache):
+        if cache_dir is None:
+            cache_dir = 'tmp/cache'
+        if cache_dir[-1] == '/':
+            cache_dir = cache_dir[:-1]
+
+        # cache_dir = os.path.expanduser(cache_dir)
+
+        try:
+            if not fs.exists(cache_dir):
+                fs.makedirs(cache_dir, exist_ok=True)
+            else:
+                if clear_cache:
+                    fs.rm(cache_dir, recursive=True)
+                    fs.mkdirs(cache_dir, exist_ok=True)
+        except PermissionError:
+            pass  # ignore
+        except FileExistsError:
+            pass  # ignore
+
+        return cache_dir
 
 
 class BlendModel():
