@@ -13,7 +13,7 @@ from tabular_toolbox.datasets import dsutils
 from hypergbm.hyper_gbm import HyperGBM
 from hypergbm.search_space import search_space_general
 from tests import test_output_dir
-
+from hypernets.utils import fs
 
 class Test_HyperGBM():
 
@@ -50,7 +50,7 @@ class Test_HyperGBM():
         est, hypergbm = self.train_bankdata(f)
         filepath = test_output_dir + '/hypergbm_model.pkl'
         est.save(filepath)
-        assert os.path.isfile(filepath) == True
+        assert fs.isfile(filepath) == True
         model = hypergbm.load_estimator(filepath)
         score = model.evaluate(X_test, y_test, ['AUC'])
         assert score

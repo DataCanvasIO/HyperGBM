@@ -16,8 +16,8 @@ from hypernets.model.estimator import Estimator
 from hypernets.model.hyper_model import HyperModel
 from hypernets.utils import logging, fs
 from tabular_toolbox.column_selector import column_object_category_bool, column_zero_or_positive_int32
+from tabular_toolbox.data_cleaner import DataCleaner
 from tabular_toolbox.metrics import calc_score
-from tabular_toolbox.sklearn_ex import DataCleaner
 from .estimators import HyperEstimator
 
 try:
