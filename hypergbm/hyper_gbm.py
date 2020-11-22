@@ -18,6 +18,7 @@ from hypernets.utils import logging, fs
 from tabular_toolbox.column_selector import column_object_category_bool, column_zero_or_positive_int32
 from tabular_toolbox.data_cleaner import DataCleaner
 from tabular_toolbox.metrics import calc_score
+from tabular_toolbox.persistence import read_parquet, to_parquet
 from .estimators import HyperEstimator
 
 try:
@@ -241,17 +242,26 @@ class HyperGBMEstimator(Estimator):
 
     def get_X_filepath(self, X):
         # file_path = f'{self.cache_dir}/{X.shape[0]}_{X.shape[1]}_{self.pipeline_signature}.h5'
-        file_path = f'{self.cache_dir}/{X.shape[0]}_{X.shape[1]}_{self.pipeline_signature}.parquet'
+        shape = self._get_dataframe_shape(X)
+        file_path = f'{self.cache_dir}/{shape[0]}_{shape[1]}_{self.pipeline_signature}.parquet'
         return file_path
 
     def get_pipeline_filepath(self, X):
-        file_path = f'{self.cache_dir}/{X.shape[0]}_{X.shape[1]}_pipeline_{self.pipeline_signature}.pkl'
+        shape = self._get_dataframe_shape(X)
+        file_path = f'{self.cache_dir}/{shape[0]}_{shape[1]}_pipeline_{self.pipeline_signature}.pkl'
         return file_path
+
+    def _get_dataframe_shape(self, X):
+        if isinstance(X, pd.DataFrame):
+            return X.shape
+        else:
+            rows = X.reduction(lambda df: df.shape[0], np.sum).compute()
+            return rows, X.shape[1]
 
     def get_X_from_cache(self, X, load_pipeline=False):
         file_path = self.get_X_filepath(X)
         if fs.exists(file_path):
-            df = self.load_df(file_path)
+            df = self.load_df(file_path, not isinstance(X, (pd.DataFrame, np.ndarray)))
             if load_pipeline:
                 pipeline_filepath = self.get_pipeline_filepath(X)
                 try:
@@ -278,38 +288,25 @@ class HyperGBMEstimator(Estimator):
                 if fs.exists(pipeline_file_path):
                     fs.rm(pipeline_file_path)
 
-    def load_df(self, filepath):
-        # global h5
-        # try:
-        #     h5 = pd.HDFStore(filepath)
-        #     df = h5['data']
-        #     return df
-        # except:
-        #     if os.path.exists(filepath):
-        #         os.remove(filepath)
-        # finally:
-        #     h5.close()
-        #
+    def load_df(self, filepath, as_dask=False):
         try:
-            with fs.open(filepath, 'rb') as f:
-                df = pd.read_parquet(f)
-                return df
+            # with fs.open(filepath, 'rb') as f:
+            #     df = pd.read_parquet(f)
+            #     return df
+            df = read_parquet(filepath, delayed=as_dask, filesystem=fs)
+            return df
         except:
             if fs.exists(filepath):
                 fs.rm(filepath)
             return None
 
     def save_df(self, filepath, df):
-        # try:
-        #     df.to_hdf(filepath, key='data', mode='w', format='t')
-        # except Exception as e:
-        #     logger.error(e)
-        #     # traceback.print_exc()
-        #     if os.path.exists(filepath):
-        #         os.remove(filepath)
         try:
-            with fs.open(filepath, 'wb') as f:
-                df.to_parquet(f)
+            # with fs.open(filepath, 'wb') as f:
+            #     df.to_parquet(f)
+            if not isinstance(df, pd.DataFrame):
+                fs.mkdirs(filepath, exist_ok=True)
+            to_parquet(df, filepath, fs)
         except Exception as e:
             logger.error(e)
             # traceback.print_exc()
