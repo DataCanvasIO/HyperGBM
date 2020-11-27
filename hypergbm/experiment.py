@@ -5,8 +5,7 @@ __author__ = 'yangjian'
 """
 from hypernets.experiment.experiment import Experiment
 from sklearn.model_selection import train_test_split
-
-
+from .feature_importance import feature_importance_batch
 
 class CompeteExperiment(Experiment):
     def __init__(self, hyper_model, X_train, y_train, X_test, X_eval=None, y_eval=None, eval_size=0.3,
@@ -61,6 +60,5 @@ class CompeteExperiment(Experiment):
 
         hyper_model.search(X_train, y_train, X_eval, y_eval, max_trails=max_trails)
         best_trial = hyper_model.get_best_trail()
-
         self.estimator = hyper_model.final_train(best_trial.space_sample, X_train, y_train)
         return self.estimator
