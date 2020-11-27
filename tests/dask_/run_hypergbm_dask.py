@@ -8,7 +8,7 @@ from dask_ml.model_selection import train_test_split
 from tabular_toolbox.datasets import dsutils
 
 from hypergbm.dask.dask_ops import get_space_num_cat_pipeline_complex
-from hypergbm.hyper_gbm import HyperGBM
+from hypergbm import HyperGBM
 from hypernets.core.callbacks import *
 from hypernets.core.searcher import OptimizeDirection
 from hypernets.searchers.random_searcher import RandomSearcher

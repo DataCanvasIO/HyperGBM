@@ -9,12 +9,12 @@ import featuretools as ft
 import numpy as np
 import pandas as pd
 import pytest
-from hypergbm.feature_generators import FeatureGenerationTransformer, CrossCategorical
 from sklearn.impute import SimpleImputer
-from sklearn.metrics import roc_auc_score, matthews_corrcoef, make_scorer
 from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OrdinalEncoder, StandardScaler
+
+from hypergbm.feature_generators import FeatureGenerationTransformer, CrossCategorical
 from tabular_toolbox.column_selector import column_object_category_bool, column_number_exclude_timedelta
 from tabular_toolbox.dataframe_mapper import DataFrameMapper
 from tabular_toolbox.datasets import dsutils

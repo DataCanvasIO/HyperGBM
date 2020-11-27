@@ -4,15 +4,17 @@
 """
 import numpy as np
 import pandas as pd
+from pandas import DataFrame
+from sklearn.model_selection import train_test_split
+
+from hypergbm import HyperGBMEstimator
 from hypergbm.estimators import LightGBMEstimator, XGBoostEstimator
-from hypergbm.hyper_gbm import HyperGBMEstimator
 from hypergbm.pipeline import DataFrameMapper
 from hypergbm.search_space import search_space_general, search_space_feature_gen
 from hypergbm.sklearn.sklearn_ops import categorical_pipeline_simple, numeric_pipeline_simple, \
     categorical_pipeline_complex, numeric_pipeline_complex
-from hypernets.core.ops import HyperSpace, HyperInput, Choice, Real, ModuleChoice
-from pandas import DataFrame
-from sklearn.model_selection import train_test_split
+from hypernets.core.ops import HyperInput, Choice, ModuleChoice
+from hypernets.core.search_space import HyperSpace, Real
 from tabular_toolbox.column_selector import column_object, column_exclude_datetime
 from tabular_toolbox.datasets import dsutils
 from tests import test_output_dir
@@ -148,7 +150,8 @@ class Test_Estimator():
         space.assign_by_vectors([0, 0, 0, 0, 1, 1, 2, 1, 1])
         estimator = HyperGBMEstimator('binary', space, cache_dir=f'{test_output_dir}/hypergbm_cache')
         assert estimator.get_pipeline_signature(estimator.data_pipeline) in ['e1129afc88d6136d060a986d0c484a26',
-                                                                             'b0bed4a992cf4f996d3da200b4769363']
+                                                                             'b0bed4a992cf4f996d3da200b4769363',
+                                                                             '96444f17c75f8f68857bf16a5de0d74a']
 
     def test_bankdata_lightgbm(self):
         space = search_space_general(

@@ -3,10 +3,10 @@ __author__ = 'yangjian'
 """
 
 """
-from lightgbm import LGBMClassifier,LGBMRegressor,LGBMModel
 from catboost import CatBoostClassifier, CatBoostRegressor
-from hypergbm.hyper_gbm import is_lightgbm_model,is_catboost_model
+from lightgbm import LGBMClassifier, LGBMRegressor, LGBMModel
 
+from hypergbm.hyper_gbm import is_lightgbm_model, is_catboost_model
 
 
 class Test_GBModel():

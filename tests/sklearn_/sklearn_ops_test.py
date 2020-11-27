@@ -3,15 +3,17 @@
 
 """
 
-from pandas import DataFrame
-import pandas as pd
 import numpy as np
-from hypergbm.pipeline import DataFrameMapper
-from tabular_toolbox.column_selector import column_number, column_object_category_bool
+import pandas as pd
+from pandas import DataFrame
+
 from hypergbm.estimators import LightGBMEstimator
+from hypergbm.pipeline import DataFrameMapper
 from hypergbm.sklearn.sklearn_ops import categorical_pipeline_simple, categorical_pipeline_complex, \
     numeric_pipeline_simple, numeric_pipeline_complex
-from hypernets.core.ops import HyperSpace, HyperInput
+from hypernets.core.ops import HyperInput
+from hypernets.core.search_space import HyperSpace
+from tabular_toolbox.column_selector import column_number, column_object_category_bool
 
 ids = []
 
@@ -75,8 +77,6 @@ def get_space_num_cat_pipeline(default=False):
         est = LightGBMEstimator(task='binary', fit_kwargs={})(p3)
         space.set_inputs(input)
     return space
-
-
 
 
 def get_df():
@@ -307,5 +307,3 @@ class Test_CommonOps():
         df_1 = p.fit_transform(X, y)
         assert df_1.shape == (3, 12)
         assert list(df_1.columns) == ['a', 'e', 'f', 'b', 'c', 'd', 'l', 'g', 'h', 'i', 'j', 'k']
-
-
