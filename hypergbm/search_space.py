@@ -9,8 +9,8 @@ from hypergbm.feature_generators import CrossCategorical
 from hypergbm.pipeline import DataFrameMapper, Pipeline
 from hypergbm.sklearn.sklearn_ops import numeric_pipeline_simple, numeric_pipeline_complex, categorical_pipeline_simple
 from hypergbm.sklearn.transformers import FeatureGenerationTransformer
-from hypernets.core.ops import ModuleChoice, HyperInput, Real
-from hypernets.core.search_space import Choice
+from hypernets.core.ops import ModuleChoice, HyperInput
+from hypernets.core.search_space import Choice, Real
 from hypernets.core.search_space import HyperSpace
 from tabular_toolbox.column_selector import column_object, column_exclude_datetime
 
@@ -164,7 +164,7 @@ def search_space_feature_gen(dataframe_mapper_default=False,
         full_pipeline = Pipeline([feature_gen, union_pipeline],
                                  name=f'feature_gen_and_preprocess',
                                  columns=column_exclude_datetime)(input)
-        #full_dfm = DataFrameMapper(default=dataframe_mapper_default, input_df=True, df_out=True)(full_pipeline)
+        # full_dfm = DataFrameMapper(default=dataframe_mapper_default, input_df=True, df_out=True)(full_pipeline)
         ModuleChoice([lightgbm_est, xgb_est, catboost_est], name='estimator_options')(full_pipeline)
         space.set_inputs(input)
     return space
