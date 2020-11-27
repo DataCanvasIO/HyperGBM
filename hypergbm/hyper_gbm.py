@@ -126,7 +126,7 @@ class HyperGBMEstimator(Estimator):
     def transform_data(self, X, y=None, fit=False, **kwargs):
         use_cache = kwargs.get('use_cache')
         if use_cache is None:
-            use_cache = True
+            use_cache = False
         if use_cache:
             X_cache = self.get_X_from_cache(X, load_pipeline=True)
         else:
