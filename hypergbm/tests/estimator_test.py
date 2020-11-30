@@ -17,7 +17,7 @@ from hypernets.core.ops import HyperInput, Choice, ModuleChoice
 from hypernets.core.search_space import HyperSpace, Real
 from tabular_toolbox.column_selector import column_object, column_exclude_datetime
 from tabular_toolbox.datasets import dsutils
-from tests import test_output_dir
+from hypergbm.tests import test_output_dir
 
 
 def get_space_multi_dataframemapper(default=False):

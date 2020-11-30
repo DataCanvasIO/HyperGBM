@@ -12,7 +12,7 @@ from hypergbm import HyperGBM
 from hypernets.core.callbacks import *
 from hypernets.core.searcher import OptimizeDirection
 from hypernets.searchers.random_searcher import RandomSearcher
-from tests import test_output_dir
+from hypergbm.tests import test_output_dir
 
 
 def main():
