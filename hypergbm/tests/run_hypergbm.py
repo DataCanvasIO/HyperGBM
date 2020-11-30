@@ -16,7 +16,7 @@ from hypergbm.tests import test_output_dir
 
 def main():
     rs = RandomSearcher(search_space_general, optimize_direction=OptimizeDirection.Maximize)
-    hk = HyperGBM(rs, task='classification', reward_metric='auc',
+    hk = HyperGBM(rs, task='binary', reward_metric='auc',
                   cache_dir=f'{test_output_dir}/hypergbm_cache',
                   callbacks=[SummaryCallback(), FileLoggingCallback(rs, output_dir=f'{test_output_dir}/hyn_logs')])
 

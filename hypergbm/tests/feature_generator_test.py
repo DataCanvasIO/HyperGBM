@@ -52,7 +52,7 @@ class Test_FeatureGenerator():
         df.drop(['id'], axis=1, inplace=True)
         cross_cat = CrossCategorical()
         X_train, X_test = train_test_split(df.head(100), test_size=0.2, random_state=42)
-        ftt = FeatureGenerationTransformer(task='classification', trans_primitives=[cross_cat])
+        ftt = FeatureGenerationTransformer(task='binary', trans_primitives=[cross_cat])
         preprocessor = general_preprocessor()
         pipe = Pipeline(steps=[('feature_gen', ftt), ('processor', preprocessor)])
         X_t = pipe.fit_transform(X_train)
@@ -63,7 +63,7 @@ class Test_FeatureGenerator():
         df.drop(['id'], axis=1, inplace=True)
         cross_cat = CrossCategorical()
         X_train, X_test = train_test_split(df.head(100), test_size=0.2, random_state=42)
-        ftt = FeatureGenerationTransformer(task='classification', trans_primitives=[cross_cat])
+        ftt = FeatureGenerationTransformer(task='binary', trans_primitives=[cross_cat])
         dfm = DataFrameMapper(features=[(X_train.columns.to_list(), ftt)],
                               input_df=True,
                               df_out=True)
@@ -75,7 +75,7 @@ class Test_FeatureGenerator():
         df.drop(['id'], axis=1, inplace=True)
         cross_cat = CrossCategorical()
         X_train, X_test = train_test_split(df.head(100), test_size=0.2, random_state=42)
-        ftt = FeatureGenerationTransformer(task='classification', trans_primitives=[cross_cat])
+        ftt = FeatureGenerationTransformer(task='binary', trans_primitives=[cross_cat])
         ftt.fit(X_train)
         x_t = ftt.transform(X_train)
         assert len(set(x_t.columns.to_list()) - set(
@@ -95,7 +95,7 @@ class Test_FeatureGenerator():
         df.drop(['id'], axis=1, inplace=True)
         y = df.pop('y')
         X_train, X_test = train_test_split(df.head(100), test_size=0.2, random_state=42)
-        ftt = FeatureGenerationTransformer(task='classification', trans_primitives=['add_numeric', 'divide_numeric'])
+        ftt = FeatureGenerationTransformer(task='binary', trans_primitives=['add_numeric', 'divide_numeric'])
         ftt.fit(X_train)
         x_t = ftt.transform(X_train)
         assert x_t is not None
@@ -105,12 +105,12 @@ class Test_FeatureGenerator():
         df.drop(['id'], axis=1, inplace=True)
         y = df.pop('y')
         cross_cat = CrossCategorical()
-        ftt = FeatureGenerationTransformer(task='classification',
+        ftt = FeatureGenerationTransformer(task='binary',
                                            trans_primitives=['add_numeric', 'divide_numeric', cross_cat])
         ftt.fit(df)
         x_t = ftt.transform(df)
 
-        fst = FeatureSelectionTransformer('classification', ratio_select_cols=0.2, reserved_cols=ftt.original_cols)
+        fst = FeatureSelectionTransformer('binary', ratio_select_cols=0.2, reserved_cols=ftt.original_cols)
         fst.fit(x_t, y)
         assert len(fst.scores_.items()) == 99
         assert len(fst.columns_) == 35
@@ -122,7 +122,7 @@ class Test_FeatureGenerator():
         df.drop(['id'], axis=1, inplace=True)
         y = df.pop('y')
         cross_cat = CrossCategorical()
-        ftt = FeatureGenerationTransformer(task='classification',
+        ftt = FeatureGenerationTransformer(task='binary',
                                            trans_primitives=['add_numeric', 'divide_numeric', cross_cat],
                                            feature_selection_args={'ratio_select_cols': 0.2})
         with pytest.raises(AssertionError) as err:
@@ -136,7 +136,7 @@ class Test_FeatureGenerator():
     def test_fix_input(self, fix_input: bool):
         df = pd.DataFrame(data={"x1": [None, 2, 3], 'x2': [4, 5, 6]})
 
-        ftt = FeatureGenerationTransformer(task='classification', trans_primitives=['add_numeric', 'divide_numeric'],
+        ftt = FeatureGenerationTransformer(task='binary', trans_primitives=['add_numeric', 'divide_numeric'],
                                            fix_input=fix_input)
         ftt.fit(df)
         x_t = ftt.transform(df)
@@ -155,7 +155,7 @@ class Test_FeatureGenerator():
     def test_datetime_derivation(self):
 
         df = pd.DataFrame(data={"x1": [datetime.now()]})
-        ftt = FeatureGenerationTransformer(task='classification', trans_primitives=["year", "month", "week"])
+        ftt = FeatureGenerationTransformer(task='binary', trans_primitives=["year", "month", "week"])
         ftt.fit(df)
 
         x_t = ftt.transform(df)
@@ -168,7 +168,7 @@ class Test_FeatureGenerator():
         tmp_path = P.join(tmp_path, 'fft.pkl')
 
         df = pd.DataFrame(data={"x1": [datetime.now()]})
-        ftt = FeatureGenerationTransformer(task='classification', trans_primitives=["year", "month", "week"])
+        ftt = FeatureGenerationTransformer(task='binary', trans_primitives=["year", "month", "week"])
         ftt.fit(df)
         import pickle
 

@@ -319,7 +319,7 @@ class HyperGBMEstimator(Estimator):
 
 
 class HyperGBM(HyperModel):
-    def __init__(self, searcher, task='classification', dispatcher=None, callbacks=None, reward_metric='accuracy',
+    def __init__(self, searcher, task='binary', dispatcher=None, callbacks=None, reward_metric='accuracy',
                  data_cleaner_params=None, cache_dir=None, clear_cache=True):
         if callbacks is None:
             callbacks = []
@@ -401,7 +401,7 @@ class BlendModel():
         return self.proba2predict(proba, proba_threshold)
 
     def proba2predict(self, proba, proba_threshold=0.5):
-        if self.task != 'classification':
+        if self.task == 'regression':
             return proba
         if proba.shape[-1] > 2:
             predict = proba.argmax(axis=-1)

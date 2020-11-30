@@ -51,7 +51,7 @@ class Test_FeatureImportance():
 
     def test_basic(self):
         rs = RandomSearcher(search_space_general, optimize_direction=OptimizeDirection.Maximize)
-        hk = HyperGBM(rs, task='classification', reward_metric='accuracy',
+        hk = HyperGBM(rs, task='binary', reward_metric='accuracy',
                       cache_dir=f'{test_output_dir}/hypergbm_cache')
 
         df = dsutils.load_bank().head(100)
