@@ -73,6 +73,13 @@ class HyperGBMEstimator(Estimator):
         Estimator.__init__(self, space_sample=space_sample, task=task)
         self._build_model(space_sample)
 
+    @property
+    def classes_(self):
+        if self.gbm_model is not None and hasattr(self.gbm_model, 'classes_'):
+            return self.gbm_model.classes_
+        else:
+            return None
+
     def _build_model(self, space_sample):
         space, _ = space_sample.compile_and_forward()
 

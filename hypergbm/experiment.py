@@ -4,6 +4,7 @@ __author__ = 'yangjian'
 
 """
 import numpy as np
+import copy
 from hypernets.experiment import Experiment
 from sklearn.model_selection import train_test_split
 from tabular_toolbox.data_cleaner import DataCleaner
@@ -44,6 +45,8 @@ class CompeteExperiment(Experiment):
         self.output_drift_detection_ = None
         self.output_multi_collinearity_ = None
         self.output_feature_importances_ = None
+        self.first_hyper_model = None
+        self.second_hyper_model = None
 
     def data_split(self, X_train, y_train, X_test, X_eval=None, y_eval=None, eval_size=0.3):
 
@@ -63,9 +66,6 @@ class CompeteExperiment(Experiment):
         max_trails :
 
         """
-        max_trails = kwargs.get('max_trails')
-        if max_trails is None:
-            max_trails = 10
 
         # 1. Clean Data
         self.data_cleaner = DataCleaner(**self.data_cleaner_args)
@@ -97,14 +97,15 @@ class CompeteExperiment(Experiment):
             X_test = X_test[features]
 
         # 4. Baseline search
-        hyper_model.search(X_train, y_train, X_eval, y_eval, max_trails=max_trails, **kwargs)
-
+        self.first_hyper_model = copy.deepcopy(hyper_model)
+        self.first_hyper_model.search(X_train, y_train, X_eval, y_eval,  **kwargs)
+        self.hyper_model = self.first_hyper_model
         if self.mode == 'two-stage':
             # 5. Feature importance evaluation
-            best_trials = hyper_model.get_top_trails(self.n_est_feature_importance)
+            best_trials = self.hyper_model.get_top_trails(self.n_est_feature_importance)
             estimators = []
             for trail in best_trials:
-                estimators.append(hyper_model.load_estimator(trail.model_file))
+                estimators.append(self.hyper_model.load_estimator(trail.model_file))
 
             importances = feature_importance_batch(estimators, X_eval, y_eval, self.scorer,
                                                    n_repeats=5)
@@ -117,19 +118,20 @@ class CompeteExperiment(Experiment):
             X_test = X_test[selected_features]
 
             # 6. Final search
-            hyper_model.search(X_train, y_train, X_eval, y_eval, max_trails=max_trails, **kwargs)
-
+            self.second_hyper_model = copy.deepcopy(hyper_model)
+            self.second_hyper_model.search(X_train, y_train, X_eval, y_eval, **kwargs)
+            self.hyper_model = self.second_hyper_model
         # 7. Ensemble
         if self.ensemble_size > 1:
-            best_trials = hyper_model.get_top_trails(self.ensemble_size)
+            best_trials = self.hyper_model.get_top_trails(self.ensemble_size)
             estimators = []
             for trail in best_trials:
-                estimators.append(hyper_model.load_estimator(trail.model_file))
+                estimators.append(self.hyper_model.load_estimator(trail.model_file))
             ensemble = GreedyEnsemble(self.task, estimators, scoring=self.scorer, ensemble_size=self.ensemble_size)
             ensemble.fit(X_eval, y_eval)
             self.estimator = ensemble
         else:
-            self.estimator = hyper_model.load_estimator(hyper_model.get_best_trail().model_file)
+            self.estimator = self.hyper_model.load_estimator(self.hyper_model.get_best_trail().model_file)
 
         # 8. Compose pipeline
 

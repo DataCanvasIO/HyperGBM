@@ -63,5 +63,6 @@ def feature_importance_batch(estimators, X, y, scoring=None, n_repeats=5,
     importances = np.reshape(np.stack(importances, axis=2), (X.shape[1], -1), 'F')
     bunch = Bunch(importances_mean=np.mean(importances, axis=1),
                   importances_std=np.std(importances, axis=1),
-                  importances=importances)
+                  importances=importances,
+                  columns = X.columns.to_list())
     return bunch
