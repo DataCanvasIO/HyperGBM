@@ -143,18 +143,18 @@ class HyperGBMEstimator(Estimator):
             starttime = time.time()
             if fit:
                 if self.data_cleaner is not None:
-                    logger.info('Cleaning')
+                    logger.debug('Cleaning')
                     X, y = self.data_cleaner.fit_transform(X, y)
-                logger.info('Fitting and transforming')
+                logger.debug('Fitting and transforming')
                 X = self.data_pipeline.fit_transform(X, y)
             else:
                 if self.data_cleaner is not None:
-                    logger.info('Cleaning')
+                    logger.debug('Cleaning')
                     X, _ = self.data_cleaner.transform(X)
-                logger.info('Transforming')
+                logger.debug('Transforming')
                 X = self.data_pipeline.transform(X)
 
-            logger.info(f'Taken {time.time() - starttime}s')
+            logger.debug(f'Taken {time.time() - starttime}s')
             if use_cache:
                 self.save_X_to_cache(X, save_pipeline=True)
         else:
@@ -172,7 +172,7 @@ class HyperGBMEstimator(Estimator):
         return cat_cols
 
     def fit(self, X, y, **kwargs):
-        logger.info('Estimator is transforming the train set')
+        logger.debug('Estimator is transforming the train set')
         X = self.transform_data(X, y, fit=True, **kwargs)
 
         if self.fit_kwargs is not None:
@@ -182,20 +182,20 @@ class HyperGBMEstimator(Estimator):
         if eval_set is not None:
             if isinstance(eval_set, tuple):
                 X_eval, y_eval = eval_set
-                logger.info('Estimator is transforming the eval set')
+                logger.debug('Estimator is transforming the eval set')
                 X_eval = self.transform_data(X_eval)
                 kwargs['eval_set'] = [(X_eval, y_eval)]
             elif isinstance(eval_set, list):
                 es = []
                 for i, eval_set_ in enumerate(eval_set):
                     X_eval, y_eval = eval_set_
-                    logger.info(f'Estimator is transforming the eval set({i})')
+                    logger.debug(f'Estimator is transforming the eval set({i})')
                     X_eval = self.transform_data(X_eval)
                     es.append((X_eval, y_eval))
                     kwargs['eval_set'] = es
 
         starttime = time.time()
-        logger.info('Estimator is fitting the data')
+        logger.debug('Estimator is fitting the data')
         if is_lightgbm_model(self.gbm_model):
             cat_cols = self.get_categorical_features(X)
             kwargs['categorical_feature'] = cat_cols
@@ -204,14 +204,14 @@ class HyperGBMEstimator(Estimator):
             kwargs['cat_features'] = cat_cols
 
         self.gbm_model.fit(X, y, **kwargs)
-        logger.info(f'Taken {time.time() - starttime}s')
+        logger.debug(f'Taken {time.time() - starttime}s')
 
     def predict(self, X, **kwargs):
         X = self.transform_data(X, **kwargs)
         starttime = time.time()
-        logger.info('Estimator is predicting the data')
+        logger.debug('Estimator is predicting the data')
         preds = self.gbm_model.predict(X, **kwargs)
-        logger.info(f'Taken {time.time() - starttime}s')
+        logger.debug(f'Taken {time.time() - starttime}s')
         return preds
 
     # def predict(self, X, proba_threshold=0.5, **kwargs):
@@ -221,9 +221,9 @@ class HyperGBMEstimator(Estimator):
     def predict_proba(self, X, **kwargs):
         X = self.transform_data(X, **kwargs)
         starttime = time.time()
-        logger.info('Estimator is predicting the data')
+        logger.debug('Estimator is predicting the data')
         preds = self.gbm_model.predict_proba(X, **kwargs)
-        logger.info(f'Taken {time.time() - starttime}s')
+        logger.debug(f'Taken {time.time() - starttime}s')
         return preds
 
     def evaluate(self, X, y, metrics=None, **kwargs):
