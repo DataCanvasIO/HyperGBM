@@ -7,11 +7,11 @@ from sklearn.model_selection import train_test_split
 
 from hypergbm import HyperGBM
 from hypergbm.search_space import search_space_general
+from hypergbm.tests import test_output_dir
 from hypernets.core.callbacks import *
 from hypernets.core.searcher import OptimizeDirection
 from hypernets.searchers.random_searcher import RandomSearcher
 from tabular_toolbox.datasets import dsutils
-from hypergbm.tests import test_output_dir
 
 
 def main():
@@ -26,7 +26,7 @@ def main():
     y_train = X_train.pop('y')
     y_test = X_test.pop('y')
 
-    hk.search(X_train, y_train, X_test, y_test, max_trails=500)
+    hk.search(X_train, y_train, X_test, y_test, max_trails=500, use_cache=True)
     best_trial = hk.get_best_trail()
     print(f'best_train:{best_trial}')
     estimator = hk.final_train(best_trial.space_sample, X_train, y_train)
