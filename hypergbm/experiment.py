@@ -45,6 +45,7 @@ class CompeteExperiment(Experiment):
         self.importance_threshold = importance_threshold
         self.ensemble_size = ensemble_size
         self.selected_features_ = None
+
         self.output_drift_detection_ = None
         self.output_multi_collinearity_ = None
         self.output_feature_importances_ = None
