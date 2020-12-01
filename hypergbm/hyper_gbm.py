@@ -19,6 +19,7 @@ from tabular_toolbox.column_selector import column_object_category_bool, column_
 from tabular_toolbox.data_cleaner import DataCleaner
 from tabular_toolbox.metrics import calc_score
 from tabular_toolbox.persistence import read_parquet, to_parquet
+from tabular_toolbox.utils import hash_dataframe
 from .estimators import HyperEstimator
 
 try:
@@ -135,7 +136,7 @@ class HyperGBMEstimator(Estimator):
         if use_cache is None:
             use_cache = False
         if use_cache:
-            X_cache = self.get_X_from_cache(X, load_pipeline=True)
+            X_cache = self._get_X_from_cache(X, load_pipeline=True)
         else:
             X_cache = None
 
@@ -156,7 +157,7 @@ class HyperGBMEstimator(Estimator):
 
             logger.info(f'Taken {time.time() - starttime}s')
             if use_cache:
-                self.save_X_to_cache(X, save_pipeline=True)
+                self._save_X_to_cache(X, save_pipeline=True)
         else:
             X = X_cache
 
@@ -247,16 +248,13 @@ class HyperGBMEstimator(Estimator):
             model = pickle.load(input)
             return model
 
-    def get_X_filepath(self, X):
+    def _get_cache_filepath(self, X):
         # file_path = f'{self.cache_dir}/{X.shape[0]}_{X.shape[1]}_{self.pipeline_signature}.h5'
         shape = self._get_dataframe_shape(X)
-        file_path = f'{self.cache_dir}/{shape[0]}_{shape[1]}_{self.pipeline_signature}.parquet'
-        return file_path
-
-    def get_pipeline_filepath(self, X):
-        shape = self._get_dataframe_shape(X)
-        file_path = f'{self.cache_dir}/{shape[0]}_{shape[1]}_pipeline_{self.pipeline_signature}.pkl'
-        return file_path
+        hash = hash_dataframe(X)
+        data_path = f'{self.cache_dir}/{shape[0]}_{shape[1]}_{hash}_{self.pipeline_signature}.parquet'
+        pipeline_path = f'{self.cache_dir}/{shape[0]}_{shape[1]}_{hash}_pipeline_{self.pipeline_signature}.pkl'
+        return data_path, pipeline_path
 
     def _get_dataframe_shape(self, X):
         if isinstance(X, pd.DataFrame):
@@ -265,37 +263,36 @@ class HyperGBMEstimator(Estimator):
             rows = X.reduction(lambda df: df.shape[0], np.sum).compute()
             return rows, X.shape[1]
 
-    def get_X_from_cache(self, X, load_pipeline=False):
-        file_path = self.get_X_filepath(X)
-        if fs.exists(file_path):
-            df = self.load_df(file_path, not isinstance(X, (pd.DataFrame, np.ndarray)))
+    def _get_X_from_cache(self, X, load_pipeline=False):
+        data_path, pipeline_path = self._get_cache_filepath(X)
+        if fs.exists(data_path):
+            df = self._load_df(data_path, not isinstance(X, (pd.DataFrame, np.ndarray)))
             if load_pipeline:
-                pipeline_filepath = self.get_pipeline_filepath(X)
                 try:
-                    with fs.open(pipeline_filepath, 'rb') as input:
+                    with fs.open(pipeline_path, 'rb') as input:
                         self.data_pipeline, self.data_cleaner = pickle.load(input)
                 except:
-                    if fs.exists(file_path):
-                        fs.rm(file_path)
+                    if fs.exists(data_path):
+                        fs.rm(data_path)
                     return None
             return df
         else:
             return None
 
-    def save_X_to_cache(self, X, save_pipeline=False):
-        file_path = self.get_X_filepath(X)
-        self.save_df(file_path, X)
+    def _save_X_to_cache(self, X, save_pipeline=False):
+        data_path, pipeline_path = self._get_cache_filepath(X)
+        self._save_df(data_path, X)
+
         if save_pipeline:
-            pipeline_file_path = self.get_pipeline_filepath(X)
             try:
-                with fs.open(pipeline_file_path, 'wb') as output:
+                with fs.open(pipeline_path, 'wb') as output:
                     pickle.dump((self.data_pipeline, self.data_cleaner), output, protocol=2)
             except Exception as e:
                 logger.error(e)
-                if fs.exists(pipeline_file_path):
-                    fs.rm(pipeline_file_path)
+                if fs.exists(pipeline_path):
+                    fs.rm(pipeline_path)
 
-    def load_df(self, filepath, as_dask=False):
+    def _load_df(self, filepath, as_dask=False):
         try:
             # with fs.open(filepath, 'rb') as f:
             #     df = pd.read_parquet(f)
@@ -307,7 +304,7 @@ class HyperGBMEstimator(Estimator):
                 fs.rm(filepath)
             return None
 
-    def save_df(self, filepath, df):
+    def _save_df(self, filepath, df):
         try:
             # with fs.open(filepath, 'wb') as f:
             #     df.to_parquet(f)
