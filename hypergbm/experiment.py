@@ -87,7 +87,7 @@ class CompeteExperiment(Experiment):
             self.step_progress('transform eval set')
 
         if X_test is not None:
-            X_test, _ = self.data_cleaner.transform(X_test)
+            X_test = self.data_cleaner.transform(X_test)
             self.step_progress('transform X_test')
 
         self.step_end()

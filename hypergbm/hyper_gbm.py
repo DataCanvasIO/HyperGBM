@@ -151,7 +151,7 @@ class HyperGBMEstimator(Estimator):
             else:
                 if self.data_cleaner is not None:
                     logger.debug('Cleaning')
-                    X, _ = self.data_cleaner.transform(X)
+                    X = self.data_cleaner.transform(X)
                 logger.debug('Transforming')
                 X = self.data_pipeline.transform(X)
 

@@ -97,9 +97,12 @@ class Test_HyperGBM():
                                        ensemble_size=5
                                        )
         pipeline = experiment.run(use_cache=True, max_trails=10)
-        # X_test, _ = experiment.data_cleaner.transform(X_test)
-        #
-        # scores = experiment.estimator.predict(X_test)
+        auc_scorer = get_scorer('roc_auc_ovo')
+        acc_scorer = get_scorer('accuracy')
+        auc = auc_scorer(pipeline, X_test, y_test)
+        acc = acc_scorer(pipeline, X_test, y_test)
+        assert auc
+        assert acc
         assert len(log_callback.logs) == len(
             ['experiment start', '   step start, step:clean and split data',
              '      progress:fit_transform train set',
@@ -155,9 +158,12 @@ class Test_HyperGBM():
                                        ensemble_size=5
                                        )
         pipeline = experiment.run(use_cache=True, max_trails=10)
-        # X_test, _ = experiment.data_cleaner.transform(X_test)
-        #
-        # scores = experiment.estimator.predict(X_test)
+        auc_scorer = get_scorer('roc_auc_ovo')
+        acc_scorer = get_scorer('accuracy')
+        auc = auc_scorer(pipeline, X_test, y_test)
+        acc = acc_scorer(pipeline, X_test, y_test)
+        assert auc
+        assert acc
         assert len(log_callback.logs) == len(['experiment start',
                                               '   step start, step:clean and split data',
                                               '      progress:fit_transform train set',
