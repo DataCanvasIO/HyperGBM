@@ -30,9 +30,9 @@ class CompeteExperiment(Experiment):
                  n_est_feature_importance=10,
                  importance_threshold=1e-5,
                  ensemble_size=7, ):
-        super(CompeteExperiment, self).__init__(hyper_model, X_train, y_train, X_test, X_eval=X_eval, y_eval=y_eval,
+        super(CompeteExperiment, self).__init__(task, hyper_model, X_train, y_train, X_test, X_eval=X_eval,
+                                                y_eval=y_eval,
                                                 eval_size=eval_size, callbacks=callbacks, random_state=random_state)
-        self.task = task
         self.data_cleaner_args = data_cleaner_args if data_cleaner_args is not None else {}
         self.drop_feature_with_collinearity = drop_feature_with_collinearity
         self.drift_detection = drift_detection
@@ -78,9 +78,11 @@ class CompeteExperiment(Experiment):
         self.step_progress('fit_transform train set')
 
         if X_eval or y_eval is None:
-
+            stratify = y_train
+            if self.task == 'regression':
+                stratify = None
             X_train, X_eval, y_train, y_eval = train_test_split(X_train, y_train, test_size=eval_size,
-                                                                random_state=self.random_state, stratify=y_train)
+                                                                random_state=self.random_state, stratify=stratify)
             self.step_progress('split into train set and eval set')
         else:
             X_eval, y_eval = self.data_cleaner.transform(X_eval, y_eval)
@@ -128,7 +130,7 @@ class CompeteExperiment(Experiment):
         self.step_start('first stage search')
         self.first_hyper_model.search(X_train, y_train, X_eval, y_eval, **kwargs)
         self.hyper_model = self.first_hyper_model
-        self.step_end(output={'best_reward':self.hyper_model.get_best_trail().reward})
+        self.step_end(output={'best_reward': self.hyper_model.get_best_trail().reward})
 
         if self.mode == 'two-stage':
             # 5. Feature importance evaluation

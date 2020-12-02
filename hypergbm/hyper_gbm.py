@@ -63,15 +63,14 @@ class HyperGBMExplainer:
 
 class HyperGBMEstimator(Estimator):
     def __init__(self, task, space_sample, data_cleaner_params=None, cache_dir=None):
+        super(HyperGBMEstimator, self).__init__(space_sample=space_sample, task=task)
         self.data_pipeline = None
         self.cache_dir = cache_dir
-        # self.task = task
         self.data_cleaner_params = data_cleaner_params
         self.gbm_model = None
         self.data_cleaner = None
         self.pipeline_signature = None
         self.fit_kwargs = None
-        Estimator.__init__(self, space_sample=space_sample, task=task)
         self._build_model(space_sample)
 
     @property
@@ -223,7 +222,10 @@ class HyperGBMEstimator(Estimator):
         X = self.transform_data(X, **kwargs)
         starttime = time.time()
         logger.debug('Estimator is predicting the data')
-        preds = self.gbm_model.predict_proba(X, **kwargs)
+        if hasattr(self.gbm_model, 'predict_proba'):
+            preds = self.gbm_model.predict_proba(X, **kwargs)
+        else:
+            preds = self.gbm_model.predict(X, **kwargs)
         logger.debug(f'Taken {time.time() - starttime}s')
         return preds
 
