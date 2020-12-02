@@ -3,7 +3,6 @@ __author__ = 'yangjian'
 """
 
 """
-import pandas as pd
 from sklearn.metrics import get_scorer
 from sklearn.model_selection import train_test_split
 
