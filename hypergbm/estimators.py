@@ -8,18 +8,22 @@ from hypernets.core.search_space import ModuleSpace
 
 
 class HyperEstimator(ModuleSpace):
-    def __init__(self, task, fit_kwargs, space=None, name=None, **hyperparams):
+    def __init__(self, fit_kwargs, space=None, name=None, **hyperparams):
         ModuleSpace.__init__(self, space, name, **hyperparams)
-        self.task = task
         self.fit_kwargs = fit_kwargs
         self.estimator = None
 
-    def _build_estimator(self, kwargs):
+    def _build_estimator(self, task, kwargs):
         raise NotImplementedError
 
-    def _compile(self):
+    def build_estimator(self, task):
         pv = self.param_values
-        self.estimator = self._build_estimator(pv)
+        self.estimator = self._build_estimator(task, pv)
+
+    def _compile(self):
+        pass
+        # pv = self.param_values
+        # self.estimator = self._build_estimator(pv)
 
     def _forward(self, inputs):
         return self.estimator
@@ -29,7 +33,7 @@ class HyperEstimator(ModuleSpace):
 
 
 class LightGBMEstimator(HyperEstimator):
-    def __init__(self, task, fit_kwargs, boosting_type='gbdt', num_leaves=31, max_depth=-1,
+    def __init__(self, fit_kwargs, boosting_type='gbdt', num_leaves=31, max_depth=-1,
                  learning_rate=0.1, n_estimators=100,
                  subsample_for_bin=200000, objective=None, class_weight=None,
                  min_split_gain=0., min_child_weight=1e-3, min_child_samples=20,
@@ -78,11 +82,11 @@ class LightGBMEstimator(HyperEstimator):
         if importance_type is not None and importance_type != 'split':
             kwargs['importance_type'] = importance_type
 
-        HyperEstimator.__init__(self, task, fit_kwargs, space, name, **kwargs)
+        HyperEstimator.__init__(self, fit_kwargs, space, name, **kwargs)
 
-    def _build_estimator(self, kwargs):
+    def _build_estimator(self, task, kwargs):
         import lightgbm
-        if self.task == 'regression':
+        if task == 'regression':
             lgbm = lightgbm.LGBMRegressor(**kwargs)
         else:
             lgbm = lightgbm.LGBMClassifier(**kwargs)
@@ -90,11 +94,11 @@ class LightGBMEstimator(HyperEstimator):
 
 
 class LightGBMDaskEstimator(LightGBMEstimator):
-    def _build_estimator(self, kwargs):
+    def _build_estimator(self, task, kwargs):
         # import lightgbm
         import dask_lightgbm as lightgbm
 
-        if self.task == 'regression':
+        if task == 'regression':
             lgbm = lightgbm.LGBMRegressor(**kwargs)
         else:
             lgbm = lightgbm.LGBMClassifier(**kwargs)
@@ -102,7 +106,7 @@ class LightGBMDaskEstimator(LightGBMEstimator):
 
 
 class XGBoostEstimator(HyperEstimator):
-    def __init__(self, task, fit_kwargs, max_depth=None, learning_rate=None, n_estimators=100,
+    def __init__(self, fit_kwargs, max_depth=None, learning_rate=None, n_estimators=100,
                  verbosity=None, objective=None, booster=None,
                  tree_method=None, n_jobs=None, gamma=None,
                  min_child_weight=None, max_delta_step=None, subsample=None,
@@ -168,11 +172,11 @@ class XGBoostEstimator(HyperEstimator):
         if validate_parameters is not None:
             kwargs['validate_parameters'] = validate_parameters
 
-        HyperEstimator.__init__(self, task, fit_kwargs, space, name, **kwargs)
+        HyperEstimator.__init__(self, fit_kwargs, space, name, **kwargs)
 
-    def _build_estimator(self, kwargs):
+    def _build_estimator(self, task, kwargs):
         import xgboost
-        if self.task == 'regression':
+        if task == 'regression':
             xgb = xgboost.XGBRegressor(**kwargs)
         else:
             xgb = xgboost.XGBClassifier(**kwargs)
@@ -180,10 +184,10 @@ class XGBoostEstimator(HyperEstimator):
 
 
 class XGBoostDaskEstimator(XGBoostEstimator):
-    def _build_estimator(self, kwargs):
+    def _build_estimator(self, task, kwargs):
         # import xgboost
         from dask_ml import xgboost
-        if self.task == 'regression':
+        if task == 'regression':
             xgb = xgboost.XGBRegressor(**kwargs)
         else:
             xgb = xgboost.XGBClassifier(**kwargs)
@@ -191,7 +195,7 @@ class XGBoostDaskEstimator(XGBoostEstimator):
 
 
 class CatBoostEstimator(HyperEstimator):
-    def __init__(self, task, fit_kwargs, iterations=None, learning_rate=None, depth=None, l2_leaf_reg=None,
+    def __init__(self, fit_kwargs, iterations=None, learning_rate=None, depth=None, l2_leaf_reg=None,
                  model_size_reg=None, rsm=None, loss_function=None, border_count=None, feature_border_type=None,
                  per_float_feature_quantization=None, input_borders=None, output_borders=None, space=None, name=None,
                  **kwargs):
@@ -219,11 +223,11 @@ class CatBoostEstimator(HyperEstimator):
             kwargs['input_borders'] = input_borders
         if output_borders is not None:
             kwargs['output_borders'] = output_borders
-        HyperEstimator.__init__(self, task, fit_kwargs, space, name, **kwargs)
+        HyperEstimator.__init__(self, fit_kwargs, space, name, **kwargs)
 
-    def _build_estimator(self, kwargs):
+    def _build_estimator(self, task, kwargs):
         import catboost
-        if self.task == 'regression':
+        if task == 'regression':
             cat = catboost.CatBoostRegressor(**kwargs)
         else:
             cat = catboost.CatBoostClassifier(**kwargs)

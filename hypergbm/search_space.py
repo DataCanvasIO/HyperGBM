@@ -59,7 +59,7 @@ def search_space_general(dataframe_mapper_default=False,
             # subsample_for_bin = 200000, objective = None, class_weight = None,
             #  min_split_gain = 0., min_child_weight = 1e-3, min_child_samples = 20,
         }
-        lightgbm_est = LightGBMEstimator(task=task, fit_kwargs=lightgbm_fit_kwargs, **lightgbm_init_kwargs)
+        lightgbm_est = LightGBMEstimator(fit_kwargs=lightgbm_fit_kwargs, **lightgbm_init_kwargs)
         xgb_init_kwargs = {
             'max_depth': Choice([3, 5]),
             'n_estimators': Choice([10, 30, 50]),
@@ -72,7 +72,7 @@ def search_space_general(dataframe_mapper_default=False,
             'colsample_bytree': Choice([0.6, 0.8, 1.0]),
             # 'scale_pos_weight': Int(1,5,1),
         }
-        xgb_est = XGBoostEstimator(task=task, fit_kwargs=xgb_fit_kwargs, **xgb_init_kwargs)
+        xgb_est = XGBoostEstimator(fit_kwargs=xgb_fit_kwargs, **xgb_init_kwargs)
 
         catboost_init_kwargs = {
             'silent': True,
@@ -83,7 +83,7 @@ def search_space_general(dataframe_mapper_default=False,
             # 'class_weights': [0.59,3.07],
             # 'border_count': Choice([5, 10, 20, 32, 50, 100, 200]),
         }
-        catboost_est = CatBoostEstimator(task=task, fit_kwargs=catboost_fit_kwargs, **catboost_init_kwargs)
+        catboost_est = CatBoostEstimator(fit_kwargs=catboost_fit_kwargs, **catboost_init_kwargs)
 
         ModuleChoice([lightgbm_est, xgb_est, catboost_est], name='estimator_options')(union_pipeline)
         space.set_inputs(input)

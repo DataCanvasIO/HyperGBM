@@ -86,6 +86,8 @@ class HyperGBMEstimator(Estimator):
         outputs = space.get_outputs()
         assert len(outputs) == 1, 'The space can only contains 1 output.'
         assert isinstance(outputs[0], HyperEstimator), 'The output of space must be `HyperEstimator`.'
+        if outputs[0].estimator is None:
+            outputs[0].build_estimator(self.task)
         self.gbm_model = outputs[0].estimator
         self.fit_kwargs = outputs[0].fit_kwargs
 
@@ -102,7 +104,7 @@ class HyperGBMEstimator(Estimator):
             self.data_cleaner = None
 
     def get_pipeline_signature(self, pipeline):
-        repr = self.data_pipeline.__repr__(1000000)
+        repr = pipeline.__repr__(1000000)
         repr = re.sub(r'object at 0x(.*)>', "", repr)
         md5 = hashlib.md5(repr.encode('utf-8')).hexdigest()
         return md5

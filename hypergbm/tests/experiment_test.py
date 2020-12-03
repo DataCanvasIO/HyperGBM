@@ -109,7 +109,7 @@ class Test_HyperGBM():
 
         X_train, X_test, y_train, y_test = train_test_split(df, y, test_size=0.3, random_state=9527)
         log_callback = LogCallback()
-        experiment = GeneralExperiment(hk, X_train, y_train, X_test, callbacks=[log_callback])
+        experiment = GeneralExperiment('binary', hk, X_train, y_train, X_test, callbacks=[log_callback])
         experiment.run(use_cache=True, max_trails=5)
         assert log_callback.logs == ['experiment start',
                                      '   step start, step:data split',
