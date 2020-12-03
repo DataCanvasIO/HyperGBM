@@ -19,7 +19,8 @@ from .feature_importance import feature_importance_batch
 
 
 class CompeteExperiment(Experiment):
-    def __init__(self, task, hyper_model, X_train, y_train, X_test, X_eval=None, y_eval=None, eval_size=0.3,
+    def __init__(self, hyper_model, X_train, y_train, X_test, X_eval=None, y_eval=None, eval_size=0.3,
+                 task=None,
                  callbacks=None,
                  random_state=9527,
                  scorer=None,
@@ -30,9 +31,9 @@ class CompeteExperiment(Experiment):
                  n_est_feature_importance=10,
                  importance_threshold=1e-5,
                  ensemble_size=7, ):
-        super(CompeteExperiment, self).__init__(task, hyper_model, X_train, y_train, X_test, X_eval=X_eval,
-                                                y_eval=y_eval,
-                                                eval_size=eval_size, callbacks=callbacks, random_state=random_state)
+        super(CompeteExperiment, self).__init__(hyper_model, X_train, y_train, X_test, X_eval=X_eval,
+                                                y_eval=y_eval, eval_size=eval_size, task=task, callbacks=callbacks,
+                                                random_state=random_state)
         self.data_cleaner_args = data_cleaner_args if data_cleaner_args is not None else {}
         self.drop_feature_with_collinearity = drop_feature_with_collinearity
         self.drift_detection = drift_detection
@@ -70,6 +71,8 @@ class CompeteExperiment(Experiment):
         max_trails :
 
         """
+
+
         self.step_start('clean and split data')
         # 1. Clean Data
         self.data_cleaner = DataCleaner(**self.data_cleaner_args)

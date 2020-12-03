@@ -99,9 +99,7 @@ class Test_HyperGBM():
 
     def test_exp(self):
         rs = RandomSearcher(search_space_general, optimize_direction=OptimizeDirection.Maximize)
-        hk = HyperGBM(rs, task='binary', reward_metric='accuracy',
-                      cache_dir=f'hypergbm_cache',
-                      callbacks=[])
+        hk = HyperGBM(rs, reward_metric='accuracy', cache_dir=f'hypergbm_cache', callbacks=[])
 
         df = dsutils.load_bank().head(1000)
         df.drop(['id'], axis=1, inplace=True)
@@ -109,7 +107,7 @@ class Test_HyperGBM():
 
         X_train, X_test, y_train, y_test = train_test_split(df, y, test_size=0.3, random_state=9527)
         log_callback = LogCallback()
-        experiment = GeneralExperiment('binary', hk, X_train, y_train, X_test, callbacks=[log_callback])
+        experiment = GeneralExperiment(hk, X_train, y_train, X_test, callbacks=[log_callback])
         experiment.run(use_cache=True, max_trails=5)
         assert log_callback.logs == ['experiment start',
                                      '   step start, step:data split',
@@ -122,9 +120,7 @@ class Test_HyperGBM():
 
     def test_compete_one_stage(self):
         rs = RandomSearcher(search_space_general, optimize_direction=OptimizeDirection.Maximize)
-        hk = HyperGBM(rs, task='binary', reward_metric='accuracy',
-                      cache_dir=f'hypergbm_cache',
-                      callbacks=[])
+        hk = HyperGBM(rs, reward_metric='accuracy', cache_dir=f'hypergbm_cache', callbacks=[])
 
         df = dsutils.load_bank().head(1000)
         df.drop(['id'], axis=1, inplace=True)
@@ -132,7 +128,7 @@ class Test_HyperGBM():
 
         X_train, X_test, y_train, y_test = train_test_split(df, y, test_size=0.3, random_state=9527)
         log_callback = LogCallback(output_elapsed=True)
-        experiment = CompeteExperiment('binary', hk, X_train, y_train, X_test,
+        experiment = CompeteExperiment(hk, X_train, y_train, X_test,
                                        callbacks=[log_callback],
                                        scorer=get_scorer('roc_auc_ovr'),
                                        drop_feature_with_collinearity=True,
@@ -183,9 +179,7 @@ class Test_HyperGBM():
 
     def test_compete_two_stage(self):
         rs = RandomSearcher(search_space_general, optimize_direction=OptimizeDirection.Maximize)
-        hk = HyperGBM(rs, task='binary', reward_metric='accuracy',
-                      cache_dir=f'hypergbm_cache',
-                      callbacks=[])
+        hk = HyperGBM(rs, reward_metric='accuracy', cache_dir=f'hypergbm_cache', callbacks=[])
 
         df = dsutils.load_bank().head(1000)
         df.drop(['id'], axis=1, inplace=True)
@@ -193,7 +187,7 @@ class Test_HyperGBM():
 
         X_train, X_test, y_train, y_test = train_test_split(df, y, test_size=0.3, random_state=9527)
         log_callback = LogCallback(output_elapsed=True)
-        experiment = CompeteExperiment('binary', hk, X_train, y_train, X_test,
+        experiment = CompeteExperiment(hk, X_train, y_train, X_test,
                                        callbacks=[log_callback],
                                        scorer=get_scorer('roc_auc_ovr'),
                                        drop_feature_with_collinearity=True,
