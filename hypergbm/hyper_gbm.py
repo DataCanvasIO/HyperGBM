@@ -132,10 +132,9 @@ class HyperGBMEstimator(Estimator):
         s = f"{self.data_pipeline.__repr__(1000000)}\r\n{self.gbm_model.__repr__()}"
         return s
 
-    def transform_data(self, X, y=None, fit=False, **kwargs):
-        use_cache = kwargs.get('use_cache')
+    def transform_data(self, X, y=None, fit=False, use_cache=None):
         if use_cache is None:
-            use_cache = False
+            use_cache = True
         if use_cache:
             X_cache = self._get_X_from_cache(X, load_pipeline=True)
         else:
@@ -175,12 +174,17 @@ class HyperGBMEstimator(Estimator):
 
     def fit(self, X, y, **kwargs):
         logger.debug('Estimator is transforming the train set')
-        X = self.transform_data(X, y, fit=True, **kwargs)
-
-        if self.fit_kwargs is not None:
-            kwargs = self.fit_kwargs
+        use_cache = kwargs.get('use_cache')
+        X = self.transform_data(X, y, fit=True, use_cache=use_cache)
 
         eval_set = kwargs.get('eval_set')
+        kwargs = self.fit_kwargs
+        if kwargs.get('verbose') is None:
+            kwargs['verbose'] = 0
+        logger.info(f'fit kwargs:{kwargs}')
+
+        if eval_set is None:
+            eval_set = kwargs.get('eval_set')
         if eval_set is not None:
             if isinstance(eval_set, tuple):
                 X_eval, y_eval = eval_set
@@ -215,10 +219,6 @@ class HyperGBMEstimator(Estimator):
         preds = self.gbm_model.predict(X, **kwargs)
         logger.debug(f'Taken {time.time() - starttime}s')
         return preds
-
-    # def predict(self, X, proba_threshold=0.5, **kwargs):
-    #     proba = self.predict_proba(X, **kwargs)
-    #     return self.proba2predict(proba, proba_threshold)
 
     def predict_proba(self, X, **kwargs):
         X = self.transform_data(X, **kwargs)

@@ -72,7 +72,6 @@ class CompeteExperiment(Experiment):
 
         """
 
-
         self.step_start('clean and split data')
         # 1. Clean Data
         self.data_cleaner = DataCleaner(**self.data_cleaner_args)
@@ -80,7 +79,7 @@ class CompeteExperiment(Experiment):
         X_train, y_train = self.data_cleaner.fit_transform(X_train, y_train)
         self.step_progress('fit_transform train set')
 
-        if X_eval or y_eval is None:
+        if X_eval is None or y_eval is None:
             stratify = y_train
             if self.task == 'regression':
                 stratify = None
@@ -95,7 +94,11 @@ class CompeteExperiment(Experiment):
             X_test = self.data_cleaner.transform(X_test)
             self.step_progress('transform X_test')
 
-        self.step_end()
+        self.step_end(output={'X_train.shape': X_train.shape,
+                              'y_train.shape': y_train.shape,
+                              'X_eval.shape': X_eval.shape,
+                              'y_eval.shape': y_eval.shape,
+                              'X_test.shape': None if X_test is None else X_test.shape})
 
         original_features = X_train.columns.to_list()
 
@@ -131,6 +134,10 @@ class CompeteExperiment(Experiment):
         # 4. Baseline search
         self.first_hyper_model = copy.deepcopy(hyper_model)
         self.step_start('first stage search')
+
+        if kwargs.get('eval_set') is None:
+            kwargs['eval_set'] = (X_eval, y_eval)
+
         self.first_hyper_model.search(X_train, y_train, X_eval, y_eval, **kwargs)
         self.hyper_model = self.first_hyper_model
         self.step_end(output={'best_reward': self.hyper_model.get_best_trail().reward})

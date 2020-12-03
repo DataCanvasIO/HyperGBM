@@ -3,9 +3,13 @@ __author__ = 'yangjian'
 """
 
 """
-from sklearn.utils import Bunch
-from sklearn.inspection import permutation_importance
 import numpy as np
+from sklearn.inspection import permutation_importance
+from sklearn.utils import Bunch
+
+from hypernets.utils import logging
+
+logger = logging.get_logger(__name__)
 
 
 def feature_importance_batch(estimators, X, y, scoring=None, n_repeats=5,
@@ -56,7 +60,8 @@ def feature_importance_batch(estimators, X, y, scoring=None, n_repeats=5,
     """
     importances = []
 
-    for est in estimators:
+    for i, est in enumerate(estimators):
+        logger.info(f'permutation_importance: {i}/{len(estimators)}')
         importance = permutation_importance(est, X, y, scoring, n_repeats, n_jobs, random_state)
         importances.append(importance.importances)
 
@@ -64,5 +69,5 @@ def feature_importance_batch(estimators, X, y, scoring=None, n_repeats=5,
     bunch = Bunch(importances_mean=np.mean(importances, axis=1),
                   importances_std=np.std(importances, axis=1),
                   importances=importances,
-                  columns = X.columns.to_list())
+                  columns=X.columns.to_list())
     return bunch

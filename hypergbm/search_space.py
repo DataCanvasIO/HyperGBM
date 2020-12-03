@@ -16,12 +16,11 @@ from tabular_toolbox.column_selector import column_object, column_exclude_dateti
 
 
 def search_space_general(dataframe_mapper_default=False,
-                         eval_set=None,
-                         early_stopping_rounds=None,
                          lightgbm_fit_kwargs=None,
                          xgb_fit_kwargs=None,
                          catboost_fit_kwargs=None,
-                         task=None):
+                         task=None,
+                         **kwargs):
     if lightgbm_fit_kwargs is None:
         lightgbm_fit_kwargs = {}
     if xgb_fit_kwargs is None:
@@ -29,15 +28,9 @@ def search_space_general(dataframe_mapper_default=False,
     if catboost_fit_kwargs is None:
         catboost_fit_kwargs = {}
 
-    if eval_set is not None:
-        lightgbm_fit_kwargs['eval_set'] = eval_set
-        xgb_fit_kwargs['eval_set'] = eval_set
-        catboost_fit_kwargs['eval_set'] = eval_set
-
-    if early_stopping_rounds is not None:
-        lightgbm_fit_kwargs['early_stopping_rounds'] = early_stopping_rounds
-        xgb_fit_kwargs['early_stopping_rounds'] = early_stopping_rounds
-        catboost_fit_kwargs['early_stopping_rounds'] = early_stopping_rounds
+    lightgbm_fit_kwargs.update(kwargs)
+    xgb_fit_kwargs.update(kwargs)
+    catboost_fit_kwargs.update((kwargs))
 
     space = HyperSpace()
     with space.as_default():
@@ -51,7 +44,7 @@ def search_space_general(dataframe_mapper_default=False,
             'boosting_type': Choice(['gbdt', 'dart', 'goss']),
             'num_leaves': Choice([3, 5]),
             'learning_rate': 0.1,
-            'n_estimators': Choice([10, 30, 50]),
+            'n_estimators': Choice([10, 30, 50, 100, 200]),
             'max_depth': Choice([3, 5]),
             'reg_alpha': Choice([1e-2, 0.1, 1, 100]),
             'reg_lambda': Choice([1e-2, 0.1, 1, 100]),
@@ -62,7 +55,7 @@ def search_space_general(dataframe_mapper_default=False,
         lightgbm_est = LightGBMEstimator(fit_kwargs=lightgbm_fit_kwargs, **lightgbm_init_kwargs)
         xgb_init_kwargs = {
             'max_depth': Choice([3, 5]),
-            'n_estimators': Choice([10, 30, 50]),
+            'n_estimators': Choice([10, 30, 50, 100, 200]),
             'learning_rate': 0.1,
             'min_child_weight': Choice([1, 5, 10]),
             'gamma': Choice([0.5, 1, 1.5, 2, 5]),
@@ -78,7 +71,7 @@ def search_space_general(dataframe_mapper_default=False,
             'silent': True,
             'depth': Choice([3, 5]),
             'learning_rate': Real(0.001, 0.1, step=0.005),
-            'iterations': Choice([30, 50, 100]),
+            'iterations': Choice([30, 50, 100, 200]),
             'l2_leaf_reg': Choice([1, 3, 5, 7, 9]),
             # 'class_weights': [0.59,3.07],
             # 'border_count': Choice([5, 10, 20, 32, 50, 100, 200]),
