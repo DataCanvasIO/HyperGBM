@@ -22,8 +22,8 @@ def main():
 
     rs = RandomSearcher(get_space_num_cat_pipeline_complex, optimize_direction=OptimizeDirection.Maximize)
     hk = HyperGBM(rs, task='binary', reward_metric='accuracy',
-                  cache_dir=f'{test_output_dir}/hypergbm_cache',
-                  callbacks=[SummaryCallback(), FileLoggingCallback(rs, output_dir=f'{test_output_dir}/hyn_logs')])
+                  cache_dir=f'hypergbm_cache',
+                  callbacks=[SummaryCallback(), FileStorageLoggingCallback(rs, output_dir=f'{test_output_dir}/hyn_logs')])
 
     df = dsutils.load_bank_by_dask()
     df.drop(['id'], axis=1)
@@ -38,6 +38,7 @@ def main():
     X_train, X_test = train_test_split(df, test_size=0.8, random_state=42)
     y_train = X_train.pop('y')
     y_test = X_test.pop('y')
+    X_train, X_test, y_train, y_test = X_train.persist(), X_test.persist(), y_train.persist(), y_test.persist()
 
     hk.search(X_train, y_train, X_test, y_test, max_trails=50)
     print('-' * 30)

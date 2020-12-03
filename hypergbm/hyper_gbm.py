@@ -136,8 +136,11 @@ class HyperGBMEstimator(Estimator):
         if use_cache is None:
             use_cache = True
         if use_cache:
-            X_cache = self._get_X_from_cache(X, load_pipeline=True)
+            data_path, pipeline_path = self._get_cache_filepath(X)
+            X_cache = self._get_X_from_cache(data_path, pipeline_path,
+                                             as_dask=not isinstance(X, (pd.DataFrame, np.ndarray)))
         else:
+            data_path, pipeline_path = None, None
             X_cache = None
 
         if X_cache is None:
@@ -157,7 +160,7 @@ class HyperGBMEstimator(Estimator):
 
             logger.debug(f'Taken {time.time() - starttime}s')
             if use_cache:
-                self._save_X_to_cache(X, save_pipeline=True)
+                self._save_X_to_cache(X, data_path, pipeline_path)
         else:
             X = X_cache
 
@@ -179,9 +182,9 @@ class HyperGBMEstimator(Estimator):
 
         eval_set = kwargs.get('eval_set')
         kwargs = self.fit_kwargs
-        if kwargs.get('verbose') is None:
+        if kwargs.get('verbose') is None and str(type(self.gbm_model)).find('dask') < 0:
             kwargs['verbose'] = 0
-        logger.info(f'fit kwargs:{kwargs}')
+        logger.debug(f'fit kwargs:{kwargs}')
 
         if eval_set is None:
             eval_set = kwargs.get('eval_set')
@@ -254,8 +257,14 @@ class HyperGBMEstimator(Estimator):
 
     def _get_cache_filepath(self, X):
         # file_path = f'{self.cache_dir}/{X.shape[0]}_{X.shape[1]}_{self.pipeline_signature}.h5'
+        start_at = time.time()
         shape = self._get_dataframe_shape(X)
+        at1 = time.time()
+        logger.debug(f'get shape in {at1 - start_at} seconds, {shape}')
         hash = hash_dataframe(X)
+        at2 = time.time()
+        logger.debug(f'calc hash in {at2 - at1} seconds, {hash}')
+
         data_path = f'{self.cache_dir}/{shape[0]}_{shape[1]}_{hash}_{self.pipeline_signature}.parquet'
         pipeline_path = f'{self.cache_dir}/{shape[0]}_{shape[1]}_{hash}_pipeline_{self.pipeline_signature}.pkl'
         return data_path, pipeline_path
@@ -267,11 +276,11 @@ class HyperGBMEstimator(Estimator):
             rows = X.reduction(lambda df: df.shape[0], np.sum).compute()
             return rows, X.shape[1]
 
-    def _get_X_from_cache(self, X, load_pipeline=False):
-        data_path, pipeline_path = self._get_cache_filepath(X)
+    def _get_X_from_cache(self, data_path, pipeline_path, as_dask=False):
         if fs.exists(data_path):
-            df = self._load_df(data_path, not isinstance(X, (pd.DataFrame, np.ndarray)))
-            if load_pipeline:
+            start_at = time.time()
+            df = self._load_df(data_path, as_dask)
+            if pipeline_path:
                 try:
                     with fs.open(pipeline_path, 'rb') as input:
                         self.data_pipeline, self.data_cleaner = pickle.load(input)
@@ -279,15 +288,17 @@ class HyperGBMEstimator(Estimator):
                     if fs.exists(data_path):
                         fs.rm(data_path)
                     return None
+            done_at = time.time()
+            logger.debug(f'load cache in {done_at - start_at} seconds')
             return df
         else:
             return None
 
-    def _save_X_to_cache(self, X, save_pipeline=False):
-        data_path, pipeline_path = self._get_cache_filepath(X)
+    def _save_X_to_cache(self, X, data_path, pipeline_path):
+        start_at = time.time()
         self._save_df(data_path, X)
 
-        if save_pipeline:
+        if pipeline_path:
             try:
                 with fs.open(pipeline_path, 'wb') as output:
                     pickle.dump((self.data_pipeline, self.data_cleaner), output, protocol=2)
@@ -295,6 +306,8 @@ class HyperGBMEstimator(Estimator):
                 logger.error(e)
                 if fs.exists(pipeline_path):
                     fs.rm(pipeline_path)
+        done_at = time.time()
+        logger.debug(f'save cache in {done_at - start_at} seconds')
 
     def _load_df(self, filepath, as_dask=False):
         try:

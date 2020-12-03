@@ -98,6 +98,9 @@ class LightGBMDaskEstimator(LightGBMEstimator):
         # import lightgbm
         import dask_lightgbm as lightgbm
 
+        if 'task' in kwargs:
+            kwargs.pop('task')
+
         if task == 'regression':
             lgbm = lightgbm.LGBMRegressor(**kwargs)
         else:
@@ -187,6 +190,10 @@ class XGBoostDaskEstimator(XGBoostEstimator):
     def _build_estimator(self, task, kwargs):
         # import xgboost
         from dask_ml import xgboost
+
+        if 'task' in kwargs:
+            kwargs.pop('task')
+
         if task == 'regression':
             xgb = xgboost.XGBRegressor(**kwargs)
         else:
