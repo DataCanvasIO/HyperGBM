@@ -31,7 +31,7 @@ class CrossCategorical(primitives.TransformPrimitive):
 class FeatureGenerationTransformer():
     ft_index = 'e_hypernets_ft_index'
 
-    def __init__(self, task, trans_primitives=None,
+    def __init__(self, task=None, trans_primitives=None,
                  fix_input=False,
                  continuous_cols=None,
                  datetime_cols=None,

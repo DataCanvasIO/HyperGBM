@@ -282,9 +282,10 @@ class SkewnessKurtosisTransformer(HyperTransformer):
 
 
 class FeatureGenerationTransformer(HyperTransformer):
-    def __init__(self, task, trans_primitives=None, fix_input=False, continuous_cols=None, datetime_cols=None,
+    def __init__(self, task=None, trans_primitives=None, fix_input=False, continuous_cols=None, datetime_cols=None,
                  max_depth=1, feature_selection_args=None, space=None, name=None, **kwargs):
-        kwargs['task'] = task
+        if task is not None:
+            kwargs['task'] = task
         if trans_primitives is not None:
             kwargs['trans_primitives'] = trans_primitives
         if fix_input:
