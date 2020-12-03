@@ -8,10 +8,12 @@ from sklearn.model_selection import train_test_split
 
 from hypergbm import HyperGBM, CompeteExperiment
 from hypergbm.search_space import search_space_general
-from hypernets.core.searcher import OptimizeDirection
-from hypernets.experiment import GeneralExperiment, ExperimentCallback
+from hypernets.core import OptimizeDirection, EarlyStoppingCallback
+from hypernets.experiment import GeneralExperiment, ExperimentCallback, ConsoleCallback
 from hypernets.searchers import RandomSearcher
 from tabular_toolbox.datasets import dsutils
+import numpy as np
+import pandas as pd
 
 
 class LogCallback(ExperimentCallback):
@@ -96,6 +98,30 @@ class Test_HyperGBM():
     #     pipeline = experiment.run(use_cache=True, max_trails=20)
     #     mse2 = mse_scorer(pipeline, X_test, y_test)
     #     assert mse2
+    def test_cat(self):
+        X_train = pd.read_csv('/Users/jack/workspace/aps/notebook/hypergbm/datasets/cat/train.csv')
+        y_train = X_train.pop('target')
+        X_test = pd.read_csv('/Users/jack/workspace/aps/notebook/hypergbm/datasets/cat/test.csv')
+        submission = pd.read_csv('/Users/jack/workspace/aps/notebook/hypergbm/datasets/cat/sample_submission.csv')
+        # X_train.shape, y_train.shape, X_test.shape, submission.shape
+        rs = RandomSearcher(lambda: search_space_general(early_stopping_rounds=20, verbose=0),
+                            optimize_direction=OptimizeDirection.Maximize)
+        es = EarlyStoppingCallback(10, 'max')
+        hk = HyperGBM(rs, reward_metric='auc', cache_dir=f'hypergbm_cache', callbacks=[es])
+
+        log_callback = ConsoleCallback()
+        experiment = CompeteExperiment(hk, X_train, y_train, X_test=X_test,
+                                       callbacks=[log_callback],
+                                       scorer=get_scorer('roc_auc_ovr'),
+                                       drop_feature_with_collinearity=False,
+                                       drift_detection=True,
+                                       mode='one-stage',
+                                       n_est_feature_importance=5,
+                                       importance_threshold=1e-5,
+                                       ensemble_size=5
+                                       )
+        pipeline = experiment.run(use_cache=True, max_trails=50)
+        assert pipeline
 
     def test_exp(self):
         rs = RandomSearcher(search_space_general, optimize_direction=OptimizeDirection.Maximize)
@@ -107,11 +133,12 @@ class Test_HyperGBM():
 
         X_train, X_test, y_train, y_test = train_test_split(df, y, test_size=0.3, random_state=9527)
         log_callback = LogCallback()
-        experiment = GeneralExperiment(hk, X_train, y_train, X_test, callbacks=[log_callback])
+        experiment = GeneralExperiment(hk, X_train, y_train, X_test=X_test, callbacks=[log_callback])
         experiment.run(use_cache=True, max_trails=5)
         assert log_callback.logs == ['experiment start',
                                      '   step start, step:data split',
-                                     '   step end, step:data split, output:',
+                                     "   step end, step:data split, output:dict_keys(['X_train.shape', "
+                                     "'y_train.shape', 'X_eval.shape', 'y_eval.shape', 'X_test.shape'])",
                                      '   step start, step:search',
                                      "   step end, step:search, output:dict_keys(['best_trail'])",
                                      '   step start, step:load estimator',
@@ -128,7 +155,7 @@ class Test_HyperGBM():
 
         X_train, X_test, y_train, y_test = train_test_split(df, y, test_size=0.3, random_state=9527)
         log_callback = LogCallback(output_elapsed=True)
-        experiment = CompeteExperiment(hk, X_train, y_train, X_test,
+        experiment = CompeteExperiment(hk, X_train, y_train, X_test=X_test,
                                        callbacks=[log_callback],
                                        scorer=get_scorer('roc_auc_ovr'),
                                        drop_feature_with_collinearity=True,
@@ -187,7 +214,7 @@ class Test_HyperGBM():
 
         X_train, X_test, y_train, y_test = train_test_split(df, y, test_size=0.3, random_state=9527)
         log_callback = LogCallback(output_elapsed=True)
-        experiment = CompeteExperiment(hk, X_train, y_train, X_test,
+        experiment = CompeteExperiment(hk, X_train, y_train, X_test=X_test,
                                        callbacks=[log_callback],
                                        scorer=get_scorer('roc_auc_ovr'),
                                        drop_feature_with_collinearity=True,

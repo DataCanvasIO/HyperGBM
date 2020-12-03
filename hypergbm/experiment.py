@@ -19,7 +19,7 @@ from .feature_importance import feature_importance_batch
 
 
 class CompeteExperiment(Experiment):
-    def __init__(self, hyper_model, X_train, y_train, X_test, X_eval=None, y_eval=None, eval_size=0.3,
+    def __init__(self, hyper_model, X_train, y_train, X_eval=None, y_eval=None, X_test=None, eval_size=0.3,
                  task=None,
                  callbacks=None,
                  random_state=9527,
@@ -27,12 +27,13 @@ class CompeteExperiment(Experiment):
                  data_cleaner_args=None,
                  drop_feature_with_collinearity=False,
                  drift_detection=True,
-                 mode='two-stage',
+                 mode='one-stage',
                  n_est_feature_importance=10,
                  importance_threshold=1e-5,
                  ensemble_size=7, ):
-        super(CompeteExperiment, self).__init__(hyper_model, X_train, y_train, X_test, X_eval=X_eval,
-                                                y_eval=y_eval, eval_size=eval_size, task=task, callbacks=callbacks,
+        super(CompeteExperiment, self).__init__(hyper_model, X_train, y_train, X_eval=X_eval, y_eval=y_eval,
+                                                X_test=X_test, eval_size=eval_size, task=task,
+                                                callbacks=callbacks,
                                                 random_state=random_state)
         self.data_cleaner_args = data_cleaner_args if data_cleaner_args is not None else {}
         self.drop_feature_with_collinearity = drop_feature_with_collinearity
@@ -101,6 +102,7 @@ class CompeteExperiment(Experiment):
                               'X_test.shape': None if X_test is None else X_test.shape})
 
         original_features = X_train.columns.to_list()
+        self.selected_features_ = original_features
 
         # 2. Drop features with multicollinearity
         if self.drop_feature_with_collinearity:
@@ -135,8 +137,7 @@ class CompeteExperiment(Experiment):
         self.first_hyper_model = copy.deepcopy(hyper_model)
         self.step_start('first stage search')
 
-        if kwargs.get('eval_set') is None:
-            kwargs['eval_set'] = (X_eval, y_eval)
+        kwargs['eval_set'] = (X_eval, y_eval)
 
         self.first_hyper_model.search(X_train, y_train, X_eval, y_eval, **kwargs)
         self.hyper_model = self.first_hyper_model
@@ -172,9 +173,12 @@ class CompeteExperiment(Experiment):
             # 6. Final search
             self.step_start('two stage search')
             self.second_hyper_model = copy.deepcopy(hyper_model)
+
+            kwargs['eval_set'] = (X_eval, y_eval)
             self.second_hyper_model.search(X_train, y_train, X_eval, y_eval, **kwargs)
             self.hyper_model = self.second_hyper_model
             self.step_end(output={'best_reward': self.hyper_model.get_best_trail().reward})
+
         # 7. Ensemble
         if self.ensemble_size > 1:
             self.step_start('ensemble')

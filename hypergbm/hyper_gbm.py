@@ -97,6 +97,7 @@ class HyperGBMEstimator(Estimator):
                           ComposeTransformer), 'The upstream node of `HyperEstimator` must be `ComposeTransformer`.'
         # next, (name, p) = pipeline_module[0].compose()
         self.data_pipeline = self.build_pipeline(space, pipeline_module[0])
+        logger.info(f'data_pipeline:{self.data_pipeline}')
         self.pipeline_signature = self.get_pipeline_signature(self.data_pipeline)
         if self.data_cleaner_params is not None:
             self.data_cleaner = DataCleaner(**self.data_cleaner_params)
@@ -132,7 +133,7 @@ class HyperGBMEstimator(Estimator):
         s = f"{self.data_pipeline.__repr__(1000000)}\r\n{self.gbm_model.__repr__()}"
         return s
 
-    def transform_data(self, X, y=None, fit=False, use_cache=None):
+    def transform_data(self, X, y=None, fit=False, use_cache=None, verbose=0):
         if use_cache is None:
             use_cache = True
         if use_cache:
@@ -147,18 +148,23 @@ class HyperGBMEstimator(Estimator):
             starttime = time.time()
             if fit:
                 if self.data_cleaner is not None:
-                    logger.debug('Cleaning')
+                    if verbose > 0:
+                        print('clean data')
                     X, y = self.data_cleaner.fit_transform(X, y)
-                logger.debug('Fitting and transforming')
+                if verbose > 0:
+                    print('fit and transform')
                 X = self.data_pipeline.fit_transform(X, y)
             else:
                 if self.data_cleaner is not None:
-                    logger.debug('Cleaning')
+                    if verbose > 0:
+                        print('clean data')
                     X = self.data_cleaner.transform(X)
-                logger.debug('Transforming')
+                if verbose > 0:
+                    print('transform')
                 X = self.data_pipeline.transform(X)
 
-            logger.debug(f'Taken {time.time() - starttime}s')
+            if verbose > 0:
+                print(f'taken {time.time() - starttime}s')
             if use_cache:
                 self._save_X_to_cache(X, data_path, pipeline_path)
         else:
@@ -176,35 +182,43 @@ class HyperGBMEstimator(Estimator):
         return cat_cols
 
     def fit(self, X, y, **kwargs):
-        logger.debug('Estimator is transforming the train set')
         use_cache = kwargs.get('use_cache')
-        X = self.transform_data(X, y, fit=True, use_cache=use_cache)
+        verbose = kwargs.get('verbose')
+        if verbose is None:
+            verbose = 0
+        if verbose > 0:
+            print('estimator is transforming the train set')
+        X = self.transform_data(X, y, fit=True, use_cache=use_cache, verbose=verbose)
 
         eval_set = kwargs.get('eval_set')
         kwargs = self.fit_kwargs
         if kwargs.get('verbose') is None and str(type(self.gbm_model)).find('dask') < 0:
             kwargs['verbose'] = 0
-        logger.debug(f'fit kwargs:{kwargs}')
+        if verbose > 0:
+            print(f'fit kwargs:{kwargs}')
 
         if eval_set is None:
             eval_set = kwargs.get('eval_set')
         if eval_set is not None:
             if isinstance(eval_set, tuple):
                 X_eval, y_eval = eval_set
-                logger.debug('Estimator is transforming the eval set')
+                if verbose > 0:
+                    print('estimator is transforming the eval set')
                 X_eval = self.transform_data(X_eval)
                 kwargs['eval_set'] = [(X_eval, y_eval)]
             elif isinstance(eval_set, list):
                 es = []
                 for i, eval_set_ in enumerate(eval_set):
                     X_eval, y_eval = eval_set_
-                    logger.debug(f'Estimator is transforming the eval set({i})')
+                    if verbose > 0:
+                        print(f'estimator is transforming the eval set({i})')
                     X_eval = self.transform_data(X_eval)
                     es.append((X_eval, y_eval))
                     kwargs['eval_set'] = es
 
         starttime = time.time()
-        logger.debug('Estimator is fitting the data')
+        if verbose > 0:
+            print('estimator is fitting the data')
         if is_lightgbm_model(self.gbm_model):
             cat_cols = self.get_categorical_features(X)
             kwargs['categorical_feature'] = cat_cols
@@ -213,25 +227,37 @@ class HyperGBMEstimator(Estimator):
             kwargs['cat_features'] = cat_cols
 
         self.gbm_model.fit(X, y, **kwargs)
-        logger.debug(f'Taken {time.time() - starttime}s')
+        if verbose > 0:
+            print(f'taken {time.time() - starttime}s')
 
     def predict(self, X, **kwargs):
-        X = self.transform_data(X, **kwargs)
+        use_cache = kwargs.get('use_cache')
+        verbose = kwargs.get('verbose')
+        if verbose is None:
+            verbose = 0
+        X = self.transform_data(X, use_cache=use_cache, verbose=verbose)
         starttime = time.time()
-        logger.debug('Estimator is predicting the data')
+        if verbose > 0:
+            print('estimator is predicting the data')
         preds = self.gbm_model.predict(X, **kwargs)
-        logger.debug(f'Taken {time.time() - starttime}s')
+        if verbose > 0:
+            print(f'taken {time.time() - starttime}s')
         return preds
 
     def predict_proba(self, X, **kwargs):
+        verbose = kwargs.get('verbose')
+        if verbose is None:
+            verbose = 0
         X = self.transform_data(X, **kwargs)
         starttime = time.time()
-        logger.debug('Estimator is predicting the data')
+        if verbose > 0:
+            print('estimator is predicting the data')
         if hasattr(self.gbm_model, 'predict_proba'):
             preds = self.gbm_model.predict_proba(X, **kwargs)
         else:
             preds = self.gbm_model.predict(X, **kwargs)
-        logger.debug(f'Taken {time.time() - starttime}s')
+        if verbose > 0:
+            print(f'taken {time.time() - starttime}s')
         return preds
 
     def evaluate(self, X, y, metrics=None, **kwargs):
