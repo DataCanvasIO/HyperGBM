@@ -3,7 +3,7 @@
 
 """
 from hypergbm.sklearn.transformers import SimpleImputer, MultiLabelEncoder, OneHotEncoder, TruncatedSVD, \
-    StandardScaler, MinMaxScaler, MaxAbsScaler, RobustScaler
+    StandardScaler, MinMaxScaler, MaxAbsScaler, RobustScaler, OrdinalEncoder, SafeOrdinalEncoder
 from hypergbm.pipeline import Pipeline
 from tabular_toolbox.column_selector import column_object_category_bool, column_number_exclude_timedelta
 from hypernets.core.ops import ModuleChoice, Optional, Choice
@@ -12,8 +12,9 @@ import numpy as np
 
 def categorical_pipeline_simple(impute_strategy='constant', seq_no=0):
     pipeline = Pipeline([
-        SimpleImputer(missing_values=np.nan, strategy=impute_strategy, name=f'categorical_imputer_{seq_no}'),
-        MultiLabelEncoder(name=f'categorical_label_encoder_{seq_no}')
+        # SimpleImputer(missing_values=np.nan, strategy=impute_strategy, name=f'categorical_imputer_{seq_no}'),
+        SafeOrdinalEncoder(name=f'categorical_label_encoder_{seq_no}', dtype='int32')
+        # MultiLabelEncoder(name=f'categorical_label_encoder_{seq_no}')
     ],
         columns=column_object_category_bool,
         name=f'categorical_pipeline_simple_{seq_no}',

@@ -97,7 +97,7 @@ class HyperGBMEstimator(Estimator):
                           ComposeTransformer), 'The upstream node of `HyperEstimator` must be `ComposeTransformer`.'
         # next, (name, p) = pipeline_module[0].compose()
         self.data_pipeline = self.build_pipeline(space, pipeline_module[0])
-        logger.info(f'data_pipeline:{self.data_pipeline}')
+        logger.debug(f'data_pipeline:{self.data_pipeline}')
         self.pipeline_signature = self.get_pipeline_signature(self.data_pipeline)
         if self.data_cleaner_params is not None:
             self.data_cleaner = DataCleaner(**self.data_cleaner_params)
@@ -182,6 +182,7 @@ class HyperGBMEstimator(Estimator):
         return cat_cols
 
     def fit(self, X, y, **kwargs):
+        starttime = time.time()
         use_cache = kwargs.get('use_cache')
         verbose = kwargs.get('verbose')
         if verbose is None:
@@ -216,7 +217,6 @@ class HyperGBMEstimator(Estimator):
                     es.append((X_eval, y_eval))
                     kwargs['eval_set'] = es
 
-        starttime = time.time()
         if verbose > 0:
             print('estimator is fitting the data')
         if is_lightgbm_model(self.gbm_model):
@@ -226,6 +226,8 @@ class HyperGBMEstimator(Estimator):
             cat_cols = self.get_categorical_features(X)
             kwargs['cat_features'] = cat_cols
 
+        # print(X.dtypes)
+        # print(X.head(10))
         self.gbm_model.fit(X, y, **kwargs)
         if verbose > 0:
             print(f'taken {time.time() - starttime}s')

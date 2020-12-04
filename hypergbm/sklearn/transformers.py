@@ -94,6 +94,17 @@ class OrdinalEncoder(HyperTransformer):
         HyperTransformer.__init__(self, sk_pre.OrdinalEncoder, space, name, **kwargs)
 
 
+class SafeOrdinalEncoder(HyperTransformer):
+    def __init__(self, categories='auto', dtype=np.float64, space=None,
+                 name=None, **kwargs):
+        if categories is not None and categories != 'auto':
+            kwargs['categories'] = categories
+        if dtype is not None and dtype != True:
+            kwargs['dtype'] = dtype
+
+        HyperTransformer.__init__(self, sklearn_ex.SafeOrdinalEncoder, space, name, **kwargs)
+
+
 class KBinsDiscretizer(HyperTransformer):
     def __init__(self, n_bins=5, encode='onehot', strategy='quantile', space=None, name=None, **kwargs):
         if n_bins is not None and n_bins != 5:
