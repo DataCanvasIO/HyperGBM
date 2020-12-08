@@ -181,10 +181,8 @@ class HyperGBMEstimator(Estimator):
         cat_cols += column_zero_or_positive_int32(X)
         return cat_cols
 
-    def fit(self, X, y, **kwargs):
+    def fit(self, X, y, use_cache=None, verbose=0, **kwargs):
         starttime = time.time()
-        use_cache = kwargs.get('use_cache')
-        verbose = kwargs.get('verbose')
         if verbose is None:
             verbose = 0
         if verbose > 0:
@@ -194,7 +192,7 @@ class HyperGBMEstimator(Estimator):
         eval_set = kwargs.get('eval_set')
         kwargs = self.fit_kwargs
         if kwargs.get('verbose') is None and str(type(self.gbm_model)).find('dask') < 0:
-            kwargs['verbose'] = 0
+            kwargs['verbose'] = verbose
         if verbose > 0:
             print(f'fit kwargs:{kwargs}')
 
@@ -205,7 +203,7 @@ class HyperGBMEstimator(Estimator):
                 X_eval, y_eval = eval_set
                 if verbose > 0:
                     print('estimator is transforming the eval set')
-                X_eval = self.transform_data(X_eval)
+                X_eval = self.transform_data(X_eval, use_cache=use_cache, verbose=verbose)
                 kwargs['eval_set'] = [(X_eval, y_eval)]
             elif isinstance(eval_set, list):
                 es = []
@@ -213,7 +211,7 @@ class HyperGBMEstimator(Estimator):
                     X_eval, y_eval = eval_set_
                     if verbose > 0:
                         print(f'estimator is transforming the eval set({i})')
-                    X_eval = self.transform_data(X_eval)
+                    X_eval = self.transform_data(X_eval, use_cache=use_cache, verbose=verbose)
                     es.append((X_eval, y_eval))
                     kwargs['eval_set'] = es
 
@@ -232,9 +230,7 @@ class HyperGBMEstimator(Estimator):
         if verbose > 0:
             print(f'taken {time.time() - starttime}s')
 
-    def predict(self, X, **kwargs):
-        use_cache = kwargs.get('use_cache')
-        verbose = kwargs.get('verbose')
+    def predict(self, X, use_cache=None, verbose=0, **kwargs):
         if verbose is None:
             verbose = 0
         X = self.transform_data(X, use_cache=use_cache, verbose=verbose)
@@ -246,11 +242,10 @@ class HyperGBMEstimator(Estimator):
             print(f'taken {time.time() - starttime}s')
         return preds
 
-    def predict_proba(self, X, **kwargs):
-        verbose = kwargs.get('verbose')
+    def predict_proba(self, X, use_cache=None, verbose=0, **kwargs):
         if verbose is None:
             verbose = 0
-        X = self.transform_data(X, **kwargs)
+        X = self.transform_data(X, use_cache=use_cache, verbose=verbose, **kwargs)
         starttime = time.time()
         if verbose > 0:
             print('estimator is predicting the data')
@@ -262,14 +257,14 @@ class HyperGBMEstimator(Estimator):
             print(f'taken {time.time() - starttime}s')
         return preds
 
-    def evaluate(self, X, y, metrics=None, **kwargs):
+    def evaluate(self, X, y, metrics=None, use_cache=None, verbose=0, **kwargs):
         if metrics is None:
             metrics = ['accuracy']
         if self.task != 'regression':
-            proba = self.predict_proba(X, **kwargs)
+            proba = self.predict_proba(X, use_cache=use_cache, verbose=verbose, **kwargs)
         else:
             proba = None
-        preds = self.predict(X, **kwargs)
+        preds = self.predict(X, use_cache=use_cache, verbose=verbose, **kwargs)
         scores = calc_score(y, preds, proba, metrics, self.task)
         return scores
 
