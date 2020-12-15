@@ -245,14 +245,14 @@ class HyperGBMEstimator(Estimator):
     def predict_proba(self, X, use_cache=None, verbose=0, **kwargs):
         if verbose is None:
             verbose = 0
-        X = self.transform_data(X, use_cache=use_cache, verbose=verbose, **kwargs)
+        X = self.transform_data(X, use_cache=use_cache, verbose=verbose)
         starttime = time.time()
         if verbose > 0:
             print('estimator is predicting the data')
         if hasattr(self.gbm_model, 'predict_proba'):
-            preds = self.gbm_model.predict_proba(X, **kwargs)
+            preds = self.gbm_model.predict_proba(X)
         else:
-            preds = self.gbm_model.predict(X, **kwargs)
+            preds = self.gbm_model.predict(X)
         if verbose > 0:
             print(f'taken {time.time() - starttime}s')
         return preds
@@ -261,10 +261,10 @@ class HyperGBMEstimator(Estimator):
         if metrics is None:
             metrics = ['accuracy']
         if self.task != 'regression':
-            proba = self.predict_proba(X, use_cache=use_cache, verbose=verbose, **kwargs)
+            proba = self.predict_proba(X, use_cache=use_cache, verbose=verbose)
         else:
             proba = None
-        preds = self.predict(X, use_cache=use_cache, verbose=verbose, **kwargs)
+        preds = self.predict(X, use_cache=use_cache, verbose=verbose)
         scores = calc_score(y, preds, proba, metrics, self.task)
         return scores
 
