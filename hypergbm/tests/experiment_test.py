@@ -98,19 +98,20 @@ class Test_HyperGBM():
     #     pipeline = experiment.run(use_cache=True, max_trails=20)
     #     mse2 = mse_scorer(pipeline, X_test, y_test)
     #     assert mse2
-    def test_cat(self):
-        X_train = pd.read_csv('/Users/jack/workspace/aps/notebook/hypergbm/datasets/cat/train.csv')
-        y_train = X_train.pop('target')
-        X_test = pd.read_csv('/Users/jack/workspace/aps/notebook/hypergbm/datasets/cat/test.csv')
-        submission = pd.read_csv('/Users/jack/workspace/aps/notebook/hypergbm/datasets/cat/sample_submission.csv')
-        # X_train.shape, y_train.shape, X_test.shape, submission.shape
+    def test_multiclass(self):
+        df = dsutils.load_glass_uci()
+        df.columns = [f'x_{c}' for c in df.columns.to_list()]
+        df.pop('x_0')
+        y = df.pop('x_10')
+        X_train, X_test, y_train, y_test = train_test_split(df, y, test_size=0.2, random_state=1, stratify=y)
+
         rs = RandomSearcher(lambda: search_space_general(early_stopping_rounds=20, verbose=0),
                             optimize_direction=OptimizeDirection.Maximize)
-        es = EarlyStoppingCallback(10, 'max')
+        es = EarlyStoppingCallback(20, 'max')
         hk = HyperGBM(rs, reward_metric='auc', cache_dir=f'hypergbm_cache', callbacks=[es])
 
         log_callback = ConsoleCallback()
-        experiment = CompeteExperiment(hk, X_train, y_train, X_test=X_test,
+        experiment = CompeteExperiment(hk, X_train, y_train, X_test, y_test,
                                        callbacks=[log_callback],
                                        scorer=get_scorer('roc_auc_ovr'),
                                        drop_feature_with_collinearity=False,
@@ -118,10 +119,40 @@ class Test_HyperGBM():
                                        mode='one-stage',
                                        n_est_feature_importance=5,
                                        importance_threshold=1e-5,
-                                       ensemble_size=5
+                                       ensemble_size=10
                                        )
-        pipeline = experiment.run(use_cache=True, max_trails=50)
-        assert pipeline
+        pipeline = experiment.run(use_cache=True, max_trails=3)
+        acc_scorer = get_scorer('accuracy')
+        acc = acc_scorer(pipeline, X_test, y_test)
+        assert acc
+        auc_scorer = get_scorer('roc_auc_ovo')
+        auc = auc_scorer(pipeline, X_test, y_test)
+        assert auc
+
+    # def test_cat(self):
+    #     X_train = pd.read_csv('/Users/jack/workspace/aps/notebook/hypergbm/datasets/cat/train.csv')
+    #     y_train = X_train.pop('target')
+    #     X_test = pd.read_csv('/Users/jack/workspace/aps/notebook/hypergbm/datasets/cat/test.csv')
+    #     submission = pd.read_csv('/Users/jack/workspace/aps/notebook/hypergbm/datasets/cat/sample_submission.csv')
+    #     # X_train.shape, y_train.shape, X_test.shape, submission.shape
+    #     rs = RandomSearcher(lambda: search_space_general(early_stopping_rounds=20, verbose=0),
+    #                         optimize_direction=OptimizeDirection.Maximize)
+    #     es = EarlyStoppingCallback(10, 'max')
+    #     hk = HyperGBM(rs, reward_metric='auc', cache_dir=f'hypergbm_cache', callbacks=[es])
+    #
+    #     log_callback = ConsoleCallback()
+    #     experiment = CompeteExperiment(hk, X_train, y_train, X_test=X_test,
+    #                                    callbacks=[log_callback],
+    #                                    scorer=get_scorer('roc_auc_ovr'),
+    #                                    drop_feature_with_collinearity=False,
+    #                                    drift_detection=True,
+    #                                    mode='one-stage',
+    #                                    n_est_feature_importance=5,
+    #                                    importance_threshold=1e-5,
+    #                                    ensemble_size=5
+    #                                    )
+    #     pipeline = experiment.run(use_cache=True, max_trails=50)
+    #     assert pipeline
 
     def test_exp(self):
         rs = RandomSearcher(search_space_general, optimize_direction=OptimizeDirection.Maximize)

@@ -12,7 +12,7 @@ import numpy as np
 
 def categorical_pipeline_simple(impute_strategy='constant', seq_no=0):
     pipeline = Pipeline([
-        # SimpleImputer(missing_values=np.nan, strategy=impute_strategy, name=f'categorical_imputer_{seq_no}'),
+        SimpleImputer(missing_values=np.nan, strategy=impute_strategy, name=f'categorical_imputer_{seq_no}'),
         SafeOrdinalEncoder(name=f'categorical_label_encoder_{seq_no}', dtype='int32')
         # MultiLabelEncoder(name=f'categorical_label_encoder_{seq_no}')
     ],

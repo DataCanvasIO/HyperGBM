@@ -294,11 +294,6 @@ class Test_CommonOps():
         assert list(df_1.columns) == ['a', 'e', 'f', 'b', 'c', 'd', 'l']
         assert df_1.shape == (3, 7)
 
-        col_num = column_number(df_1)
-        assert col_num == ['b', 'c', 'd', 'l']
-        col_cat = column_object_category_bool(df_1)
-        assert col_cat == ['a', 'e', 'f']
-
         space = get_space_num_cat_pipeline(default=None)
         space.random_sample()
         space, _ = space.compile_and_forward()
