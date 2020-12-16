@@ -224,8 +224,6 @@ class HyperGBMEstimator(Estimator):
             cat_cols = self.get_categorical_features(X)
             kwargs['cat_features'] = cat_cols
 
-        # print(X.dtypes)
-        # print(X.head(10))
         self.gbm_model.fit(X, y, **kwargs)
         if verbose > 0:
             print(f'taken {time.time() - starttime}s')
