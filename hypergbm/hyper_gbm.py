@@ -230,10 +230,20 @@ class HyperGBMEstimator(Estimator):
         if verbose > 0:
             print(f'taken {time.time() - starttime}s')
 
+    def _reorder_features_for_xgboost(self, X):
+        if is_xgboost_model(self.gbm_model):
+            booster = self.gbm_model._Booster
+            feature_names = booster.feature_names
+            # feature_types = booster.feature_types
+            return X[feature_names]
+        else:
+            return X
+
     def predict(self, X, use_cache=None, verbose=0, **kwargs):
         if verbose is None:
             verbose = 0
         X = self.transform_data(X, use_cache=use_cache, verbose=verbose)
+        X = self._reorder_features_for_xgboost(X)
         starttime = time.time()
         if verbose > 0:
             print('estimator is predicting the data')
@@ -246,6 +256,7 @@ class HyperGBMEstimator(Estimator):
         if verbose is None:
             verbose = 0
         X = self.transform_data(X, use_cache=use_cache, verbose=verbose)
+        X = self._reorder_features_for_xgboost(X)
         starttime = time.time()
         if verbose > 0:
             print('estimator is predicting the data')
@@ -488,3 +499,7 @@ def is_lightgbm_model(model):
 
 def is_catboost_model(model):
     return _is_any_class(model, {'CatBoostClassifier', 'CatBoostRegressor'})
+
+
+def is_xgboost_model(model):
+    return _is_any_class(model, {'XGBClassifier', 'XGBRegressor'})
