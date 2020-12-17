@@ -12,7 +12,7 @@ import numpy as np
 
 def categorical_pipeline_simple(impute_strategy='constant', seq_no=0):
     pipeline = Pipeline([
-        SimpleImputer(missing_values=np.nan, strategy=impute_strategy, name=f'categorical_imputer_{seq_no}'),
+        SimpleImputer(missing_values=None, strategy=impute_strategy, name=f'categorical_imputer_{seq_no}'),
         SafeOrdinalEncoder(name=f'categorical_label_encoder_{seq_no}', dtype='int32')
         # MultiLabelEncoder(name=f'categorical_label_encoder_{seq_no}')
     ],
@@ -37,7 +37,7 @@ def categorical_pipeline_complex(impute_strategy=None, svd_components=3, seq_no=
                                 keep_link=True)(onehot)
         return optional_svd
 
-    imputer = SimpleImputer(missing_values=np.nan, strategy=impute_strategy, name=f'categorical_imputer_{seq_no}')
+    imputer = SimpleImputer(missing_values=None, strategy=impute_strategy, name=f'categorical_imputer_{seq_no}')
     label_encoder = MultiLabelEncoder(name=f'categorical_label_encoder_{seq_no}')
     onehot = onehot_svd()
     le_or_onehot_pca = ModuleChoice([label_encoder, onehot], name=f'categorical_le_or_onehot_pca_{seq_no}')

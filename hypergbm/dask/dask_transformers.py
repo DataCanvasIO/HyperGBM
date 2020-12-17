@@ -7,9 +7,11 @@ import numpy as np
 from dask_ml import impute as dimp
 from dask_ml import preprocessing as dm_pre
 
-from hypergbm.pipeline import HyperTransformer, ComposeTransformer, PipelineOutput
+from hypergbm.pipeline import HyperTransformer
+from hypernets.utils import logging
 from tabular_toolbox import dask_ex as dex
-from tabular_toolbox import dataframe_mapper
+
+logger = logging.get_logger(__name__)
 
 
 class StandardScaler(HyperTransformer):
@@ -78,7 +80,7 @@ class MaxAbsScaler(HyperTransformer):
 class SimpleImputer(HyperTransformer):
     def __init__(self, missing_values=np.nan, strategy="mean", fill_value=None, verbose=0, copy=True,
                  add_indicator=False, space=None, name=None, **kwargs):
-        if missing_values is not None and missing_values != np.nan:
+        if missing_values != np.nan:
             kwargs['missing_values'] = missing_values
         if strategy is not None and strategy != "mean":
             kwargs['strategy'] = strategy
@@ -102,14 +104,13 @@ class MultiLabelEncoder(HyperTransformer):
 
 
 class OrdinalEncoder(HyperTransformer):
-    def __init__(self, categories='auto', dtype=np.float64, space=None,
-                 name=None, **kwargs):
-        if categories is not None and categories != 'auto':
-            kwargs['categories'] = categories
-        if dtype is not None and dtype != True:
-            kwargs['dtype'] = dtype
-
+    def __init__(self, space=None, name=None, **kwargs):
         HyperTransformer.__init__(self, dm_pre.OrdinalEncoder, space, name, **kwargs)
+
+
+class SafeOrdinalEncoder(HyperTransformer):
+    def __init__(self, space=None, name=None, **kwargs):
+        HyperTransformer.__init__(self, dex.SafeOrdinalEncoder, space, name, **kwargs)
 
 
 class TruncatedSVD(HyperTransformer):
@@ -129,29 +130,28 @@ class TruncatedSVD(HyperTransformer):
         HyperTransformer.__init__(self, dex.TruncatedSVD, space, name, **kwargs)
 
 
-class DataFrameMapper(ComposeTransformer):
-    def __init__(self, default=False, sparse=False, df_out=False, input_df=False, space=None, name=None, **hyperparams):
-        if default != False:
-            hyperparams['default'] = default
-        if sparse is not None and sparse != False:
-            hyperparams['sparse'] = sparse
-        if df_out is not None and df_out != False:
-            hyperparams['df_out'] = df_out
-        if input_df is not None and input_df != False:
-            hyperparams['input_df'] = input_df
+class CallableAdapterEncoder(HyperTransformer):
+    def __init__(self, fn, space=None, name=None,
+                 fit=False, fit_transform=False, transform=False, inverse_transform=False):
+        HyperTransformer.__init__(self, dex.CallableAdapterEncoder, space, name,
+                                  fn=fn,
+                                  fit=fit, fit_transform=fit_transform,
+                                  transform=transform, inverse_transform=inverse_transform)
 
-        ComposeTransformer.__init__(self, space, name, **hyperparams)
 
-    def compose(self):
-        inputs = self.space.get_inputs(self)
-        assert all([isinstance(m, PipelineOutput) for m in
-                    inputs]), 'The upstream module of `DataFrameMapper` must be `Pipeline`.'
-        transformers = []
-        next = None
-        for p in inputs:
-            next, (pipeline_name, transformer) = p.compose()
-            transformers.append((p.columns, transformer))
+class DataCacher(HyperTransformer):
+    def __init__(self, cache_dict, space=None, name=None, cache_key=None, remove_keys=None,
+                 fit=False, fit_transform=False, transform=False, inverse_transform=False):
+        HyperTransformer.__init__(self, dex.DataCacher, space, name,
+                                  cache_dict=cache_dict, cache_key=cache_key, remove_keys=remove_keys,
+                                  fit=fit, fit_transform=fit_transform,
+                                  transform=transform, inverse_transform=inverse_transform)
 
-        pv = self.param_values
-        ct = dataframe_mapper.DataFrameMapper(features=transformers, **pv)
-        return next, (self.name, ct)
+
+class CacheCleaner(HyperTransformer):
+    def __init__(self, cache_dict, space=None, name=None,
+                 fit=False, fit_transform=False, transform=False, inverse_transform=False):
+        HyperTransformer.__init__(self, dex.CacheCleaner, space, name,
+                                  cache_dict=cache_dict,
+                                  fit=fit, fit_transform=fit_transform,
+                                  transform=transform, inverse_transform=inverse_transform)

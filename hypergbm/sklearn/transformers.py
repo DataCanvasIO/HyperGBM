@@ -229,7 +229,7 @@ class PowerTransformer(HyperTransformer):
 class SimpleImputer(HyperTransformer):
     def __init__(self, missing_values=np.nan, strategy="mean", fill_value=None, verbose=0, copy=True,
                  add_indicator=False, space=None, name=None, **kwargs):
-        if missing_values is not None and missing_values != np.nan:
+        if missing_values != np.nan:
             kwargs['missing_values'] = missing_values
         if strategy is not None and strategy != "mean":
             kwargs['strategy'] = strategy
