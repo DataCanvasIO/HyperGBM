@@ -26,7 +26,7 @@ def default_transformer_decorator(transformer):
 def categorical_pipeline_simple(impute_strategy='constant', seq_no=0,
                                 decorate=default_transformer_decorator):
     pipeline = Pipeline([
-        decorate(tf.SimpleImputer(missing_values=None, strategy=impute_strategy,
+        decorate(tf.SimpleImputer(missing_values=np.nan, strategy=impute_strategy,
                                   name=f'categorical_imputer_{seq_no}', fill_value='')),
         decorate(tf.SafeOrdinalEncoder(name=f'categorical_label_encoder_{seq_no}'))
     ],
