@@ -23,9 +23,6 @@ class Test_HyperGBM():
                       cache_dir=f'{test_output_dir}/hypergbm_cache',
                       callbacks=[SummaryCallback(), FileLoggingCallback(rs, output_dir=f'{test_output_dir}/hyn_logs')])
 
-        df = dsutils.load_bank()
-        df.drop(['id'], axis=1, inplace=True)
-
         X_train, X_test, y_train, y_test = data_partition()
 
         hk.search(X_train, y_train, X_test, y_test, max_trails=3)

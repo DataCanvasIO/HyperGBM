@@ -130,7 +130,8 @@ class HyperGBMEstimator(Estimator):
             return pipeline
 
     def summary(self):
-        s = f"{self.data_pipeline.__repr__(1000000)}\r\n{self.gbm_model.__repr__()}"
+        s = f"{self.data_pipeline.__repr__(1000000)}"
+        # s = f"{self.data_pipeline.__repr__(1000000)}\r\n{self.gbm_model.__repr__()}"
         return s
 
     def transform_data(self, X, y=None, fit=False, use_cache=None, verbose=0):

@@ -97,8 +97,13 @@ class FeatureGenerationTransformer():
                          {c: variable_types.Datetime for c in self.datetime_cols})
 
         es = ft.EntitySet(id='es_hypernets_fit')
+
+        make_index = True
+        if self.ft_index in X.columns.to_list():
+            make_index = False
+
         es.entity_from_dataframe(entity_id='e_hypernets_ft', dataframe=X, variable_types=feature_type_dict,
-                                 make_index=True, index=self.ft_index)
+                                 make_index=make_index, index=self.ft_index)
         feature_matrix, feature_defs = ft.dfs(entityset=es, target_entity="e_hypernets_ft",
                                               ignore_variables={"e_hypernets_ft": []},
                                               return_variable_types="all",

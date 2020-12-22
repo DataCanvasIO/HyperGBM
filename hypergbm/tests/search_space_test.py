@@ -55,10 +55,17 @@ class Test_search_space():
                        'ID_numeric_pipeline_complex_0_output',
                        'ID_categorical_pipeline_simple_0_output',
                        'Module_DataFrameMapper_1',
+                       'ID_Module_Pipeline_2_input',
+                       'ID_Module_Pipeline_1_input',
+                       'Module_PolynomialFeatures_1',
+                       'ID_Module_Pipeline_1_output',
+                       'Module_DataFrameMapper_2',
+                       'ID_Module_Pipeline_2_output',
                        'Module_LightGBMEstimator_1']
-
-        next, (name, p) = space.Module_DataFrameMapper_1.compose()
+        next, (name1, p1) = space.Module_DataFrameMapper_1.compose()
+        next, (name2, p2) = space.Module_DataFrameMapper_2.compose()
         X, y = get_df()
-        df_1 = p.fit_transform(X, y)
+        df_1 = p1.fit_transform(X, y)
+        df_2 = p2.fit_transform(df_1)
         assert list(df_1.columns) == ['a', 'e', 'f', 'b', 'c', 'd', 'l']
         assert df_1.shape == (3, 7)
