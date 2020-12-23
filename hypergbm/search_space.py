@@ -50,13 +50,13 @@ def search_space_general(dataframe_mapper_default=False,
         union_pipeline = DataFrameMapper(default=dataframe_mapper_default, input_df=True, df_out=True,
                                          df_out_dtype_transforms=[(column_object, 'int')])([num_pipeline, cat_pipeline])
 
-        polynomial = Pipeline([PolynomialFeatures(
-            degree=Choice([2, 3], name='poly_fea_degree'),
-            interaction_only=Bool(name='poly_fea_interaction_only'),
-            include_bias=Bool(name='poly_fea_include_bias'))], columns=column_number)
-        poly_dm = DataFrameMapper(default=dataframe_mapper_default, input_df=True, df_out=True,
-                                  df_out_dtype_transforms=[(column_object, 'int')])([polynomial])
-        poly_pipeline = Pipeline(module_list=[poly_dm])(union_pipeline)
+        # polynomial = Pipeline([PolynomialFeatures(
+        #     degree=Choice([2, 3], name='poly_fea_degree'),
+        #     interaction_only=Bool(name='poly_fea_interaction_only'),
+        #     include_bias=Bool(name='poly_fea_include_bias'))], columns=column_number)
+        # poly_dm = DataFrameMapper(default=dataframe_mapper_default, input_df=True, df_out=True,
+        #                           df_out_dtype_transforms=[(column_object, 'int')])([polynomial])
+        # poly_pipeline = Pipeline(module_list=[poly_dm])(union_pipeline)
 
         lightgbm_init_kwargs = {
             'boosting_type': Choice(['gbdt', 'dart', 'goss']),
@@ -76,8 +76,8 @@ def search_space_general(dataframe_mapper_default=False,
             'max_depth': Choice([3, 5, 7, 10]),
             'n_estimators': Choice([10, 30, 50, 100, 200, 300]),
             'learning_rate': Choice([0.001, 0.01, 0.5, 0.1]),
-            # 'min_child_weight': Choice([1, 5, 10]),
-            # 'gamma': Choice([0.5, 1, 1.5, 2, 5]),
+            'min_child_weight': Choice([1, 5, 10]),
+            'gamma': Choice([0.5, 1, 1.5, 2, 5]),
             'reg_alpha': Choice([0.001, 0.01, 0.1, 1, 10, 100]),
             'reg_lambda': Choice([0.001, 0.01, 0.1, 0.5, 1]),
             # 'subsample': Choice([0.6, 0.8, 1.0]),
@@ -108,7 +108,7 @@ def search_space_general(dataframe_mapper_default=False,
         catboost_est = CatBoostEstimator(fit_kwargs=catboost_fit_kwargs, **catboost_init_kwargs)
         histgb_est = HistGBEstimator(fit_kwargs=histgb_fit_kwargs, **histgb_init_kwargs)
         # catboost_est
-        ModuleChoice([lightgbm_est, xgb_est, catboost_est], name='estimator_options')(poly_pipeline)
+        ModuleChoice([lightgbm_est, xgb_est, catboost_est], name='estimator_options')(union_pipeline)
         space.set_inputs(input)
     return space
 
