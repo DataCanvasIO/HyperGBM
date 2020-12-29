@@ -5,6 +5,8 @@
 
 import numpy as np
 from hypernets.core.search_space import ModuleSpace
+from sklearn.experimental import enable_hist_gradient_boosting
+from sklearn.ensemble import HistGradientBoostingRegressor, HistGradientBoostingClassifier
 
 
 class HyperEstimator(ModuleSpace):
@@ -30,6 +32,46 @@ class HyperEstimator(ModuleSpace):
 
     def _on_params_ready(self):
         pass
+
+
+class HistGradientBoostingClassifierWrapper(HistGradientBoostingClassifier):
+    def fit(self, X, y, sample_weight=None, **kwargs):
+        return super(HistGradientBoostingClassifierWrapper, self).fit(X, y, sample_weight)
+
+
+class HistGradientBoostingRegressorWrapper(HistGradientBoostingRegressor):
+    def fit(self, X, y, sample_weight=None, **kwargs):
+        return super(HistGradientBoostingRegressorWrapper, self).fit(X, y, sample_weight)
+
+
+class HistGBEstimator(HyperEstimator):
+    def __init__(self, fit_kwargs, loss='least_squares', learning_rate=0.1,
+                 max_leaf_nodes=31, max_depth=None,
+                 min_samples_leaf=20, l2_regularization=0., max_bins=255,
+                 space=None, name=None, **kwargs):
+        if loss is not None and loss != 'least_squares':
+            kwargs['loss'] = loss
+        if learning_rate is not None and learning_rate != 0.1:
+            kwargs['learning_rate'] = learning_rate
+        if min_samples_leaf is not None and min_samples_leaf != 20:
+            kwargs['min_samples_leaf'] = min_samples_leaf
+        if max_depth is not None:
+            kwargs['max_depth'] = max_depth
+        if max_leaf_nodes is not None and max_leaf_nodes != 31:
+            kwargs['max_leaf_nodes'] = max_leaf_nodes
+        if max_bins is not None and max_bins != 255:
+            kwargs['max_bins'] = max_bins
+        if l2_regularization is not None and l2_regularization != 0.:
+            kwargs['l2_regularization'] = l2_regularization
+
+        HyperEstimator.__init__(self, fit_kwargs, space, name, **kwargs)
+
+    def _build_estimator(self, task, kwargs):
+        if task == 'regression':
+            lgbm = HistGradientBoostingRegressorWrapper(**kwargs)
+        else:
+            lgbm = HistGradientBoostingClassifierWrapper(**kwargs)
+        return lgbm
 
 
 class LightGBMEstimator(HyperEstimator):
@@ -86,6 +128,21 @@ class LightGBMEstimator(HyperEstimator):
 
     def _build_estimator(self, task, kwargs):
         import lightgbm
+        if task == 'regression':
+            lgbm = lightgbm.LGBMRegressor(**kwargs)
+        else:
+            lgbm = lightgbm.LGBMClassifier(**kwargs)
+        return lgbm
+
+
+class LightGBMDaskEstimator(LightGBMEstimator):
+    def _build_estimator(self, task, kwargs):
+        # import lightgbm
+        import dask_lightgbm as lightgbm
+
+        if 'task' in kwargs:
+            kwargs.pop('task')
+
         if task == 'regression':
             lgbm = lightgbm.LGBMRegressor(**kwargs)
         else:

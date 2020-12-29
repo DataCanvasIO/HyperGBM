@@ -4,22 +4,23 @@ __author__ = 'yangjian'
 
 """
 
-from hypergbm.estimators import LightGBMEstimator, XGBoostEstimator, CatBoostEstimator
+from hypergbm.estimators import LightGBMEstimator, XGBoostEstimator, CatBoostEstimator, HistGBEstimator
 from hypergbm.feature_generators import CrossCategorical
 from hypergbm.pipeline import DataFrameMapper, Pipeline
 from hypergbm.sklearn.sklearn_ops import numeric_pipeline_simple, numeric_pipeline_complex, categorical_pipeline_simple, \
     categorical_pipeline_complex
-from hypergbm.sklearn.transformers import FeatureGenerationTransformer
+from hypergbm.sklearn.transformers import FeatureGenerationTransformer, PolynomialFeatures
 from hypernets.core.ops import ModuleChoice, HyperInput
-from hypernets.core.search_space import Choice, Real
+from hypernets.core.search_space import Choice, Real, Int, Bool
 from hypernets.core.search_space import HyperSpace
-from tabular_toolbox.column_selector import column_object, column_exclude_datetime
+from tabular_toolbox.column_selector import column_object, column_exclude_datetime, column_number
 
 
 def search_space_general(dataframe_mapper_default=False,
                          lightgbm_fit_kwargs=None,
                          xgb_fit_kwargs=None,
                          catboost_fit_kwargs=None,
+                         histgb_fit_kwargs=None,
                          cat_pipeline_mode='simple',
                          task=None,
                          **kwargs):
@@ -29,10 +30,13 @@ def search_space_general(dataframe_mapper_default=False,
         xgb_fit_kwargs = {}
     if catboost_fit_kwargs is None:
         catboost_fit_kwargs = {}
+    if histgb_fit_kwargs is None:
+        histgb_fit_kwargs = {}
 
     lightgbm_fit_kwargs.update(kwargs)
     xgb_fit_kwargs.update(kwargs)
-    catboost_fit_kwargs.update((kwargs))
+    catboost_fit_kwargs.update(kwargs)
+    histgb_fit_kwargs.update(kwargs)
 
     space = HyperSpace()
     with space.as_default():
@@ -46,56 +50,76 @@ def search_space_general(dataframe_mapper_default=False,
         union_pipeline = DataFrameMapper(default=dataframe_mapper_default, input_df=True, df_out=True,
                                          df_out_dtype_transforms=[(column_object, 'int')])([num_pipeline, cat_pipeline])
 
+        # polynomial = Pipeline([PolynomialFeatures(
+        #     degree=Choice([2, 3], name='poly_fea_degree'),
+        #     interaction_only=Bool(name='poly_fea_interaction_only'),
+        #     include_bias=Bool(name='poly_fea_include_bias'))], columns=column_number)
+        # poly_dm = DataFrameMapper(default=dataframe_mapper_default, input_df=True, df_out=True,
+        #                           df_out_dtype_transforms=[(column_object, 'int')])([polynomial])
+        # poly_pipeline = Pipeline(module_list=[poly_dm])(union_pipeline)
+
         lightgbm_init_kwargs = {
             'boosting_type': Choice(['gbdt', 'dart', 'goss']),
-            'num_leaves': Choice([3, 5]),
-            'learning_rate': 0.1,
+            'num_leaves': Int(15, 513, 5),
+            'learning_rate': Choice([0.001, 0.01, 0.5, 0.1]),
             'n_estimators': Choice([10, 30, 50, 100, 200, 300, 500]),
-            'max_depth': Choice([3, 5, 7]),
-            'reg_alpha': Choice([1e-2, 0.1, 1, 100]),
-            'reg_lambda': Choice([1e-2, 0.1, 1, 100]),
+            'max_depth': Choice([3, 5, 7, 10]),
+            'reg_alpha': Choice([0.001, 0.01, 0.1, 1, 10, 100]),
+            'reg_lambda': Choice([0.001, 0.01, 0.1, 0.5, 1]),
             # 'class_weight': 'balanced',
             # subsample_for_bin = 200000, objective = None, class_weight = None,
             #  min_split_gain = 0., min_child_weight = 1e-3, min_child_samples = 20,
         }
-        lightgbm_est = LightGBMEstimator(fit_kwargs=lightgbm_fit_kwargs, **lightgbm_init_kwargs)
+
         xgb_init_kwargs = {
-            'max_depth': Choice([3, 5, 7]),
-            'n_estimators': Choice([10, 30, 50, 100, 200, 300, 500]),
-            'learning_rate': 0.1,
+            'booster': Choice(['gbtree', 'dart']),
+            'max_depth': Choice([3, 5, 7, 10]),
+            'n_estimators': Choice([10, 30, 50, 100, 200, 300]),
+            'learning_rate': Choice([0.001, 0.01, 0.5, 0.1]),
             'min_child_weight': Choice([1, 5, 10]),
             'gamma': Choice([0.5, 1, 1.5, 2, 5]),
-            'reg_alpha': Choice([1e-2, 0.1, 1, 100]),
-            'reg_lambda': Choice([1e-2, 0.1, 1, 100]),
-            'subsample': Choice([0.6, 0.8, 1.0]),
-            'colsample_bytree': Choice([0.6, 0.8, 1.0]),
+            'reg_alpha': Choice([0.001, 0.01, 0.1, 1, 10, 100]),
+            'reg_lambda': Choice([0.001, 0.01, 0.1, 0.5, 1]),
+            # 'subsample': Choice([0.6, 0.8, 1.0]),
+            # 'colsample_bytree': Choice([0.6, 0.8, 1.0]),
             # 'scale_pos_weight': Int(1,5,1),
         }
-        xgb_est = XGBoostEstimator(fit_kwargs=xgb_fit_kwargs, **xgb_init_kwargs)
 
         catboost_init_kwargs = {
             'silent': True,
-            'depth': Choice([3, 5, 7]),
-            'learning_rate': Real(0.001, 0.1, step=0.005),
-            'iterations': Choice([30, 50, 100, 200, 300, 500]),
-            'l2_leaf_reg': Choice([1, 3, 5, 7, 9]),
+            'depth': Choice([3, 5, 7, 10]),
+            'learning_rate': Choice([0.001, 0.01, 0.5, 0.1]),
+            'iterations': Choice([30, 50, 100, 200, 300]),
+            'l2_leaf_reg': Choice([None, 2, 10, 20, 30]),
+            # 'bagging_temperature': Choice([None, 0, 0.5, 1]),
+            # 'random_strength': Choice([None, 1, 5, 10]),
             # 'class_weights': [0.59,3.07],
             # 'border_count': Choice([5, 10, 20, 32, 50, 100, 200]),
         }
-        catboost_est = CatBoostEstimator(fit_kwargs=catboost_fit_kwargs, **catboost_init_kwargs)
+        histgb_init_kwargs = {
+            'learning_rate': Choice([0.01, 0.1, 0.2, 0.5, 0.8, 1]),
+            'min_samples_leaf': Choice([10, 20, 50, 80, 100, 150, 180, 200]),
+            'max_leaf_nodes': Int(15, 513, 5),
+            'l2_regularization': Choice([1e-10, 1e-8, 1e-6, 1e-5, 1e-3, 0.01, 0.1, 1])
+        }
 
-        ModuleChoice([catboost_est], name='estimator_options')(union_pipeline)
+        lightgbm_est = LightGBMEstimator(fit_kwargs=lightgbm_fit_kwargs, **lightgbm_init_kwargs)
+        xgb_est = XGBoostEstimator(fit_kwargs=xgb_fit_kwargs, **xgb_init_kwargs)
+        catboost_est = CatBoostEstimator(fit_kwargs=catboost_fit_kwargs, **catboost_init_kwargs)
+        histgb_est = HistGBEstimator(fit_kwargs=histgb_fit_kwargs, **histgb_init_kwargs)
+        # catboost_est
+        ModuleChoice([lightgbm_est, xgb_est, catboost_est], name='estimator_options')(union_pipeline)
         space.set_inputs(input)
     return space
 
 
 def search_space_feature_gen(dataframe_mapper_default=False,
-                             eval_set=None,
                              early_stopping_rounds=None,
                              lightgbm_fit_kwargs=None,
                              xgb_fit_kwargs=None,
                              catboost_fit_kwargs=None,
-                             task=None):
+                             task=None,
+                             **kwargs):
     if lightgbm_fit_kwargs is None:
         lightgbm_fit_kwargs = {}
     if xgb_fit_kwargs is None:
@@ -103,10 +127,9 @@ def search_space_feature_gen(dataframe_mapper_default=False,
     if catboost_fit_kwargs is None:
         catboost_fit_kwargs = {}
 
-    if eval_set is not None:
-        lightgbm_fit_kwargs['eval_set'] = eval_set
-        xgb_fit_kwargs['eval_set'] = eval_set
-        catboost_fit_kwargs['eval_set'] = eval_set
+    lightgbm_fit_kwargs.update(kwargs)
+    xgb_fit_kwargs.update(kwargs)
+    catboost_fit_kwargs.update((kwargs))
 
     if early_stopping_rounds is not None:
         lightgbm_fit_kwargs['early_stopping_rounds'] = early_stopping_rounds

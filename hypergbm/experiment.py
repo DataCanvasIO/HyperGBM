@@ -6,6 +6,7 @@ __author__ = 'yangjian'
 import copy
 
 import numpy as np
+import pandas as pd
 from sklearn.metrics import get_scorer
 from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
@@ -30,7 +31,8 @@ class CompeteExperiment(Experiment):
                  mode='one-stage',
                  n_est_feature_importance=10,
                  importance_threshold=1e-5,
-                 ensemble_size=7, ):
+                 ensemble_size=7,
+                 feature_generation=False,):
         super(CompeteExperiment, self).__init__(hyper_model, X_train, y_train, X_eval=X_eval, y_eval=y_eval,
                                                 X_test=X_test, eval_size=eval_size, task=task,
                                                 callbacks=callbacks,
@@ -53,6 +55,7 @@ class CompeteExperiment(Experiment):
         self.output_feature_importances_ = None
         self.first_hyper_model = None
         self.second_hyper_model = None
+        self.feature_generation = feature_generation
 
     def data_split(self, X_train, y_train, X_test, X_eval=None, y_eval=None, eval_size=0.3):
 
@@ -184,7 +187,13 @@ class CompeteExperiment(Experiment):
             self.step_start('ensemble')
             best_trials = self.hyper_model.get_top_trails(self.ensemble_size)
             estimators = []
+
+            X_all = pd.concat([X_train, X_eval], axis=0)
+            y_all = pd.concat([y_train, y_eval], axis=0)
+
             for trail in best_trials:
+                # estimator = self.hyper_model.final_train(trail.space_sample, X_all, y_all, **kwargs)
+                # estimators.append(estimator)
                 estimators.append(self.hyper_model.load_estimator(trail.model_file))
             ensemble = GreedyEnsemble(self.task, estimators, scoring=self.scorer, ensemble_size=self.ensemble_size)
             ensemble.fit(X_eval, y_eval)

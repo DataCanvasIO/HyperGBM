@@ -12,6 +12,17 @@ from tabular_toolbox.sklearn_ex import FloatOutputImputer
 from .. import feature_generators
 
 
+class LogStandardScaler(HyperTransformer):
+    def __init__(self, copy=True, with_mean=True, with_std=True, space=None, name=None, **kwargs):
+        if copy is not None and copy != True:
+            kwargs['copy'] = copy
+        if with_mean is not None and with_mean != True:
+            kwargs['with_mean'] = with_mean
+        if with_std is not None and with_std != True:
+            kwargs['with_std'] = with_std
+        HyperTransformer.__init__(self, sklearn_ex.LogStandardScaler, space, name, **kwargs)
+
+
 class StandardScaler(HyperTransformer):
     def __init__(self, copy=True, with_mean=True, with_std=True, space=None, name=None, **kwargs):
         if copy is not None and copy != True:
