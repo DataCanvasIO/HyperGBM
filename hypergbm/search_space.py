@@ -27,7 +27,7 @@ def search_space_general(dataframe_mapper_default=False,
     if lightgbm_fit_kwargs is None:
         lightgbm_fit_kwargs = {}
     if xgb_fit_kwargs is None:
-        xgb_fit_kwargs = {}
+        xgb_fit_kwargs = {'eval_metric':'logloss'}
     if catboost_fit_kwargs is None:
         catboost_fit_kwargs = {}
     if histgb_fit_kwargs is None:

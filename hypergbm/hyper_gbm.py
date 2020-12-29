@@ -150,22 +150,22 @@ class HyperGBMEstimator(Estimator):
             if fit:
                 if self.data_cleaner is not None:
                     if verbose > 0:
-                        print('clean data')
+                        logger.info('clean data')
                     X, y = self.data_cleaner.fit_transform(X, y)
                 if verbose > 0:
-                    print('fit and transform')
+                    logger.info('fit and transform')
                 X = self.data_pipeline.fit_transform(X, y)
             else:
                 if self.data_cleaner is not None:
                     if verbose > 0:
-                        print('clean data')
+                        logger.info('clean data')
                     X = self.data_cleaner.transform(X)
                 if verbose > 0:
-                    print('transform')
+                    logger.info('transform')
                 X = self.data_pipeline.transform(X)
 
             if verbose > 0:
-                print(f'taken {time.time() - starttime}s')
+                logger.info(f'taken {time.time() - starttime}s')
             if use_cache:
                 self._save_X_to_cache(X, data_path, pipeline_path)
         else:
@@ -187,7 +187,7 @@ class HyperGBMEstimator(Estimator):
         if verbose is None:
             verbose = 0
         if verbose > 0:
-            print('estimator is transforming the train set')
+            logger.info('estimator is transforming the train set')
         X = self.transform_data(X, y, fit=True, use_cache=use_cache, verbose=verbose)
 
         eval_set = kwargs.get('eval_set')
@@ -195,7 +195,7 @@ class HyperGBMEstimator(Estimator):
         if kwargs.get('verbose') is None and str(type(self.gbm_model)).find('dask') < 0:
             kwargs['verbose'] = verbose
         if verbose > 0:
-            print(f'fit kwargs:{kwargs}')
+            logger.info(f'fit kwargs:{kwargs}')
 
         if eval_set is None:
             eval_set = kwargs.get('eval_set')
@@ -203,7 +203,7 @@ class HyperGBMEstimator(Estimator):
             if isinstance(eval_set, tuple):
                 X_eval, y_eval = eval_set
                 if verbose > 0:
-                    print('estimator is transforming the eval set')
+                    logger.info('estimator is transforming the eval set')
                 X_eval = self.transform_data(X_eval, use_cache=use_cache, verbose=verbose)
                 kwargs['eval_set'] = [(X_eval, y_eval)]
             elif isinstance(eval_set, list):
@@ -211,13 +211,13 @@ class HyperGBMEstimator(Estimator):
                 for i, eval_set_ in enumerate(eval_set):
                     X_eval, y_eval = eval_set_
                     if verbose > 0:
-                        print(f'estimator is transforming the eval set({i})')
+                        logger.info(f'estimator is transforming the eval set({i})')
                     X_eval = self.transform_data(X_eval, use_cache=use_cache, verbose=verbose)
                     es.append((X_eval, y_eval))
                     kwargs['eval_set'] = es
 
         if verbose > 0:
-            print('estimator is fitting the data')
+            logger.info('estimator is fitting the data')
         if is_lightgbm_model(self.gbm_model):
             cat_cols = self.get_categorical_features(X)
             kwargs['categorical_feature'] = cat_cols
@@ -227,7 +227,7 @@ class HyperGBMEstimator(Estimator):
 
         self.gbm_model.fit(X, y, **kwargs)
         if verbose > 0:
-            print(f'taken {time.time() - starttime}s')
+            logger.info(f'taken {time.time() - starttime}s')
 
     def _reorder_features_for_xgboost(self, X):
         if is_xgboost_model(self.gbm_model):
@@ -245,10 +245,10 @@ class HyperGBMEstimator(Estimator):
         X = self._reorder_features_for_xgboost(X)
         starttime = time.time()
         if verbose > 0:
-            print('estimator is predicting the data')
+            logger.info('estimator is predicting the data')
         preds = self.gbm_model.predict(X, **kwargs)
         if verbose > 0:
-            print(f'taken {time.time() - starttime}s')
+            logger.info(f'taken {time.time() - starttime}s')
         return preds
 
     def predict_proba(self, X, use_cache=None, verbose=0, **kwargs):
@@ -258,13 +258,13 @@ class HyperGBMEstimator(Estimator):
         X = self._reorder_features_for_xgboost(X)
         starttime = time.time()
         if verbose > 0:
-            print('estimator is predicting the data')
+            logger.info('estimator is predicting the data')
         if hasattr(self.gbm_model, 'predict_proba'):
             preds = self.gbm_model.predict_proba(X)
         else:
             preds = self.gbm_model.predict(X)
         if verbose > 0:
-            print(f'taken {time.time() - starttime}s')
+            logger.info(f'taken {time.time() - starttime}s')
         return preds
 
     def evaluate(self, X, y, metrics=None, use_cache=None, verbose=0, **kwargs):

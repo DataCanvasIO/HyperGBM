@@ -17,6 +17,7 @@ from tabular_toolbox.data_cleaner import DataCleaner
 from tabular_toolbox.ensemble import GreedyEnsemble
 from tabular_toolbox.feature_selection import select_by_multicollinearity
 from .feature_importance import feature_importance_batch
+from IPython.display import display, clear_output, update_display, display_markdown
 
 
 class CompeteExperiment(Experiment):
@@ -32,7 +33,7 @@ class CompeteExperiment(Experiment):
                  n_est_feature_importance=10,
                  importance_threshold=1e-5,
                  ensemble_size=7,
-                 feature_generation=False,):
+                 feature_generation=False, ):
         super(CompeteExperiment, self).__init__(hyper_model, X_train, y_train, X_eval=X_eval, y_eval=y_eval,
                                                 X_test=X_test, eval_size=eval_size, task=task,
                                                 callbacks=callbacks,
@@ -75,6 +76,17 @@ class CompeteExperiment(Experiment):
         max_trails :
 
         """
+        display_markdown('### Input Data', raw=True)
+        display(pd.DataFrame([(X_train.shape,
+                               y_train.shape,
+                               X_eval.shape if X_eval is not None else None,
+                               y_eval.shape if y_eval is not None else None,
+                               X_test.shape if X_test is not None else None)],
+                             columns=['X_train.shape',
+                                      'y_train.shape',
+                                      'X_eval.shape',
+                                      'y_eval.shape',
+                                      'X_test.shape']), display_id='output_intput')
 
         self.step_start('clean and split data')
         # 1. Clean Data
@@ -104,31 +116,55 @@ class CompeteExperiment(Experiment):
                               'y_eval.shape': y_eval.shape,
                               'X_test.shape': None if X_test is None else X_test.shape})
 
+        display_markdown('### Data Cleaner', raw=True)
+
+        display(self.data_cleaner, display_id='output_cleaner_info1')
+        display_markdown('### Train set & Eval set', raw=True)
+        display(pd.DataFrame([(X_train.shape,
+                               y_train.shape,
+                               X_eval.shape if X_eval is not None else None,
+                               y_eval.shape if y_eval is not None else None,
+                               X_test.shape if X_test is not None else None)],
+                             columns=['X_train.shape',
+                                      'y_train.shape',
+                                      'X_eval.shape',
+                                      'y_eval.shape',
+                                      'X_test.shape']), display_id='output_cleaner_info2')
+
         original_features = X_train.columns.to_list()
         self.selected_features_ = original_features
 
         # 2. Drop features with multicollinearity
         if self.drop_feature_with_collinearity:
+            display_markdown('### Drop features with collinearity', raw=True)
+
             self.step_start('drop features with multicollinearity')
-            corr_linkage, selected, unselected = select_by_multicollinearity(X_train)
+            corr_linkage, remained, dropped = select_by_multicollinearity(X_train)
             self.output_multi_collinearity_ = {
                 'corr_linkage': corr_linkage,
-                'selected': selected,
-                'unselected': unselected
+                'remained': remained,
+                'dropped': dropped
             }
             self.step_progress('calc correlation')
 
-            self.selected_features_ = selected
+            self.selected_features_ = remained
             X_train = X_train[self.selected_features_]
             X_eval = X_eval[self.selected_features_]
             X_test = X_test[self.selected_features_]
             self.step_progress('drop features')
             self.step_end(output=self.output_multi_collinearity_)
+            # print(self.output_multi_collinearity_)
+            display(
+                pd.DataFrame([(k, v) for k, v in self.output_multi_collinearity_.items()], columns=['key', 'value']),
+                display_id='output_drop_feature_with_collinearity')
 
         # 3. Shift detection
         if self.drift_detection and self.X_test is not None:
+            display_markdown('### Drift detection', raw=True)
+
             self.step_start('detect drifting')
-            features, history = dd.feature_selection(X_train, X_test)
+            features, history, scores = dd.feature_selection(X_train, X_test)
+
             self.output_drift_detection_ = {'no_drift_features': features, 'history': history}
             self.selected_features_ = features
             X_train = X_train[self.selected_features_]
@@ -136,9 +172,12 @@ class CompeteExperiment(Experiment):
             X_test = X_test[self.selected_features_]
             self.step_end(output=self.output_drift_detection_)
 
+            display(pd.DataFrame((('no drift features', features), ('history', history), ('drift score', scores)),
+                                 columns=['key', 'value']), display_id='output_drift_detection')
         # 4. Baseline search
         self.first_hyper_model = copy.deepcopy(hyper_model)
         self.step_start('first stage search')
+        display_markdown('### Pipeline search', raw=True)
 
         kwargs['eval_set'] = (X_eval, y_eval)
 
@@ -149,6 +188,8 @@ class CompeteExperiment(Experiment):
         if self.mode == 'two-stage':
             # 5. Feature importance evaluation
             self.step_start('evaluate feature importance')
+            display_markdown('### Evaluate feature importance', raw=True)
+
             best_trials = self.hyper_model.get_top_trails(self.n_est_feature_importance)
             estimators = []
             for trail in best_trials:
@@ -157,6 +198,13 @@ class CompeteExperiment(Experiment):
 
             importances = feature_importance_batch(estimators, X_eval, y_eval, self.scorer,
                                                    n_repeats=5)
+            display_markdown('#### importances', raw=True)
+
+            display(pd.DataFrame(
+                zip(importances['columns'], importances['importances_mean'], importances['importances_std']),
+                columns=['feature', 'importance', 'std']))
+            display_markdown('#### feature selection', raw=True)
+
             feature_index = np.argwhere(importances.importances_mean < self.importance_threshold)
             selected_features = [feat for i, feat in enumerate(X_train.columns.to_list()) if i not in feature_index]
             unselected_features = list(set(X_train.columns.to_list()) - set(selected_features))
@@ -173,8 +221,13 @@ class CompeteExperiment(Experiment):
             self.step_progress('drop features')
             self.step_end(output=self.output_feature_importances_)
 
+            display(pd.DataFrame([('Selected', selected_features), ('Unselected', unselected_features)],
+                                 columns=['key', 'value']))
+
             # 6. Final search
             self.step_start('two stage search')
+            display_markdown('### Pipeline search stage 2', raw=True)
+
             self.second_hyper_model = copy.deepcopy(hyper_model)
 
             kwargs['eval_set'] = (X_eval, y_eval)
@@ -185,6 +238,8 @@ class CompeteExperiment(Experiment):
         # 7. Ensemble
         if self.ensemble_size > 1:
             self.step_start('ensemble')
+            display_markdown('### Ensemble', raw=True)
+
             best_trials = self.hyper_model.get_top_trails(self.ensemble_size)
             estimators = []
 
@@ -199,6 +254,7 @@ class CompeteExperiment(Experiment):
             ensemble.fit(X_eval, y_eval)
             self.estimator = ensemble
             self.step_end(output={'ensemble': ensemble})
+            display(ensemble)
         else:
             self.step_start('load estimator')
             self.estimator = self.hyper_model.load_estimator(self.hyper_model.get_best_trail().model_file)
@@ -208,7 +264,11 @@ class CompeteExperiment(Experiment):
         self.data_cleaner.append_drop_columns(droped_features)
         # 8. Compose pipeline
         self.step_start('compose pipeline')
+        display_markdown('### Compose pipeline', raw=True)
+
         pipeline = Pipeline([('data_cleaner', self.data_cleaner), ('estimator', self.estimator)])
         self.step_end()
+
+        display_markdown('### Finished', raw=True)
         # 9. Save model
         return pipeline
