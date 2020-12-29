@@ -8,6 +8,7 @@ from sklearn import impute, preprocessing as sk_pre, decomposition
 
 from hypergbm.pipeline import HyperTransformer
 from tabular_toolbox import sklearn_ex
+from tabular_toolbox.sklearn_ex import FloatOutputImputer
 from .. import feature_generators
 
 
@@ -228,7 +229,7 @@ class PowerTransformer(HyperTransformer):
 
 class SimpleImputer(HyperTransformer):
     def __init__(self, missing_values=np.nan, strategy="mean", fill_value=None, verbose=0, copy=True,
-                 add_indicator=False, space=None, name=None, **kwargs):
+                 add_indicator=False, space=None, name=None, force_output_as_float=False, **kwargs):
         if missing_values != np.nan:
             kwargs['missing_values'] = missing_values
         if strategy is not None and strategy != "mean":
@@ -242,7 +243,10 @@ class SimpleImputer(HyperTransformer):
         if add_indicator is not None and add_indicator != False:
             kwargs['add_indicator'] = add_indicator
 
-        HyperTransformer.__init__(self, impute.SimpleImputer, space, name, **kwargs)
+        if force_output_as_float is True:
+            HyperTransformer.__init__(self, FloatOutputImputer, space, name, **kwargs)
+        else:
+            HyperTransformer.__init__(self, impute.SimpleImputer, space, name, **kwargs)
 
 
 class PCA(HyperTransformer):

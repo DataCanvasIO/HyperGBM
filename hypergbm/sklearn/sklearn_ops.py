@@ -67,7 +67,7 @@ def numeric_pipeline_complex(impute_strategy=None, seq_no=0):
     # reduce_skewness_kurtosis_optional = Optional(reduce_skewness_kurtosis, keep_link=True,
     #                                             name=f'numeric_reduce_skewness_kurtosis_optional_{seq_no}')
 
-    imputer = SimpleImputer(missing_values=np.nan, strategy=impute_strategy, name=f'numeric_imputer_{seq_no}')
+    imputer = SimpleImputer(missing_values=np.nan, strategy=impute_strategy, name=f'numeric_imputer_{seq_no}', force_output_as_float=True)
     scaler_options = ModuleChoice(
         [
             StandardScaler(name=f'numeric_standard_scaler_{seq_no}'),

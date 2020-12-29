@@ -84,7 +84,7 @@ def search_space_general(dataframe_mapper_default=False,
         }
         catboost_est = CatBoostEstimator(fit_kwargs=catboost_fit_kwargs, **catboost_init_kwargs)
 
-        ModuleChoice([xgb_est, catboost_est, lightgbm_est], name='estimator_options')(union_pipeline)
+        ModuleChoice([catboost_est], name='estimator_options')(union_pipeline)
         space.set_inputs(input)
     return space
 
