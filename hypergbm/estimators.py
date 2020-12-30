@@ -103,12 +103,16 @@ class HyperEstimator(ModuleSpace):
         self.estimator = None
         self.cv = cv
         self.num_folds = num_folds
+        self.class_balancing = False
 
     def _build_estimator(self, task, kwargs):
         raise NotImplementedError
 
     def build_estimator(self, task):
         pv = self.param_values
+        if pv.get('class_balancing') is not None:
+            self.class_balancing = pv.pop('class_balancing')
+
         self.estimator = self._build_estimator(task, pv)
 
     def _compile(self):

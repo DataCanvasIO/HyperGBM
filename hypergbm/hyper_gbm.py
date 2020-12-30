@@ -10,6 +10,7 @@ import time
 import numpy as np
 import pandas as pd
 from sklearn import pipeline as sk_pipeline
+from sklearn.utils import class_weight
 
 from hypergbm.pipeline import ComposeTransformer
 from hypernets.model.estimator import Estimator
@@ -71,6 +72,7 @@ class HyperGBMEstimator(Estimator):
         self.data_cleaner = None
         self.pipeline_signature = None
         self.fit_kwargs = None
+        self.class_balancing = None
         self._build_model(space_sample)
 
     @property
@@ -89,6 +91,7 @@ class HyperGBMEstimator(Estimator):
         if outputs[0].estimator is None:
             outputs[0].build_estimator(self.task)
         self.gbm_model = outputs[0].estimator
+        self.class_balancing = outputs[0].class_balancing
         self.fit_kwargs = outputs[0].fit_kwargs
 
         pipeline_module = space.get_inputs(outputs[0])
@@ -225,9 +228,21 @@ class HyperGBMEstimator(Estimator):
             cat_cols = self.get_categorical_features(X)
             kwargs['cat_features'] = cat_cols
 
+        if self.task != 'regression' and self.class_balancing:
+            sample_weight = self._get_sample_weight(y)
+            kwargs['sample_weight'] = sample_weight
+
         self.gbm_model.fit(X, y, **kwargs)
         if verbose > 0:
             logger.info(f'taken {time.time() - starttime}s')
+
+    def _get_sample_weight(self, y):
+        unique = np.unique(y)
+        cw = list(class_weight.compute_class_weight('balanced', unique, y))
+        sample_weight = np.ones(y.shape)
+        for i, c in enumerate(unique):
+            sample_weight[y == c] *= cw[i]
+        return sample_weight
 
     def _reorder_features_for_xgboost(self, X):
         if is_xgboost_model(self.gbm_model):
