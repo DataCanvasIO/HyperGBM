@@ -33,7 +33,7 @@ class CompeteExperiment(Experiment):
                  n_est_feature_importance=10,
                  importance_threshold=1e-5,
                  ensemble_size=7,
-                 feature_generation=False, ):
+                 feature_generation=False, log_level=None ):
         super(CompeteExperiment, self).__init__(hyper_model, X_train, y_train, X_eval=X_eval, y_eval=y_eval,
                                                 X_test=X_test, eval_size=eval_size, task=task,
                                                 callbacks=callbacks,
@@ -76,6 +76,10 @@ class CompeteExperiment(Experiment):
         max_trails :
 
         """
+        # ignore warnings
+        import warnings
+        warnings.filterwarnings('ignore')
+
         display_markdown('### Input Data', raw=True)
         display(pd.DataFrame([(X_train.shape,
                                y_train.shape,

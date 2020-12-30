@@ -23,11 +23,13 @@ def search_space_general(dataframe_mapper_default=False,
                          histgb_fit_kwargs=None,
                          cat_pipeline_mode='simple',
                          task=None,
+                         cv=False,
+                         num_folds=3,
                          **kwargs):
     if lightgbm_fit_kwargs is None:
         lightgbm_fit_kwargs = {}
     if xgb_fit_kwargs is None:
-        xgb_fit_kwargs = {'eval_metric':'logloss'}
+        xgb_fit_kwargs = {'eval_metric': 'logloss'}
     if catboost_fit_kwargs is None:
         catboost_fit_kwargs = {}
     if histgb_fit_kwargs is None:
@@ -103,9 +105,11 @@ def search_space_general(dataframe_mapper_default=False,
             'l2_regularization': Choice([1e-10, 1e-8, 1e-6, 1e-5, 1e-3, 0.01, 0.1, 1])
         }
 
-        lightgbm_est = LightGBMEstimator(fit_kwargs=lightgbm_fit_kwargs, **lightgbm_init_kwargs)
-        xgb_est = XGBoostEstimator(fit_kwargs=xgb_fit_kwargs, **xgb_init_kwargs)
-        catboost_est = CatBoostEstimator(fit_kwargs=catboost_fit_kwargs, **catboost_init_kwargs)
+        lightgbm_est = LightGBMEstimator(fit_kwargs=lightgbm_fit_kwargs, cv=cv, num_folds=num_folds,
+                                         **lightgbm_init_kwargs)
+        xgb_est = XGBoostEstimator(fit_kwargs=xgb_fit_kwargs, cv=cv, num_folds=num_folds, **xgb_init_kwargs)
+        catboost_est = CatBoostEstimator(fit_kwargs=catboost_fit_kwargs, cv=cv, num_folds=num_folds,
+                                         **catboost_init_kwargs)
         histgb_est = HistGBEstimator(fit_kwargs=histgb_fit_kwargs, **histgb_init_kwargs)
         # catboost_est
         ModuleChoice([lightgbm_est, xgb_est, catboost_est], name='estimator_options')(union_pipeline)
