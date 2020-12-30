@@ -32,12 +32,16 @@ class CrossValidationEstimator():
             iterators = KFold(n_splits=self.num_folds, shuffle=self.shuffle, random_state=self.random_state)
 
         y = np.array(y)
+        sample_weight = kwargs.get('sample_weight')
 
         for n_fold, (train_idx, valid_idx) in enumerate(iterators.split(X, y)):
             x_train_fold, y_train_fold = X.iloc[train_idx], y[train_idx]
             x_val_fold, y_val_fold = X.iloc[valid_idx], y[valid_idx]
 
             kwargs['eval_set'] = [(x_val_fold, y_val_fold)]
+            if sample_weight is not None:
+                sw_fold = sample_weight[train_idx]
+                kwargs['sample_weight'] = sw_fold
             fold_est = copy.deepcopy(self.base_estimator)
             fold_est.fit(x_train_fold, y_train_fold, **kwargs)
             if self.classes_ is None:
@@ -110,7 +114,7 @@ class HyperEstimator(ModuleSpace):
 
     def build_estimator(self, task):
         pv = self.param_values
-        if pv.get('class_balancing') is not None:
+        if pv.__contains__('class_balancing'):
             self.class_balancing = pv.pop('class_balancing')
 
         self.estimator = self._build_estimator(task, pv)

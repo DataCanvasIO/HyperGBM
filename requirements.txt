@@ -10,3 +10,4 @@ dask
 dask-ml
 dask-lightgbm
 dask-xgboost
+imblearn

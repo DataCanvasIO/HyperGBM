@@ -22,6 +22,8 @@ from tabular_toolbox.metrics import calc_score
 from tabular_toolbox.persistence import read_parquet, to_parquet
 from tabular_toolbox.utils import hash_dataframe
 from .estimators import HyperEstimator
+from imblearn.over_sampling import RandomOverSampler, SMOTE, ADASYN
+from imblearn.under_sampling import RandomUnderSampler, NearMiss, TomekLinks, EditedNearestNeighbours
 
 try:
     import shap
@@ -32,6 +34,22 @@ except:
     has_shap = False
 
 logger = logging.get_logger(__name__)
+
+
+def get_sampler(sampler):
+    samplers = {'RandomOverSampler': RandomOverSampler,
+                'SMOTE': SMOTE,
+                'ADASYN': ADASYN,
+                'RandomUnderSampler': RandomUnderSampler,
+                'NearMiss': NearMiss,
+                'TomekLinks': TomekLinks,
+                'EditedNearestNeighbours': EditedNearestNeighbours
+                }
+    sampler_cls = samplers.get(sampler)
+    if sampler_cls is not None:
+        return sampler_cls()
+    else:
+        return None
 
 
 class HyperGBMExplainer:
@@ -228,9 +246,13 @@ class HyperGBMEstimator(Estimator):
             cat_cols = self.get_categorical_features(X)
             kwargs['cat_features'] = cat_cols
 
-        if self.task != 'regression' and self.class_balancing:
-            sample_weight = self._get_sample_weight(y)
-            kwargs['sample_weight'] = sample_weight
+        if self.task != 'regression' and self.class_balancing is not None:
+            sampler = get_sampler(self.class_balancing)
+            if sampler is None:
+                sample_weight = self._get_sample_weight(y)
+                kwargs['sample_weight'] = sample_weight
+            else:
+                X, y = sampler.fit_sample(X, y)
 
         self.gbm_model.fit(X, y, **kwargs)
         if verbose > 0:
