@@ -33,7 +33,9 @@ class CompeteExperiment(Experiment):
                  n_est_feature_importance=10,
                  importance_threshold=1e-5,
                  ensemble_size=7,
-                 feature_generation=False, log_level=None ):
+                 feature_generation=False,
+                 retrain_on_wholedata=False,
+                 log_level=None):
         super(CompeteExperiment, self).__init__(hyper_model, X_train, y_train, X_eval=X_eval, y_eval=y_eval,
                                                 X_test=X_test, eval_size=eval_size, task=task,
                                                 callbacks=callbacks,
@@ -57,6 +59,7 @@ class CompeteExperiment(Experiment):
         self.first_hyper_model = None
         self.second_hyper_model = None
         self.feature_generation = feature_generation
+        self.retrain_on_wholedata = retrain_on_wholedata
 
     def data_split(self, X_train, y_train, X_test, X_eval=None, y_eval=None, eval_size=0.3):
 
@@ -227,17 +230,19 @@ class CompeteExperiment(Experiment):
 
             display(pd.DataFrame([('Selected', selected_features), ('Unselected', unselected_features)],
                                  columns=['key', 'value']))
+            if len(unselected_features) > 0:
+                # 6. Final search
+                self.step_start('two stage search')
+                display_markdown('### Pipeline search stage 2', raw=True)
 
-            # 6. Final search
-            self.step_start('two stage search')
-            display_markdown('### Pipeline search stage 2', raw=True)
+                self.second_hyper_model = copy.deepcopy(hyper_model)
 
-            self.second_hyper_model = copy.deepcopy(hyper_model)
-
-            kwargs['eval_set'] = (X_eval, y_eval)
-            self.second_hyper_model.search(X_train, y_train, X_eval, y_eval, **kwargs)
-            self.hyper_model = self.second_hyper_model
-            self.step_end(output={'best_reward': self.hyper_model.get_best_trail().reward})
+                kwargs['eval_set'] = (X_eval, y_eval)
+                self.second_hyper_model.search(X_train, y_train, X_eval, y_eval, **kwargs)
+                self.hyper_model = self.second_hyper_model
+                self.step_end(output={'best_reward': self.hyper_model.get_best_trail().reward})
+            else:
+                display_markdown('### Skip pipeline search stage 2', raw=True)
 
         # 7. Ensemble
         if self.ensemble_size > 1:
@@ -246,33 +251,45 @@ class CompeteExperiment(Experiment):
 
             best_trials = self.hyper_model.get_top_trails(self.ensemble_size)
             estimators = []
-
-            X_all = pd.concat([X_train, X_eval], axis=0)
-            y_all = pd.concat([y_train, y_eval], axis=0)
-
-            for trail in best_trials:
-                # estimator = self.hyper_model.final_train(trail.space_sample, X_all, y_all, **kwargs)
-                # estimators.append(estimator)
-                estimators.append(self.hyper_model.load_estimator(trail.model_file))
+            if self.retrain_on_wholedata:
+                display_markdown('#### retrain on whole data', raw=True)
+                for trail in best_trials:
+                    X_all = pd.concat([X_train, X_eval], axis=0)
+                    y_all = pd.concat([y_train, y_eval], axis=0)
+                    estimator = self.hyper_model.final_train(trail.space_sample, X_all, y_all, **kwargs)
+                    estimators.append(estimator)
+            else:
+                for trail in best_trials:
+                    estimators.append(self.hyper_model.load_estimator(trail.model_file))
             ensemble = GreedyEnsemble(self.task, estimators, scoring=self.scorer, ensemble_size=self.ensemble_size)
             ensemble.fit(X_eval, y_eval)
             self.estimator = ensemble
             self.step_end(output={'ensemble': ensemble})
             display(ensemble)
         else:
+            display_markdown('### Load best estimator', raw=True)
+
             self.step_start('load estimator')
-            self.estimator = self.hyper_model.load_estimator(self.hyper_model.get_best_trail().model_file)
+            if self.retrain_on_wholedata:
+                display_markdown('#### retrain on whole data', raw=True)
+                trail = self.hyper_model.get_best_trail()
+                X_all = pd.concat([X_train, X_eval], axis=0)
+                y_all = pd.concat([y_train, y_eval], axis=0)
+                self.estimator = self.hyper_model.final_train(trail.space_sample, X_all, y_all, **kwargs)
+            else:
+                self.estimator = self.hyper_model.load_estimator(self.hyper_model.get_best_trail().model_file)
             self.step_end()
 
         droped_features = set(original_features) - set(self.selected_features_)
         self.data_cleaner.append_drop_columns(droped_features)
         # 8. Compose pipeline
         self.step_start('compose pipeline')
+
         display_markdown('### Compose pipeline', raw=True)
 
         pipeline = Pipeline([('data_cleaner', self.data_cleaner), ('estimator', self.estimator)])
         self.step_end()
-
+        print(pipeline)
         display_markdown('### Finished', raw=True)
         # 9. Save model
         return pipeline
