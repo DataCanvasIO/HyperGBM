@@ -22,6 +22,7 @@ from IPython.display import display, clear_output, update_display, display_markd
 
 class CompeteExperiment(Experiment):
     def __init__(self, hyper_model, X_train, y_train, X_eval=None, y_eval=None, X_test=None, eval_size=0.3,
+                 train_test_split_strategy=None,
                  task=None,
                  callbacks=None,
                  random_state=9527,
@@ -42,6 +43,7 @@ class CompeteExperiment(Experiment):
                                                 random_state=random_state)
         self.data_cleaner_args = data_cleaner_args if data_cleaner_args is not None else {}
         self.drop_feature_with_collinearity = drop_feature_with_collinearity
+        self.train_test_split_strategy = train_test_split_strategy
         self.drift_detection = drift_detection
         self.mode = mode
         self.n_est_feature_importance = n_est_feature_importance
@@ -102,20 +104,26 @@ class CompeteExperiment(Experiment):
         X_train, y_train = self.data_cleaner.fit_transform(X_train, y_train)
         self.step_progress('fit_transform train set')
 
+        if X_test is not None:
+            X_test = self.data_cleaner.transform(X_test)
+            self.step_progress('transform X_test')
+
         if X_eval is None or y_eval is None:
             stratify = y_train
-            if self.task == 'regression':
-                stratify = None
-            X_train, X_eval, y_train, y_eval = train_test_split(X_train, y_train, test_size=eval_size,
-                                                                random_state=self.random_state, stratify=stratify)
+            if self.train_test_split_strategy == 'adversarial_validation' and X_test is not None:
+                print('DriftDetector.train_test_split')
+                detector = dd.DriftDetector()
+                detector.fit(X_train, X_test)
+                X_train, X_eval, y_train, y_eval = detector.train_test_split(X_train, y_train, test_size=eval_size)
+            else:
+                if self.task == 'regression':
+                    stratify = None
+                X_train, X_eval, y_train, y_eval = train_test_split(X_train, y_train, test_size=eval_size,
+                                                                    random_state=self.random_state, stratify=stratify)
             self.step_progress('split into train set and eval set')
         else:
             X_eval, y_eval = self.data_cleaner.transform(X_eval, y_eval)
             self.step_progress('transform eval set')
-
-        if X_test is not None:
-            X_test = self.data_cleaner.transform(X_test)
-            self.step_progress('transform X_test')
 
         self.step_end(output={'X_train.shape': X_train.shape,
                               'y_train.shape': y_train.shape,

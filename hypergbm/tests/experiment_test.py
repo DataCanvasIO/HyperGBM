@@ -187,6 +187,7 @@ class Test_HyperGBM():
         X_train, X_test, y_train, y_test = train_test_split(df, y, test_size=0.3, random_state=9527)
         log_callback = LogCallback(output_elapsed=True)
         experiment = CompeteExperiment(hk, X_train, y_train, X_test=X_test,
+                                       train_test_split_strategy='adversarial_validation',
                                        callbacks=[log_callback],
                                        scorer=get_scorer('roc_auc_ovr'),
                                        drop_feature_with_collinearity=True,
