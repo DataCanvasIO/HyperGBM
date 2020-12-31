@@ -77,7 +77,7 @@ def numeric_pipeline_complex(impute_strategy=None, seq_no=0):
         ], name=f'numeric_or_scaler_{seq_no}'
     )
     scaler_optional = Optional(scaler_options, keep_link=True, name=f'numeric_scaler_optional_{seq_no}')
-    pipeline = Pipeline([imputer, scaler_optional],
+    pipeline = Pipeline([imputer],
                         name=f'numeric_pipeline_complex_{seq_no}',
                         columns=column_number_exclude_timedelta)
     return pipeline
