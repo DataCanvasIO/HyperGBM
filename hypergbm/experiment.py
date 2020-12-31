@@ -31,11 +31,13 @@ class CompeteExperiment(Experiment):
                  drop_feature_with_collinearity=False,
                  drift_detection=True,
                  mode='one-stage',
+                 two_stage_importance_selection=True,
                  n_est_feature_importance=10,
                  importance_threshold=1e-5,
                  ensemble_size=7,
                  pseudo_labeling=False,
                  pseudo_labeling_proba_threshold=0.8,
+                 pseudo_labeling_resplit=False,
                  feature_generation=False,
                  retrain_on_wholedata=False,
                  log_level=None):
@@ -54,10 +56,12 @@ class CompeteExperiment(Experiment):
         else:
             self.scorer = scorer
         self.importance_threshold = importance_threshold
+        self.two_stage_importance_selection = two_stage_importance_selection
         self.ensemble_size = ensemble_size
         self.selected_features_ = None
         self.pseudo_labeling = pseudo_labeling
         self.pseudo_labeling_proba_threshold = pseudo_labeling_proba_threshold
+        self.pseudo_labeling_resplit = pseudo_labeling_resplit
         self.output_drift_detection_ = None
         self.output_multi_collinearity_ = None
         self.output_feature_importances_ = None
@@ -257,45 +261,49 @@ class CompeteExperiment(Experiment):
                         print(proba)
 
             # 5. Feature importance evaluation
-            self.step_start('evaluate feature importance')
-            display_markdown('### Evaluate feature importance', raw=True)
+            unselected_features = []
+            selected_features = []
+            if self.two_stage_importance_selection:
+                self.step_start('evaluate feature importance')
+                display_markdown('### Evaluate feature importance', raw=True)
 
-            best_trials = self.hyper_model.get_top_trails(self.n_est_feature_importance)
-            estimators = []
-            for trail in best_trials:
-                estimators.append(self.hyper_model.load_estimator(trail.model_file))
-            self.step_progress('load estimators')
+                best_trials = self.hyper_model.get_top_trails(self.n_est_feature_importance)
+                estimators = []
+                for trail in best_trials:
+                    estimators.append(self.hyper_model.load_estimator(trail.model_file))
+                self.step_progress('load estimators')
 
-            importances = feature_importance_batch(estimators, X_eval, y_eval, self.scorer,
-                                                   n_repeats=5)
-            display_markdown('#### importances', raw=True)
+                importances = feature_importance_batch(estimators, X_eval, y_eval, self.scorer,
+                                                       n_repeats=5)
+                display_markdown('#### importances', raw=True)
 
-            display(pd.DataFrame(
-                zip(importances['columns'], importances['importances_mean'], importances['importances_std']),
-                columns=['feature', 'importance', 'std']))
-            display_markdown('#### feature selection', raw=True)
+                display(pd.DataFrame(
+                    zip(importances['columns'], importances['importances_mean'], importances['importances_std']),
+                    columns=['feature', 'importance', 'std']))
+                display_markdown('#### feature selection', raw=True)
 
-            feature_index = np.argwhere(importances.importances_mean < self.importance_threshold)
-            selected_features = [feat for i, feat in enumerate(X_train.columns.to_list()) if i not in feature_index]
-            unselected_features = list(set(X_train.columns.to_list()) - set(selected_features))
-            self.output_feature_importances_ = {
-                'importances': importances,
-                'selected_features': selected_features,
-                'unselected_features': unselected_features}
-            self.selected_features_ = selected_features
-            self.step_progress('calc importance')
+                feature_index = np.argwhere(importances.importances_mean < self.importance_threshold)
+                selected_features = [feat for i, feat in enumerate(X_train.columns.to_list()) if i not in feature_index]
+                unselected_features = list(set(X_train.columns.to_list()) - set(selected_features))
+                self.output_feature_importances_ = {
+                    'importances': importances,
+                    'selected_features': selected_features,
+                    'unselected_features': unselected_features}
+                self.selected_features_ = selected_features
+                self.step_progress('calc importance')
 
-            X_train = X_train[self.selected_features_]
-            X_eval = X_eval[self.selected_features_]
-            if X_test is not None:
-                X_test = X_test[self.selected_features_]
-            if X_pseudo is not None:
-                X_pseudo = X_pseudo[self.selected_features_]
-            self.step_progress('drop features')
-            self.step_end(output=self.output_feature_importances_)
+                X_train = X_train[self.selected_features_]
+                X_eval = X_eval[self.selected_features_]
+                if X_test is not None:
+                    X_test = X_test[self.selected_features_]
+                if X_pseudo is not None:
+                    X_pseudo = X_pseudo[self.selected_features_]
+                self.step_progress('drop features')
+                self.step_end(output=self.output_feature_importances_)
 
-            display(pd.DataFrame([('Selected', selected_features), ('Unselected', unselected_features)],
-                                 columns=['key', 'value']))
+                display(pd.DataFrame([('Selected', selected_features), ('Unselected', unselected_features)],
+                                     columns=['key', 'value']))
+
             if len(unselected_features) > 0 or X_pseudo is not None:
                 # 6. Final search
                 self.step_start('two stage search')
@@ -305,8 +313,31 @@ class CompeteExperiment(Experiment):
 
                 kwargs['eval_set'] = (X_eval, y_eval)
                 if X_pseudo is not None:
-                    X_train = pd.concat([X_train, X_pseudo], axis=0)
-                    y_train = pd.concat([y_train, pd.Series(y_pseudo)], axis=0)
+                    if self.pseudo_labeling_resplit:
+                        X_mix = pd.concat([X_train, X_pseudo, X_eval], axis=0)
+                        y_mix = pd.concat([y_train, pd.Series(y_pseudo), y_eval], axis=0)
+                        if self.task == 'regression':
+                            stratify = None
+                        else:
+                            stratify = y_mix
+                        X_train, X_eval, y_train, y_eval = train_test_split(X_mix, y_mix, test_size=eval_size,
+                                                                            random_state=self.random_state,
+                                                                            stratify=stratify)
+                    else:
+                        X_train = pd.concat([X_train, X_pseudo], axis=0)
+                        y_train = pd.concat([y_train, pd.Series(y_pseudo)], axis=0)
+
+                    display_markdown('#### Final train set & eval set', raw=True)
+                    display(pd.DataFrame([(X_train.shape,
+                                           y_train.shape,
+                                           X_eval.shape if X_eval is not None else None,
+                                           y_eval.shape if y_eval is not None else None,
+                                           X_test.shape if X_test is not None else None)],
+                                         columns=['X_train.shape',
+                                                  'y_train.shape',
+                                                  'X_eval.shape',
+                                                  'y_eval.shape',
+                                                  'X_test.shape']), display_id='output_cleaner_info2')
 
                 self.second_hyper_model.search(X_train, y_train, X_eval, y_eval, **kwargs)
                 self.hyper_model = self.second_hyper_model
