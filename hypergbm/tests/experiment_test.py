@@ -252,6 +252,7 @@ class Test_HyperGBM():
                                        drop_feature_with_collinearity=True,
                                        drift_detection=True,
                                        mode='two-stage',
+                                       pseudo_labeling=True,
                                        n_est_feature_importance=5,
                                        importance_threshold=1e-5,
                                        ensemble_size=5

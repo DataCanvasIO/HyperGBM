@@ -34,6 +34,8 @@ class CompeteExperiment(Experiment):
                  n_est_feature_importance=10,
                  importance_threshold=1e-5,
                  ensemble_size=7,
+                 pseudo_labeling=False,
+                 pseudo_labeling_proba_threshold=0.8,
                  feature_generation=False,
                  retrain_on_wholedata=False,
                  log_level=None):
@@ -54,7 +56,8 @@ class CompeteExperiment(Experiment):
         self.importance_threshold = importance_threshold
         self.ensemble_size = ensemble_size
         self.selected_features_ = None
-
+        self.pseudo_labeling = pseudo_labeling
+        self.pseudo_labeling_proba_threshold = pseudo_labeling_proba_threshold
         self.output_drift_detection_ = None
         self.output_multi_collinearity_ = None
         self.output_feature_importances_ = None
@@ -165,7 +168,8 @@ class CompeteExperiment(Experiment):
             self.selected_features_ = remained
             X_train = X_train[self.selected_features_]
             X_eval = X_eval[self.selected_features_]
-            X_test = X_test[self.selected_features_]
+            if X_test is not None:
+                X_test = X_test[self.selected_features_]
             self.step_progress('drop features')
             self.step_end(output=self.output_multi_collinearity_)
             # print(self.output_multi_collinearity_)
@@ -184,7 +188,8 @@ class CompeteExperiment(Experiment):
             self.selected_features_ = features
             X_train = X_train[self.selected_features_]
             X_eval = X_eval[self.selected_features_]
-            X_test = X_test[self.selected_features_]
+            if X_test is not None:
+                X_test = X_test[self.selected_features_]
             self.step_end(output=self.output_drift_detection_)
 
             display(pd.DataFrame((('no drift features', features), ('history', history), ('drift score', scores)),
@@ -201,6 +206,56 @@ class CompeteExperiment(Experiment):
         self.step_end(output={'best_reward': self.hyper_model.get_best_trail().reward})
 
         if self.mode == 'two-stage':
+            # 5. Pseudo Labeling
+            X_pseudo = None
+            y_pseudo = None
+            if self.task in ['binary', 'multiclass'] and self.pseudo_labeling and X_test is not None:
+                es = self.ensemble_size if self.ensemble_size > 0 else 10
+                best_trials = self.hyper_model.get_top_trails(es)
+                estimators = []
+                for trail in best_trials:
+                    estimators.append(self.hyper_model.load_estimator(trail.model_file))
+                ensemble = GreedyEnsemble(self.task, estimators, scoring=self.scorer, ensemble_size=es)
+                ensemble.fit(X_eval, y_eval)
+                proba = ensemble.predict_proba(X_test)[:, 1]
+                if self.task == 'binary':
+                    proba_threshold = self.pseudo_labeling_proba_threshold
+                    positive = np.argwhere(proba > proba_threshold).ravel()
+                    negative = np.argwhere(proba < 1 - proba_threshold).ravel()
+                    rate = 0.6
+                    X_test_p1 = X_test.iloc[positive]
+                    X_test_p2 = X_test.iloc[negative]
+                    y_p1 = np.ones(positive.shape, dtype='int64')
+                    y_p2 = np.zeros(negative.shape, dtype='int64')
+                    X_pseudo = pd.concat([X_test_p1, X_test_p2], axis=0)
+                    y_pseudo = np.concatenate([y_p1, y_p2], axis=0)
+                    if ensemble.classes_ is not None:
+                        y_pseudo = np.array(ensemble.classes_).take(y_pseudo, axis=0)
+
+                    display_markdown('### Pseudo label set', raw=True)
+                    display(pd.DataFrame([(X_pseudo.shape,
+                                           y_pseudo.shape,
+                                           len(positive),
+                                           len(negative),
+                                           proba_threshold)],
+                                         columns=['X_pseudo.shape',
+                                                  'y_pseudo.shape',
+                                                  'positive samples',
+                                                  'negative samples',
+                                                  'proba threshold']), display_id='output_presudo_labelings')
+                    try:
+                        import seaborn as sns
+                        import matplotlib.pyplot as plt
+                        # Draw Plot
+                        plt.figure(figsize=(8, 4), dpi=80)
+                        sns.kdeplot(proba, shade=True, color="g", label="Proba", alpha=.7, bw_adjust=0.01)
+                        # Decoration
+                        plt.title('Density Plot of Probability', fontsize=22)
+                        plt.legend()
+                        plt.show()
+                    except:
+                        print(proba)
+
             # 5. Feature importance evaluation
             self.step_start('evaluate feature importance')
             display_markdown('### Evaluate feature importance', raw=True)
@@ -232,13 +287,16 @@ class CompeteExperiment(Experiment):
 
             X_train = X_train[self.selected_features_]
             X_eval = X_eval[self.selected_features_]
-            X_test = X_test[self.selected_features_]
+            if X_test is not None:
+                X_test = X_test[self.selected_features_]
+            if X_pseudo is not None:
+                X_pseudo = X_pseudo[self.selected_features_]
             self.step_progress('drop features')
             self.step_end(output=self.output_feature_importances_)
 
             display(pd.DataFrame([('Selected', selected_features), ('Unselected', unselected_features)],
                                  columns=['key', 'value']))
-            if len(unselected_features) > 0:
+            if len(unselected_features) > 0 or X_pseudo is not None:
                 # 6. Final search
                 self.step_start('two stage search')
                 display_markdown('### Pipeline search stage 2', raw=True)
@@ -246,6 +304,10 @@ class CompeteExperiment(Experiment):
                 self.second_hyper_model = copy.deepcopy(hyper_model)
 
                 kwargs['eval_set'] = (X_eval, y_eval)
+                if X_pseudo is not None:
+                    X_train = pd.concat([X_train, X_pseudo], axis=0)
+                    y_train = pd.concat([y_train, pd.Series(y_pseudo)], axis=0)
+
                 self.second_hyper_model.search(X_train, y_train, X_eval, y_eval, **kwargs)
                 self.hyper_model = self.second_hyper_model
                 self.step_end(output={'best_reward': self.hyper_model.get_best_trail().reward})
