@@ -19,6 +19,8 @@ from tabular_toolbox.feature_selection import select_by_multicollinearity
 from .feature_importance import feature_importance_batch
 from IPython.display import display, clear_output, update_display, display_markdown
 
+from hypernets.utils.common import isnotebook
+
 
 class CompeteExperiment(Experiment):
     def __init__(self, hyper_model, X_train, y_train, X_eval=None, y_eval=None, X_test=None, eval_size=0.3,
@@ -248,15 +250,18 @@ class CompeteExperiment(Experiment):
                                                   'negative samples',
                                                   'proba threshold']), display_id='output_presudo_labelings')
                     try:
-                        import seaborn as sns
-                        import matplotlib.pyplot as plt
-                        # Draw Plot
-                        plt.figure(figsize=(8, 4), dpi=80)
-                        sns.kdeplot(proba, shade=True, color="g", label="Proba", alpha=.7, bw_adjust=0.01)
-                        # Decoration
-                        plt.title('Density Plot of Probability', fontsize=22)
-                        plt.legend()
-                        plt.show()
+                        if isnotebook():
+                            import seaborn as sns
+                            import matplotlib.pyplot as plt
+                            # Draw Plot
+                            plt.figure(figsize=(8, 4), dpi=80)
+                            sns.kdeplot(proba, shade=True, color="g", label="Proba", alpha=.7, bw_adjust=0.01)
+                            # Decoration
+                            plt.title('Density Plot of Probability', fontsize=22)
+                            plt.legend()
+                            plt.show()
+                        else:
+                            print(proba)
                     except:
                         print(proba)
 
