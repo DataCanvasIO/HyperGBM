@@ -4,10 +4,11 @@ __author__ = 'yangjian'
 
 """
 import numpy as np
-from sklearn.inspection import permutation_importance
+from sklearn.inspection import permutation_importance as sk_permutation_importance
 from sklearn.utils import Bunch
 
 from hypernets.utils import logging
+from tabular_toolbox import dask_ex as dex
 
 logger = logging.get_logger(__name__)
 
@@ -59,6 +60,11 @@ def feature_importance_batch(estimators, X, y, scoring=None, n_repeats=5,
             Raw permutation importance scores.
     """
     importances = []
+
+    if dex.is_dask_dataframe(X):
+        permutation_importance = dex.permutation_importance
+    else:
+        permutation_importance = sk_permutation_importance
 
     for i, est in enumerate(estimators):
         logger.info(f'permutation_importance: {i}/{len(estimators)}')
