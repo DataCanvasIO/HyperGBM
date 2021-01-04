@@ -25,6 +25,7 @@ from hypernets.utils.common import isnotebook
 class CompeteExperiment(Experiment):
     def __init__(self, hyper_model, X_train, y_train, X_eval=None, y_eval=None, X_test=None, eval_size=0.3,
                  train_test_split_strategy=None,
+                 cv=False, num_folds=3,
                  task=None,
                  callbacks=None,
                  random_state=9527,
@@ -50,6 +51,8 @@ class CompeteExperiment(Experiment):
         self.data_cleaner_args = data_cleaner_args if data_cleaner_args is not None else {}
         self.drop_feature_with_collinearity = drop_feature_with_collinearity
         self.train_test_split_strategy = train_test_split_strategy
+        self.cv = cv
+        self.num_folds = num_folds
         self.drift_detection = drift_detection
         self.mode = mode
         self.n_est_feature_importance = n_est_feature_importance
@@ -206,8 +209,13 @@ class CompeteExperiment(Experiment):
         display_markdown('### Pipeline search', raw=True)
 
         kwargs['eval_set'] = (X_eval, y_eval)
-
-        self.first_hyper_model.search(X_train, y_train, X_eval, y_eval, **kwargs)
+        if self.cv:
+            X_whole = pd.concat([X_train, X_eval], axis=0)
+            y_whole = pd.concat([y_train, y_eval], axis=0)
+            self.first_hyper_model.search(X_whole, y_whole, None, None, cv=self.cv, num_folds=self.num_folds, **kwargs)
+        else:
+            self.first_hyper_model.search(X_train, y_train, X_eval, y_eval, cv=self.cv, num_folds=self.num_folds,
+                                          **kwargs)
         self.hyper_model = self.first_hyper_model
         self.step_end(output={'best_reward': self.hyper_model.get_best_trail().reward})
 
@@ -344,7 +352,14 @@ class CompeteExperiment(Experiment):
                                                   'y_eval.shape',
                                                   'X_test.shape']), display_id='output_cleaner_info2')
 
-                self.second_hyper_model.search(X_train, y_train, X_eval, y_eval, **kwargs)
+                if self.cv:
+                    X_whole = pd.concat([X_train, X_eval], axis=0)
+                    y_whole = pd.concat([y_train, y_eval], axis=0)
+                    self.second_hyper_model.search(X_whole, y_whole, None, None, cv=self.cv, num_folds=self.num_folds,
+                                                   **kwargs)
+                else:
+                    self.second_hyper_model.search(X_train, y_train, X_eval, y_eval, cv=self.cv,
+                                                   num_folds=self.num_folds, **kwargs)
                 self.hyper_model = self.second_hyper_model
                 self.step_end(output={'best_reward': self.hyper_model.get_best_trail().reward})
             else:
@@ -368,7 +383,9 @@ class CompeteExperiment(Experiment):
                 for trail in best_trials:
                     estimators.append(self.hyper_model.load_estimator(trail.model_file))
             ensemble = GreedyEnsemble(self.task, estimators, scoring=self.scorer, ensemble_size=self.ensemble_size)
-            ensemble.fit(X_eval, y_eval)
+            X_whole = pd.concat([X_train, X_eval], axis=0)
+            y_whole = pd.concat([y_train, y_eval], axis=0)
+            ensemble.fit(X_whole, y_whole)
             self.estimator = ensemble
             self.step_end(output={'ensemble': ensemble})
             display(ensemble)

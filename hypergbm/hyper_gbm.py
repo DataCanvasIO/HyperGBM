@@ -9,8 +9,10 @@ import time
 
 import numpy as np
 import pandas as pd
+import copy
 from sklearn import pipeline as sk_pipeline
 from sklearn.utils import class_weight
+from sklearn.model_selection import KFold, StratifiedKFold
 
 from hypergbm.pipeline import ComposeTransformer
 from hypernets.model.estimator import Estimator
@@ -87,18 +89,13 @@ class HyperGBMEstimator(Estimator):
         self.cache_dir = cache_dir
         self.data_cleaner_params = data_cleaner_params
         self.gbm_model = None
+        self.estimators_ = None
         self.data_cleaner = None
         self.pipeline_signature = None
         self.fit_kwargs = None
         self.class_balancing = None
+        self.classes_ = None
         self._build_model(space_sample)
-
-    @property
-    def classes_(self):
-        if self.gbm_model is not None and hasattr(self.gbm_model, 'classes_'):
-            return self.gbm_model.classes_
-        else:
-            return None
 
     def _build_model(self, space_sample):
         space, _ = space_sample.compile_and_forward()
@@ -203,6 +200,82 @@ class HyperGBMEstimator(Estimator):
         cat_cols += column_zero_or_positive_int32(X)
         return cat_cols
 
+    def fit_cross_validation(self, X, y, use_cache=None, verbose=0, stratified=True, num_folds=3,
+                             shuffle=False, random_state=9527, metrics=None, **kwargs):
+        starttime = time.time()
+        if verbose is None:
+            verbose = 0
+        if verbose > 0:
+            logger.info('estimator is transforming the train set')
+        X = self.transform_data(X, y, fit=True, use_cache=use_cache, verbose=verbose)
+
+        if stratified and self.task == 'binary':
+            iterators = StratifiedKFold(n_splits=num_folds, shuffle=True, random_state=9527)
+        else:
+            iterators = KFold(n_splits=num_folds, shuffle=True, random_state=9527)
+
+        y = np.array(y)
+        sample_weight = None
+        if self.task != 'regression' and self.class_balancing is not None:
+            sampler = get_sampler(self.class_balancing)
+            if sampler is None:
+                sample_weight = self._get_sample_weight(y)
+            else:
+                X, y = sampler.fit_sample(X, y)
+
+        kwargs = self.fit_kwargs
+        if kwargs.get('verbose') is None and str(type(self.gbm_model)).find('dask') < 0:
+            kwargs['verbose'] = verbose
+        if is_lightgbm_model(self.gbm_model):
+            cat_cols = self.get_categorical_features(X)
+            kwargs['categorical_feature'] = cat_cols
+        elif is_catboost_model(self.gbm_model):
+            cat_cols = self.get_categorical_features(X)
+            kwargs['cat_features'] = cat_cols
+
+        oof_ = None
+        self.estimators_ = []
+        for n_fold, (train_idx, valid_idx) in enumerate(iterators.split(X, y)):
+            x_train_fold, y_train_fold = X.iloc[train_idx], y[train_idx]
+            x_val_fold, y_val_fold = X.iloc[valid_idx], y[valid_idx]
+
+            kwargs['eval_set'] = [(x_val_fold, y_val_fold)]
+            if sample_weight is not None:
+                sw_fold = sample_weight[train_idx]
+                kwargs['sample_weight'] = sw_fold
+            fold_est = copy.deepcopy(self.gbm_model)
+            # print(f'fit_kwargs:{kwargs}')
+
+            fold_est.fit(x_train_fold, y_train_fold, **kwargs)
+            if self.classes_ is None and hasattr(fold_est, 'classes_'):
+                self.classes_ = fold_est.classes_
+            if self.task == 'regression':
+                proba = fold_est.predict(x_val_fold)
+            else:
+                proba = fold_est.predict_proba(x_val_fold)
+
+            if oof_ is None:
+                if len(proba.shape) == 1:
+                    oof_ = np.zeros(y.shape, proba.dtype)
+                else:
+                    oof_ = np.zeros((y.shape[0], proba.shape[-1]), proba.dtype)
+            oof_[valid_idx] = proba
+            self.estimators_.append(fold_est)
+
+        if metrics is None:
+            metrics = ['accuracy']
+        proba = oof_
+        if self.task == 'regression':
+            proba = None
+            preds = oof_
+        else:
+            preds = self.proba2predict(oof_)
+            preds = np.array(self.classes_).take(preds, axis=0)
+        scores = calc_score(y, preds, proba, metrics, self.task)
+        if verbose > 0:
+            logger.info(f'taken {time.time() - starttime}s')
+        return scores
+
     def fit(self, X, y, use_cache=None, verbose=0, **kwargs):
         starttime = time.time()
         if verbose is None:
@@ -217,6 +290,15 @@ class HyperGBMEstimator(Estimator):
             kwargs['verbose'] = verbose
         if verbose > 0:
             logger.info(f'fit kwargs:{kwargs}')
+
+        if verbose > 0:
+            logger.info('estimator is fitting the data')
+        if is_lightgbm_model(self.gbm_model):
+            cat_cols = self.get_categorical_features(X)
+            kwargs['categorical_feature'] = cat_cols
+        elif is_catboost_model(self.gbm_model):
+            cat_cols = self.get_categorical_features(X)
+            kwargs['cat_features'] = cat_cols
 
         if eval_set is None:
             eval_set = kwargs.get('eval_set')
@@ -255,6 +337,8 @@ class HyperGBMEstimator(Estimator):
                 X, y = sampler.fit_sample(X, y)
 
         self.gbm_model.fit(X, y, **kwargs)
+        if self.classes_ is None and hasattr(self.gbm_model, 'classes_'):
+            self.classes_ = self.gbm_model.classes_
         if verbose > 0:
             logger.info(f'taken {time.time() - starttime}s')
 
@@ -268,7 +352,10 @@ class HyperGBMEstimator(Estimator):
 
     def _reorder_features_for_xgboost(self, X):
         if is_xgboost_model(self.gbm_model):
-            booster = self.gbm_model._Booster
+            if self.estimators_ is not None:
+                booster = self.estimators_[0]._Booster
+            else:
+                booster = self.gbm_model._Booster
             feature_names = booster.feature_names
             # feature_types = booster.feature_types
             return X[feature_names]
@@ -276,33 +363,62 @@ class HyperGBMEstimator(Estimator):
             return X
 
     def predict(self, X, use_cache=None, verbose=0, **kwargs):
+        starttime = time.time()
         if verbose is None:
             verbose = 0
         X = self.transform_data(X, use_cache=use_cache, verbose=verbose)
         X = self._reorder_features_for_xgboost(X)
-        starttime = time.time()
         if verbose > 0:
             logger.info('estimator is predicting the data')
-        preds = self.gbm_model.predict(X, **kwargs)
+
+        if self.estimators_ is not None:
+            if self.task == 'regression':
+                pred_sum = None
+                for est in self.estimators_:
+                    pred = est.predict(X)
+                    if pred_sum is None:
+                        pred_sum = np.zeros_like(pred)
+                    pred_sum += pred
+                preds = pred_sum / len(self.estimators_)
+            else:
+                proba = self.predict_proba(X)
+                preds = self.proba2predict(proba)
+                preds = np.array(self.classes_).take(preds, axis=0)
+        else:
+            preds = self.gbm_model.predict(X, **kwargs)
+
         if verbose > 0:
             logger.info(f'taken {time.time() - starttime}s')
         return preds
 
     def predict_proba(self, X, use_cache=None, verbose=0, **kwargs):
+        starttime = time.time()
+
         if verbose is None:
             verbose = 0
         X = self.transform_data(X, use_cache=use_cache, verbose=verbose)
         X = self._reorder_features_for_xgboost(X)
-        starttime = time.time()
         if verbose > 0:
             logger.info('estimator is predicting the data')
         if hasattr(self.gbm_model, 'predict_proba'):
-            preds = self.gbm_model.predict_proba(X)
+            method = 'predict_proba'
         else:
-            preds = self.gbm_model.predict(X)
+            method = 'predict'
+
+        if self.estimators_ is not None:
+            proba_sum = None
+            for est in self.estimators_:
+                proba = getattr(est, method)(X)
+                if proba_sum is None:
+                    proba_sum = np.zeros_like(proba)
+                proba_sum += proba
+            proba = proba_sum / len(self.estimators_)
+        else:
+            proba = getattr(self.gbm_model, method)(X)
+
         if verbose > 0:
             logger.info(f'taken {time.time() - starttime}s')
-        return preds
+        return proba
 
     def evaluate(self, X, y, metrics=None, use_cache=None, verbose=0, **kwargs):
         if metrics is None:
