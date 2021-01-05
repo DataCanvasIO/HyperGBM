@@ -111,6 +111,12 @@ class CompeteExperiment(Experiment):
 
         self.step_start('clean and split data')
         # 1. Clean Data
+        if self.cv and X_eval is not None and y_eval is not None:
+            X_train = pd.concat([X_train, X_eval], axis=0)
+            y_train = pd.concat([y_train, y_eval], axis=0)
+            X_eval = None
+            y_eval = None
+
         self.data_cleaner = DataCleaner(**self.data_cleaner_args)
 
         X_train, y_train = self.data_cleaner.fit_transform(X_train, y_train)
@@ -120,27 +126,29 @@ class CompeteExperiment(Experiment):
             X_test = self.data_cleaner.transform(X_test)
             self.step_progress('transform X_test')
 
-        if X_eval is None or y_eval is None:
-            stratify = y_train
-            if self.train_test_split_strategy == 'adversarial_validation' and X_test is not None:
-                print('DriftDetector.train_test_split')
-                detector = dd.DriftDetector()
-                detector.fit(X_train, X_test)
-                X_train, X_eval, y_train, y_eval = detector.train_test_split(X_train, y_train, test_size=eval_size)
+        if not self.cv:
+            if X_eval is None or y_eval is None:
+                stratify = y_train
+                if self.train_test_split_strategy == 'adversarial_validation' and X_test is not None:
+                    print('DriftDetector.train_test_split')
+                    detector = dd.DriftDetector()
+                    detector.fit(X_train, X_test)
+                    X_train, X_eval, y_train, y_eval = detector.train_test_split(X_train, y_train, test_size=eval_size)
+                else:
+                    if self.task == 'regression':
+                        stratify = None
+                    X_train, X_eval, y_train, y_eval = train_test_split(X_train, y_train, test_size=eval_size,
+                                                                        random_state=self.random_state,
+                                                                        stratify=stratify)
+                self.step_progress('split into train set and eval set')
             else:
-                if self.task == 'regression':
-                    stratify = None
-                X_train, X_eval, y_train, y_eval = train_test_split(X_train, y_train, test_size=eval_size,
-                                                                    random_state=self.random_state, stratify=stratify)
-            self.step_progress('split into train set and eval set')
-        else:
-            X_eval, y_eval = self.data_cleaner.transform(X_eval, y_eval)
-            self.step_progress('transform eval set')
+                X_eval, y_eval = self.data_cleaner.transform(X_eval, y_eval)
+                self.step_progress('transform eval set')
 
         self.step_end(output={'X_train.shape': X_train.shape,
                               'y_train.shape': y_train.shape,
-                              'X_eval.shape': X_eval.shape,
-                              'y_eval.shape': y_eval.shape,
+                              'X_eval.shape': None if X_eval is None else X_eval.shape,
+                              'y_eval.shape': None if y_eval is None else y_eval.shape,
                               'X_test.shape': None if X_test is None else X_test.shape})
 
         display_markdown('### Data Cleaner', raw=True)
@@ -176,7 +184,8 @@ class CompeteExperiment(Experiment):
 
             self.selected_features_ = remained
             X_train = X_train[self.selected_features_]
-            X_eval = X_eval[self.selected_features_]
+            if X_eval is not None:
+                X_eval = X_eval[self.selected_features_]
             if X_test is not None:
                 X_test = X_test[self.selected_features_]
             self.step_progress('drop features')
@@ -196,7 +205,8 @@ class CompeteExperiment(Experiment):
             self.output_drift_detection_ = {'no_drift_features': features, 'history': history}
             self.selected_features_ = features
             X_train = X_train[self.selected_features_]
-            X_eval = X_eval[self.selected_features_]
+            if X_eval is not None:
+                X_eval = X_eval[self.selected_features_]
             if X_test is not None:
                 X_test = X_test[self.selected_features_]
             self.step_end(output=self.output_drift_detection_)
@@ -209,13 +219,7 @@ class CompeteExperiment(Experiment):
         display_markdown('### Pipeline search', raw=True)
 
         kwargs['eval_set'] = (X_eval, y_eval)
-        if self.cv:
-            X_whole = pd.concat([X_train, X_eval], axis=0)
-            y_whole = pd.concat([y_train, y_eval], axis=0)
-            self.first_hyper_model.search(X_whole, y_whole, None, None, cv=self.cv, num_folds=self.num_folds, **kwargs)
-        else:
-            self.first_hyper_model.search(X_train, y_train, X_eval, y_eval, cv=self.cv, num_folds=self.num_folds,
-                                          **kwargs)
+        self.first_hyper_model.search(X_train, y_train, X_eval, y_eval, cv=self.cv, num_folds=self.num_folds, **kwargs)
         self.hyper_model = self.first_hyper_model
         self.step_end(output={'best_reward': self.hyper_model.get_best_trail().reward})
 
@@ -230,7 +234,15 @@ class CompeteExperiment(Experiment):
                 for trail in best_trials:
                     estimators.append(self.hyper_model.load_estimator(trail.model_file))
                 ensemble = GreedyEnsemble(self.task, estimators, scoring=self.scorer, ensemble_size=es)
-                ensemble.fit(X_eval, y_eval)
+
+                if X_eval is not None:
+                    X_whole = pd.concat([X_train, X_eval], axis=0)
+                    y_whole = pd.concat([y_train, y_eval], axis=0)
+                else:
+                    X_whole = X_train
+                    y_whole = y_train
+                ensemble.fit(X_whole, y_whole)
+
                 proba = ensemble.predict_proba(X_test)[:, 1]
                 if self.task == 'binary':
                     proba_threshold = self.pseudo_labeling_proba_threshold
@@ -306,7 +318,8 @@ class CompeteExperiment(Experiment):
                 self.step_progress('calc importance')
 
                 X_train = X_train[self.selected_features_]
-                X_eval = X_eval[self.selected_features_]
+                if X_eval is not None:
+                    X_eval = X_eval[self.selected_features_]
                 if X_test is not None:
                     X_test = X_test[self.selected_features_]
                 if X_pseudo is not None:
@@ -327,8 +340,13 @@ class CompeteExperiment(Experiment):
                 kwargs['eval_set'] = (X_eval, y_eval)
                 if X_pseudo is not None:
                     if self.pseudo_labeling_resplit:
-                        X_mix = pd.concat([X_train, X_pseudo, X_eval], axis=0)
-                        y_mix = pd.concat([y_train, pd.Series(y_pseudo), y_eval], axis=0)
+                        x_list = [X_train, X_pseudo]
+                        y_list = [y_train, pd.Series(y_pseudo)]
+                        if X_eval is not None and y_eval is not None:
+                            x_list.append(X_eval)
+                            y_list.append(y_eval)
+                        X_mix = pd.concat(x_list, axis=0)
+                        y_mix = pd.concat(y_list, axis=0)
                         if self.task == 'regression':
                             stratify = None
                         else:
@@ -352,14 +370,8 @@ class CompeteExperiment(Experiment):
                                                   'y_eval.shape',
                                                   'X_test.shape']), display_id='output_cleaner_info2')
 
-                if self.cv:
-                    X_whole = pd.concat([X_train, X_eval], axis=0)
-                    y_whole = pd.concat([y_train, y_eval], axis=0)
-                    self.second_hyper_model.search(X_whole, y_whole, None, None, cv=self.cv, num_folds=self.num_folds,
-                                                   **kwargs)
-                else:
-                    self.second_hyper_model.search(X_train, y_train, X_eval, y_eval, cv=self.cv,
-                                                   num_folds=self.num_folds, **kwargs)
+                self.second_hyper_model.search(X_train, y_train, X_eval, y_eval, cv=self.cv, num_folds=self.num_folds,
+                                               **kwargs)
                 self.hyper_model = self.second_hyper_model
                 self.step_end(output={'best_reward': self.hyper_model.get_best_trail().reward})
             else:
@@ -375,16 +387,24 @@ class CompeteExperiment(Experiment):
             if self.retrain_on_wholedata:
                 display_markdown('#### retrain on whole data', raw=True)
                 for trail in best_trials:
-                    X_all = pd.concat([X_train, X_eval], axis=0)
-                    y_all = pd.concat([y_train, y_eval], axis=0)
-                    estimator = self.hyper_model.final_train(trail.space_sample, X_all, y_all, **kwargs)
+                    if X_eval is not None and y_eval is not None:
+                        X_whole = pd.concat([X_train, X_eval], axis=0)
+                        y_whole = pd.concat([y_train, y_eval], axis=0)
+                    else:
+                        X_whole = X_train
+                        y_whole = y_train
+                    estimator = self.hyper_model.final_train(trail.space_sample, X_whole, y_whole, **kwargs)
                     estimators.append(estimator)
             else:
                 for trail in best_trials:
                     estimators.append(self.hyper_model.load_estimator(trail.model_file))
             ensemble = GreedyEnsemble(self.task, estimators, scoring=self.scorer, ensemble_size=self.ensemble_size)
-            X_whole = pd.concat([X_train, X_eval], axis=0)
-            y_whole = pd.concat([y_train, y_eval], axis=0)
+            if X_eval is not None and y_eval is not None:
+                X_whole = pd.concat([X_train, X_eval], axis=0)
+                y_whole = pd.concat([y_train, y_eval], axis=0)
+            else:
+                X_whole = X_train
+                y_whole = y_train
             ensemble.fit(X_whole, y_whole)
             self.estimator = ensemble
             self.step_end(output={'ensemble': ensemble})

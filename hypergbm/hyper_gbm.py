@@ -207,6 +207,7 @@ class HyperGBMEstimator(Estimator):
             verbose = 0
         if verbose > 0:
             logger.info('estimator is transforming the train set')
+
         X = self.transform_data(X, y, fit=True, use_cache=use_cache, verbose=verbose)
 
         if stratified and self.task == 'binary':
