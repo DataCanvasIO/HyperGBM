@@ -5,18 +5,15 @@
 
 import numpy as np
 from hypernets.core.search_space import ModuleSpace
-from hypernets.model import CrossValidationEstimator
 from sklearn.experimental import enable_hist_gradient_boosting
 from sklearn.ensemble import HistGradientBoostingRegressor, HistGradientBoostingClassifier
 
 
 class HyperEstimator(ModuleSpace):
-    def __init__(self, fit_kwargs, cv=False, num_folds=3, space=None, name=None, **hyperparams):
+    def __init__(self, fit_kwargs, space=None, name=None, **hyperparams):
         ModuleSpace.__init__(self, space, name, **hyperparams)
         self.fit_kwargs = fit_kwargs
         self.estimator = None
-        self.cv = cv
-        self.num_folds = num_folds
         self.class_balancing = False
 
     def _build_estimator(self, task, kwargs):
@@ -52,7 +49,7 @@ class HistGradientBoostingRegressorWrapper(HistGradientBoostingRegressor):
 
 
 class HistGBEstimator(HyperEstimator):
-    def __init__(self, fit_kwargs, cv=False, num_folds=3, loss='least_squares', learning_rate=0.1,
+    def __init__(self, fit_kwargs, loss='least_squares', learning_rate=0.1,
                  max_leaf_nodes=31, max_depth=None,
                  min_samples_leaf=20, l2_regularization=0., max_bins=255,
                  space=None, name=None, **kwargs):
@@ -71,7 +68,7 @@ class HistGBEstimator(HyperEstimator):
         if l2_regularization is not None and l2_regularization != 0.:
             kwargs['l2_regularization'] = l2_regularization
 
-        HyperEstimator.__init__(self, fit_kwargs, cv, num_folds, space, name, **kwargs)
+        HyperEstimator.__init__(self, fit_kwargs, space, name, **kwargs)
 
     def _build_estimator(self, task, kwargs):
         if task == 'regression':
@@ -82,7 +79,7 @@ class HistGBEstimator(HyperEstimator):
 
 
 class LightGBMEstimator(HyperEstimator):
-    def __init__(self, fit_kwargs, cv=False, num_folds=3, boosting_type='gbdt', num_leaves=31, max_depth=-1,
+    def __init__(self, fit_kwargs, boosting_type='gbdt', num_leaves=31, max_depth=-1,
                  learning_rate=0.1, n_estimators=100,
                  subsample_for_bin=200000, objective=None, class_weight=None,
                  min_split_gain=0., min_child_weight=1e-3, min_child_samples=20,
@@ -131,7 +128,7 @@ class LightGBMEstimator(HyperEstimator):
         if importance_type is not None and importance_type != 'split':
             kwargs['importance_type'] = importance_type
 
-        HyperEstimator.__init__(self, fit_kwargs, cv, num_folds, space, name, **kwargs)
+        HyperEstimator.__init__(self, fit_kwargs, space, name, **kwargs)
 
     def _build_estimator(self, task, kwargs):
         import lightgbm
@@ -139,8 +136,6 @@ class LightGBMEstimator(HyperEstimator):
             lgbm = lightgbm.LGBMRegressor(**kwargs)
         else:
             lgbm = lightgbm.LGBMClassifier(**kwargs)
-        if self.cv:
-            lgbm = CrossValidationEstimator(base_estimator=lgbm, task=task, num_folds=self.num_folds)
         return lgbm
 
 
@@ -160,7 +155,7 @@ class LightGBMDaskEstimator(LightGBMEstimator):
 
 
 class XGBoostEstimator(HyperEstimator):
-    def __init__(self, fit_kwargs, cv=False, num_folds=3, max_depth=None, learning_rate=None, n_estimators=100,
+    def __init__(self, fit_kwargs, max_depth=None, learning_rate=None, n_estimators=100,
                  verbosity=None, objective=None, booster=None,
                  tree_method=None, n_jobs=None, gamma=None,
                  min_child_weight=None, max_delta_step=None, subsample=None,
@@ -226,7 +221,7 @@ class XGBoostEstimator(HyperEstimator):
         if validate_parameters is not None:
             kwargs['validate_parameters'] = validate_parameters
 
-        HyperEstimator.__init__(self, fit_kwargs, cv, num_folds, space, name, **kwargs)
+        HyperEstimator.__init__(self, fit_kwargs, space, name, **kwargs)
 
     def _build_estimator(self, task, kwargs):
         import xgboost
@@ -234,8 +229,6 @@ class XGBoostEstimator(HyperEstimator):
             xgb = xgboost.XGBRegressor(**kwargs)
         else:
             xgb = xgboost.XGBClassifier(**kwargs)
-        if self.cv:
-            xgb = CrossValidationEstimator(base_estimator=xgb, task=task, num_folds=self.num_folds)
         return xgb
 
 
@@ -255,7 +248,7 @@ class XGBoostDaskEstimator(XGBoostEstimator):
 
 
 class CatBoostEstimator(HyperEstimator):
-    def __init__(self, fit_kwargs, cv=False, num_folds=3, iterations=None, learning_rate=None, depth=None,
+    def __init__(self, fit_kwargs, iterations=None, learning_rate=None, depth=None,
                  l2_leaf_reg=None,
                  model_size_reg=None, rsm=None, loss_function=None, border_count=None, feature_border_type=None,
                  per_float_feature_quantization=None, input_borders=None, output_borders=None, space=None, name=None,
@@ -284,7 +277,7 @@ class CatBoostEstimator(HyperEstimator):
             kwargs['input_borders'] = input_borders
         if output_borders is not None:
             kwargs['output_borders'] = output_borders
-        HyperEstimator.__init__(self, fit_kwargs, cv, num_folds, space, name, **kwargs)
+        HyperEstimator.__init__(self, fit_kwargs, space, name, **kwargs)
 
     def _build_estimator(self, task, kwargs):
         import catboost
@@ -292,6 +285,4 @@ class CatBoostEstimator(HyperEstimator):
             cat = catboost.CatBoostRegressor(**kwargs)
         else:
             cat = catboost.CatBoostClassifier(**kwargs)
-        if self.cv:
-            cat = CrossValidationEstimator(base_estimator=cat, task=task, num_folds=self.num_folds)
         return cat

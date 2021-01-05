@@ -222,59 +222,8 @@ class Test_CommonOps():
         ids = []
         space.traverse(get_id)
         assert ids == ['ID_input1', 'ID_numeric_pipeline_complex_0_input', 'ID_numeric_imputer_0',
-                       'ID_numeric_standard_scaler_0', 'ID_numeric_pipeline_complex_0_output',
+                       'ID_numeric_log_standard_scaler_0', 'ID_numeric_pipeline_complex_0_output',
                        'Module_DataFrameMapper_1', 'Module_LightGBMEstimator_1']
-
-        next, (name, p) = space.Module_DataFrameMapper_1.compose()
-        X, y = get_df()
-        df_1 = p.fit_transform(X, y)
-        assert list(df_1.columns) == ['b', 'c', 'd', 'l']
-        assert df_1.shape == (3, 4)
-
-        space = get_space_numeric_pipeline_complex()
-        space.assign_by_vectors([0, 1, 1])
-        space, _ = space.compile_and_forward()
-        ids = []
-        space.traverse(get_id)
-        assert ids == ['ID_input1', 'ID_numeric_pipeline_complex_0_input', 'ID_numeric_imputer_0',
-                       'ID_numeric_minmax_scaler_0', 'ID_numeric_pipeline_complex_0_output',
-                       'Module_DataFrameMapper_1', 'Module_LightGBMEstimator_1']
-
-        next, (name, p) = space.Module_DataFrameMapper_1.compose()
-        X, y = get_df()
-        df_1 = p.fit_transform(X, y)
-        assert list(df_1.columns) == ['b', 'c', 'd', 'l']
-        assert df_1.shape == (3, 4)
-
-        space = get_space_numeric_pipeline_complex()
-        space.assign_by_vectors([0, 1, 2])
-        space, _ = space.compile_and_forward()
-        ids = []
-        space.traverse(get_id)
-        assert ids == ['ID_input1', 'ID_numeric_pipeline_complex_0_input', 'ID_numeric_imputer_0',
-                       'ID_numeric_maxabs_scaler_0', 'ID_numeric_pipeline_complex_0_output',
-                       'Module_DataFrameMapper_1', 'Module_LightGBMEstimator_1']
-
-        next, (name, p) = space.Module_DataFrameMapper_1.compose()
-        X, y = get_df()
-        df_1 = p.fit_transform(X, y)
-        assert list(df_1.columns) == ['b', 'c', 'd', 'l']
-        assert df_1.shape == (3, 4)
-
-        space = get_space_numeric_pipeline_complex()
-        space.assign_by_vectors([0, 1, 3])
-        space, _ = space.compile_and_forward()
-        ids = []
-        space.traverse(get_id)
-        assert ids == ['ID_input1', 'ID_numeric_pipeline_complex_0_input', 'ID_numeric_imputer_0',
-                       'ID_numeric_robust_scaler_0', 'ID_numeric_pipeline_complex_0_output',
-                       'Module_DataFrameMapper_1', 'Module_LightGBMEstimator_1']
-
-        next, (name, p) = space.Module_DataFrameMapper_1.compose()
-        X, y = get_df()
-        df_1 = p.fit_transform(X, y)
-        assert list(df_1.columns) == ['b', 'c', 'd', 'l']
-        assert df_1.shape == (3, 4)
 
     def test_num_cat_pipeline(self):
         space = get_space_num_cat_pipeline()

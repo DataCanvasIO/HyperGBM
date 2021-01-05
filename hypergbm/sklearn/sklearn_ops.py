@@ -39,7 +39,7 @@ def categorical_pipeline_complex(impute_strategy=None, svd_components=3, seq_no=
         return optional_svd
 
     imputer = SimpleImputer(missing_values=np.nan, strategy=impute_strategy, name=f'categorical_imputer_{seq_no}')
-    label_encoder = MultiLabelEncoder(name=f'categorical_label_encoder_{seq_no}')
+    label_encoder = SafeOrdinalEncoder(name=f'categorical_label_encoder_{seq_no}')
     onehot = onehot_svd()
     le_or_onehot_pca = ModuleChoice([label_encoder, onehot], name=f'categorical_le_or_onehot_pca_{seq_no}')
     pipeline = Pipeline([imputer, le_or_onehot_pca],
@@ -66,7 +66,8 @@ def numeric_pipeline_complex(impute_strategy=None, seq_no=0):
     elif isinstance(impute_strategy, list):
         impute_strategy = Choice(impute_strategy)
 
-    imputer = SimpleImputer(missing_values=np.nan, strategy=impute_strategy, name=f'numeric_imputer_{seq_no}', force_output_as_float=True)
+    imputer = SimpleImputer(missing_values=np.nan, strategy=impute_strategy, name=f'numeric_imputer_{seq_no}',
+                            force_output_as_float=True)
     scaler_options = ModuleChoice(
         [
             LogStandardScaler(name=f'numeric_log_standard_scaler_{seq_no}'),
@@ -77,7 +78,7 @@ def numeric_pipeline_complex(impute_strategy=None, seq_no=0):
         ], name=f'numeric_or_scaler_{seq_no}'
     )
     scaler_optional = Optional(scaler_options, keep_link=True, name=f'numeric_scaler_optional_{seq_no}')
-    pipeline = Pipeline([imputer],
+    pipeline = Pipeline([imputer, scaler_optional],
                         name=f'numeric_pipeline_complex_{seq_no}',
                         columns=column_number_exclude_timedelta)
     return pipeline

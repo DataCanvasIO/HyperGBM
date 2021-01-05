@@ -36,36 +36,3 @@ def get_df():
     y = [1, 1, 0]
     return X, y
 
-
-class Test_search_space():
-
-    def test_general(self):
-        global ids
-        space = search_space_general()
-        space.assign_by_vectors([0, 0, 0, 0, 1, 1, 2, 1, 1])
-        space, _ = space.compile_and_forward()
-        ids = []
-        space.traverse(get_id)
-        assert ids == ['ID_input1',
-                       'ID_categorical_pipeline_simple_0_input',
-                       'ID_numeric_pipeline_complex_0_input',
-                       'ID_categorical_imputer_0',
-                       'ID_numeric_imputer_0',
-                       'ID_categorical_label_encoder_0',
-                       'ID_numeric_pipeline_complex_0_output',
-                       'ID_categorical_pipeline_simple_0_output',
-                       'Module_DataFrameMapper_1',
-                       'ID_Module_Pipeline_2_input',
-                       'ID_Module_Pipeline_1_input',
-                       'Module_PolynomialFeatures_1',
-                       'ID_Module_Pipeline_1_output',
-                       'Module_DataFrameMapper_2',
-                       'ID_Module_Pipeline_2_output',
-                       'Module_LightGBMEstimator_1']
-        next, (name1, p1) = space.Module_DataFrameMapper_1.compose()
-        next, (name2, p2) = space.Module_DataFrameMapper_2.compose()
-        X, y = get_df()
-        df_1 = p1.fit_transform(X, y)
-        df_2 = p2.fit_transform(df_1)
-        assert list(df_1.columns) == ['a', 'e', 'f', 'b', 'c', 'd', 'l']
-        assert df_1.shape == (3, 7)
