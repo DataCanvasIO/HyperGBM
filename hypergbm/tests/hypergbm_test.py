@@ -25,7 +25,7 @@ class Test_HyperGBM():
 
         X_train, X_test, y_train, y_test = data_partition()
 
-        hk.search(X_train, y_train, X_test, y_test, cv=cv, num_folds=num_folds, max_trails=3)
+        hk.search(X_train, y_train, X_test, y_test, cv=cv, num_folds=num_folds, max_trails=30)
         best_trial = hk.get_best_trail()
 
         estimator = hk.final_train(best_trial.space_sample, X_train, y_train)
@@ -50,23 +50,6 @@ class Test_HyperGBM():
         assert fs.isfile(filepath) == True
         model = hypergbm.load_estimator(filepath)
         score = model.evaluate(X_test, y_test, ['AUC'])
-        assert score
-
-    def test_blend(self):
-        df = dsutils.load_bank()
-        df.drop(['id'], axis=1, inplace=True)
-        X_train, X_test = train_test_split(df.head(1000), test_size=0.2, random_state=42)
-        y_train = X_train.pop('y')
-        y_test = X_test.pop('y')
-
-        def f():
-            return X_train, X_test, y_train, y_test
-
-        _, hyper_model = self.train_bankdata(f)
-
-        samples = [t.space_sample for t in hyper_model.get_top_trails(3)]
-        blend_models = hyper_model.blend_models(samples, X_train, y_train)
-        score = blend_models.evaluate(X_test, y_test, ['AUC'])
         assert score
 
     def test_model(self):

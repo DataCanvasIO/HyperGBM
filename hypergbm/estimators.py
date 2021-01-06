@@ -7,6 +7,17 @@ import numpy as np
 from hypernets.core.search_space import ModuleSpace
 from sklearn.experimental import enable_hist_gradient_boosting
 from sklearn.ensemble import HistGradientBoostingRegressor, HistGradientBoostingClassifier
+from tabular_toolbox.column_selector import column_object_category_bool, column_zero_or_positive_int32
+
+import lightgbm
+import xgboost
+import catboost
+
+
+def get_categorical_features(X):
+    cat_cols = column_object_category_bool(X)
+    cat_cols += column_zero_or_positive_int32(X)
+    return cat_cols
 
 
 class HyperEstimator(ModuleSpace):
@@ -78,6 +89,30 @@ class HistGBEstimator(HyperEstimator):
         return hgboost
 
 
+class LGBMClassifierWrapper(lightgbm.LGBMClassifier):
+    def fit(self, X, y, sample_weight=None, **kwargs):
+        if not kwargs.__contains__('categorical_feature'):
+            cat_cols = get_categorical_features(X)
+            kwargs['categorical_feature'] = cat_cols
+        super(LGBMClassifierWrapper, self).fit(X, y, sample_weight=sample_weight, **kwargs)
+
+    @property
+    def best_n_estimators(self):
+        return self.best_iteration_
+
+
+class LGBMRegressorWrapper(lightgbm.LGBMRegressor):
+    def fit(self, X, y, sample_weight=None, **kwargs):
+        if not kwargs.__contains__('categorical_feature'):
+            cat_cols = get_categorical_features(X)
+            kwargs['categorical_feature'] = cat_cols
+        super(LGBMRegressorWrapper, self).fit(X, y, sample_weight=sample_weight, **kwargs)
+
+    @property
+    def best_n_estimators(self):
+        return self.best_iteration_
+
+
 class LightGBMEstimator(HyperEstimator):
     def __init__(self, fit_kwargs, boosting_type='gbdt', num_leaves=31, max_depth=-1,
                  learning_rate=0.1, n_estimators=100,
@@ -131,11 +166,10 @@ class LightGBMEstimator(HyperEstimator):
         HyperEstimator.__init__(self, fit_kwargs, space, name, **kwargs)
 
     def _build_estimator(self, task, kwargs):
-        import lightgbm
         if task == 'regression':
-            lgbm = lightgbm.LGBMRegressor(**kwargs)
+            lgbm = LGBMRegressorWrapper(**kwargs)
         else:
-            lgbm = lightgbm.LGBMClassifier(**kwargs)
+            lgbm = LGBMClassifierWrapper(**kwargs)
         return lgbm
 
 
@@ -152,6 +186,38 @@ class LightGBMDaskEstimator(LightGBMEstimator):
         else:
             lgbm = lightgbm.LGBMClassifier(**kwargs)
         return lgbm
+
+
+class XGBClassifierWrapper(xgboost.XGBClassifier):
+    @property
+    def best_n_estimators(self):
+        booster = self.get_booster()
+        if booster is not None:
+            return booster.best_ntree_limit
+        else:
+            return None
+
+    def predict_proba(self, data, **kwargs):
+        data = data[self.get_booster().feature_names]
+        return super(XGBClassifierWrapper, self).predict_proba(data, **kwargs)
+
+    def predict(self, data, **kwargs):
+        data = data[self.get_booster().feature_names]
+        return super(XGBClassifierWrapper, self).predict(data, **kwargs)
+
+
+class XGBRegressorWrapper(xgboost.XGBRegressor):
+    @property
+    def best_n_estimators(self):
+        booster = self.get_booster()
+        if booster is not None:
+            return booster.best_ntree_limit
+        else:
+            return None
+
+    def predict(self, data, **kwargs):
+        data = data[self.get_booster().feature_names]
+        return super(XGBRegressorWrapper, self).predict(data, **kwargs)
 
 
 class XGBoostEstimator(HyperEstimator):
@@ -224,11 +290,10 @@ class XGBoostEstimator(HyperEstimator):
         HyperEstimator.__init__(self, fit_kwargs, space, name, **kwargs)
 
     def _build_estimator(self, task, kwargs):
-        import xgboost
         if task == 'regression':
-            xgb = xgboost.XGBRegressor(**kwargs)
+            xgb = XGBRegressorWrapper(**kwargs)
         else:
-            xgb = xgboost.XGBClassifier(**kwargs)
+            xgb = XGBClassifierWrapper(**kwargs)
         return xgb
 
 
@@ -245,6 +310,30 @@ class XGBoostDaskEstimator(XGBoostEstimator):
         else:
             xgb = xgboost.XGBClassifier(**kwargs)
         return xgb
+
+
+class CatBoostClassifierWrapper(catboost.CatBoostClassifier):
+    def fit(self, X, y=None, **kwargs):
+        if not kwargs.__contains__('cat_features'):
+            cat_cols = get_categorical_features(X)
+            kwargs['cat_features'] = cat_cols
+        super(CatBoostClassifierWrapper, self).fit(X, y, **kwargs)
+
+    @property
+    def best_n_estimators(self):
+        return self.best_iteration_
+
+
+class CatBoostRegressionWrapper(catboost.CatBoostRegressor):
+    def fit(self, X, y=None, **kwargs):
+        if not kwargs.__contains__('cat_features'):
+            cat_cols = get_categorical_features(X)
+            kwargs['cat_features'] = cat_cols
+        super(CatBoostRegressionWrapper, self).fit(X, y, **kwargs)
+
+    @property
+    def best_n_estimators(self):
+        return self.best_iteration_
 
 
 class CatBoostEstimator(HyperEstimator):
@@ -280,9 +369,8 @@ class CatBoostEstimator(HyperEstimator):
         HyperEstimator.__init__(self, fit_kwargs, space, name, **kwargs)
 
     def _build_estimator(self, task, kwargs):
-        import catboost
         if task == 'regression':
-            cat = catboost.CatBoostRegressor(**kwargs)
+            cat = CatBoostRegressionWrapper(**kwargs)
         else:
-            cat = catboost.CatBoostClassifier(**kwargs)
+            cat = CatBoostClassifierWrapper(**kwargs)
         return cat

@@ -18,7 +18,6 @@ from hypergbm.pipeline import ComposeTransformer
 from hypernets.model.estimator import Estimator
 from hypernets.model.hyper_model import HyperModel
 from hypernets.utils import logging, fs
-from tabular_toolbox.column_selector import column_object_category_bool, column_zero_or_positive_int32
 from tabular_toolbox.data_cleaner import DataCleaner
 from tabular_toolbox.metrics import calc_score
 from tabular_toolbox.persistence import read_parquet, to_parquet
@@ -191,15 +190,6 @@ class HyperGBMEstimator(Estimator):
 
         return X
 
-    def get_categorical_features(self, X):
-        cat_cols = column_object_category_bool(X)
-        # int_cols = column_int(X)
-        # for c in int_cols:
-        #     if X[c].min() >= 0 and X[c].max() < np.iinfo(np.int32).max:
-        #         cat_cols.append(c)
-        cat_cols += column_zero_or_positive_int32(X)
-        return cat_cols
-
     def fit_cross_validation(self, X, y, use_cache=None, verbose=0, stratified=True, num_folds=3,
                              shuffle=False, random_state=9527, metrics=None, **kwargs):
         starttime = time.time()
@@ -227,12 +217,6 @@ class HyperGBMEstimator(Estimator):
         kwargs = self.fit_kwargs
         if kwargs.get('verbose') is None and str(type(self.gbm_model)).find('dask') < 0:
             kwargs['verbose'] = verbose
-        if is_lightgbm_model(self.gbm_model):
-            cat_cols = self.get_categorical_features(X)
-            kwargs['categorical_feature'] = cat_cols
-        elif is_catboost_model(self.gbm_model):
-            cat_cols = self.get_categorical_features(X)
-            kwargs['cat_features'] = cat_cols
 
         oof_ = None
         self.estimators_ = []
@@ -245,9 +229,10 @@ class HyperGBMEstimator(Estimator):
                 sw_fold = sample_weight[train_idx]
                 kwargs['sample_weight'] = sw_fold
             fold_est = copy.deepcopy(self.gbm_model)
-            # print(f'fit_kwargs:{kwargs}')
-
+            print(
+                f'early_stopping_rounds:{kwargs["early_stopping_rounds"] if kwargs.__contains__("early_stopping_rounds") else None}')
             fold_est.fit(x_train_fold, y_train_fold, **kwargs)
+            print(f'fold {n_fold}, est:{fold_est.__class__},  best_n_estimators:{fold_est.best_n_estimators}')
             if self.classes_ is None and hasattr(fold_est, 'classes_'):
                 self.classes_ = fold_est.classes_
             if self.task == 'regression':
@@ -275,7 +260,7 @@ class HyperGBMEstimator(Estimator):
         scores = calc_score(y, preds, proba, metrics, self.task)
         if verbose > 0:
             logger.info(f'taken {time.time() - starttime}s')
-        return scores
+        return scores, oof_
 
     def fit(self, X, y, use_cache=None, verbose=0, **kwargs):
         starttime = time.time()
@@ -294,12 +279,6 @@ class HyperGBMEstimator(Estimator):
 
         if verbose > 0:
             logger.info('estimator is fitting the data')
-        if is_lightgbm_model(self.gbm_model):
-            cat_cols = self.get_categorical_features(X)
-            kwargs['categorical_feature'] = cat_cols
-        elif is_catboost_model(self.gbm_model):
-            cat_cols = self.get_categorical_features(X)
-            kwargs['cat_features'] = cat_cols
 
         if eval_set is None:
             eval_set = kwargs.get('eval_set')
@@ -322,12 +301,6 @@ class HyperGBMEstimator(Estimator):
 
         if verbose > 0:
             logger.info('estimator is fitting the data')
-        if is_lightgbm_model(self.gbm_model):
-            cat_cols = self.get_categorical_features(X)
-            kwargs['categorical_feature'] = cat_cols
-        elif is_catboost_model(self.gbm_model):
-            cat_cols = self.get_categorical_features(X)
-            kwargs['cat_features'] = cat_cols
 
         if self.task != 'regression' and self.class_balancing is not None:
             sampler = get_sampler(self.class_balancing)
@@ -338,6 +311,7 @@ class HyperGBMEstimator(Estimator):
                 X, y = sampler.fit_sample(X, y)
 
         self.gbm_model.fit(X, y, **kwargs)
+
         if self.classes_ is None and hasattr(self.gbm_model, 'classes_'):
             self.classes_ = self.gbm_model.classes_
         if verbose > 0:
@@ -351,24 +325,11 @@ class HyperGBMEstimator(Estimator):
             sample_weight[y == c] *= cw[i]
         return sample_weight
 
-    def _reorder_features_for_xgboost(self, X):
-        if is_xgboost_model(self.gbm_model):
-            if self.estimators_ is not None:
-                booster = self.estimators_[0]._Booster
-            else:
-                booster = self.gbm_model._Booster
-            feature_names = booster.feature_names
-            # feature_types = booster.feature_types
-            return X[feature_names]
-        else:
-            return X
-
     def predict(self, X, use_cache=None, verbose=0, **kwargs):
         starttime = time.time()
         if verbose is None:
             verbose = 0
         X = self.transform_data(X, use_cache=use_cache, verbose=verbose)
-        X = self._reorder_features_for_xgboost(X)
         if verbose > 0:
             logger.info('estimator is predicting the data')
 
@@ -398,7 +359,6 @@ class HyperGBMEstimator(Estimator):
         if verbose is None:
             verbose = 0
         X = self.transform_data(X, use_cache=use_cache, verbose=verbose)
-        X = self._reorder_features_for_xgboost(X)
         if verbose > 0:
             logger.info('estimator is predicting the data')
         if hasattr(self.gbm_model, 'predict_proba'):
@@ -550,14 +510,6 @@ class HyperGBM(HyperModel):
     def export_trail_configuration(self, trail):
         return '`export_trail_configuration` does not implemented'
 
-    def blend_models(self, samples, X, y, **kwargs):
-        models = []
-        for sample in samples:
-            estimator = self.final_train(sample, X, y, **kwargs)
-            models.append(estimator)
-        blends = BlendModel(models, self.task)
-        return blends
-
     @staticmethod
     def _prepare_cache_dir(cache_dir, clear_cache):
         if cache_dir is None:
@@ -580,79 +532,3 @@ class HyperGBM(HyperModel):
             pass  # ignore
 
         return cache_dir
-
-
-class BlendModel():
-    def __init__(self, gbm_models, task):
-        self.gbm_models = gbm_models
-        self.task = task
-
-    def predict_proba(self, X, **kwargs):
-        proba_avg = None
-        count = 0
-        for gbm_model in self.gbm_models:
-            proba = gbm_model.predict_proba(X, **kwargs)
-            if proba is not None:
-                if len(proba.shape) == 1:
-                    proba = proba.reshape((-1, 1))
-                if proba_avg is None:
-                    proba_avg = proba
-                else:
-                    proba_avg += proba
-                count = count + 1
-        proba_avg = proba_avg / count
-        np.random.uniform()
-        return proba_avg
-
-    def predict(self, X, proba_threshold=0.5, **kwargs):
-        proba = self.predict_proba(X, **kwargs)
-        return self.proba2predict(proba, proba_threshold)
-
-    def proba2predict(self, proba, proba_threshold=0.5):
-        if self.task == 'regression':
-            return proba
-        if proba.shape[-1] > 2:
-            predict = proba.argmax(axis=-1)
-        elif proba.shape[-1] == 2:
-            predict = (proba[:, 1] > proba_threshold).astype('int32')
-        else:
-            predict = (proba > proba_threshold).astype('int32')
-        return predict
-
-    def evaluate(self, X, y, metrics=None, **kwargs):
-        if metrics is None:
-            metrics = ['accuracy']
-        proba = self.predict_proba(X, **kwargs)
-        preds = self.proba2predict(proba)
-        scores = calc_score(y, preds, proba, metrics)
-        return scores
-
-    def save_model(self, filepath):
-        with fs.open(f'{filepath}', 'wb') as output:
-            pickle.dump(self, output)
-
-    @staticmethod
-    def load_model(filepath):
-        with fs.open(f'{filepath}', 'rb') as input:
-            model = pickle.load(input)
-            return model
-
-
-def _is_any_class(model, classes):
-    try:
-        model_classes = (model.__class__,) + model.__class__.__bases__
-        return any(c.__name__ in classes for c in model_classes)
-    except:
-        return False
-
-
-def is_lightgbm_model(model):
-    return _is_any_class(model, {'LGBMClassifier', 'LGBMRegressor', 'LGBMModel'})
-
-
-def is_catboost_model(model):
-    return _is_any_class(model, {'CatBoostClassifier', 'CatBoostRegressor'})
-
-
-def is_xgboost_model(model):
-    return _is_any_class(model, {'XGBClassifier', 'XGBRegressor'})

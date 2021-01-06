@@ -17,6 +17,7 @@ from hypernets.core.ops import HyperInput, Choice, ModuleChoice
 from hypernets.core.search_space import HyperSpace, Real
 from tabular_toolbox.column_selector import column_object, column_exclude_datetime
 from tabular_toolbox.datasets import dsutils
+from tabular_toolbox.drift_detection import general_preprocessor
 from hypergbm.tests import test_output_dir
 
 
@@ -106,6 +107,54 @@ def get_df():
 
 
 class Test_Estimator():
+    def test_xgb_early_stoping(self):
+        df = dsutils.load_bank().head(1000)
+        y = df.pop('y')
+
+        X = general_preprocessor(df).fit_transform(df)
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, stratify=y, random_state=9527)
+        import xgboost as xgb
+        clf = xgb.XGBClassifier(n_estimators=1000)
+        clf.fit(X_train, y_train, eval_set=[(X_test, y_test)], early_stopping_rounds=5)
+        booster = clf.get_booster()
+        assert booster.best_iteration == 8
+
+        clf = xgb.XGBClassifier(n_estimators=booster.best_ntree_limit)
+        clf.fit(X_train, y_train)
+        booster = clf.get_booster()
+        assert booster.best_iteration == 8
+
+    def test_lightgbm_early_stoping(self):
+        df = dsutils.load_bank().head(1000)
+        y = df.pop('y')
+
+        X = general_preprocessor(df).fit_transform(df)
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, stratify=y, random_state=9527)
+        import lightgbm as lgbm
+        clf = lgbm.LGBMClassifier(n_estimators=1000)
+        clf.fit(X_train, y_train, eval_set=[(X_test, y_test)], early_stopping_rounds=5)
+
+        assert clf.best_iteration_ == 11
+
+        clf = lgbm.LGBMClassifier(n_estimators=clf.best_iteration_)
+        clf.fit(X_train, y_train)
+        assert clf.booster_.params['num_iterations'] == 11
+
+    def test_catboost_early_stoping(self):
+        df = dsutils.load_bank().head(1000)
+        y = df.pop('y')
+
+        X = general_preprocessor(df).fit_transform(df)
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, stratify=y, random_state=9527)
+        import catboost as cat
+        clf = cat.CatBoostClassifier(n_estimators=1000)
+        clf.fit(X_train, y_train, eval_set=[(X_test, y_test)], early_stopping_rounds=5)
+        assert clf.best_iteration_ == 86
+
+        clf = cat.CatBoostClassifier(n_estimators=clf.tree_count_)
+        clf.fit(X_train, y_train)
+        assert clf.tree_count_ == 87
+
     def test_build_pipeline(self):
         space = search_space_general()
         space.random_sample()

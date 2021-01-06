@@ -24,6 +24,7 @@ def search_space_general(dataframe_mapper_default=False,
                          cat_pipeline_mode='simple',
                          task=None,
                          class_balancing=None,
+                         n_esitimators=200,
                          **kwargs):
     if lightgbm_fit_kwargs is None:
         lightgbm_fit_kwargs = {}
@@ -60,10 +61,10 @@ def search_space_general(dataframe_mapper_default=False,
         # poly_pipeline = Pipeline(module_list=[poly_dm])(union_pipeline)
 
         lightgbm_init_kwargs = {
+            'n_estimators': n_esitimators,  # Choice([10, 30, 50, 100, 200, 300, 500]),
             'boosting_type': Choice(['gbdt', 'dart', 'goss']),
             'num_leaves': Int(15, 513, 5),
             'learning_rate': Choice([0.001, 0.01, 0.5, 0.1]),
-            'n_estimators': Choice([10, 30, 50, 100, 200, 300, 500]),
             'max_depth': Choice([3, 5, 7, 10]),
             'reg_alpha': Choice([0.001, 0.01, 0.1, 1, 10, 100]),
             'reg_lambda': Choice([0.001, 0.01, 0.1, 0.5, 1]),
@@ -74,10 +75,10 @@ def search_space_general(dataframe_mapper_default=False,
         }
 
         lightgbm_init_kwargs1 = {
+            'n_estimators': n_esitimators,  # Choice([10, 30, 50, 80, 100]),
             'boosting_type': Choice(['gbdt', 'dart', 'goss']),
             'num_leaves': Int(15, 513, 5),
             'learning_rate': Choice([0.001, 0.01, 0.5, 0.1]),
-            'n_estimators': Choice([10, 30, 50, 80, 100]),
             'max_depth': Choice([3, 5, 7, 9, 15]),
             'reg_alpha': Choice([0.001, 0.01, 0.1, 1, 10, 100]),
             'reg_lambda': Choice([0.001, 0.01, 0.1, 0.5, 1]),
@@ -89,7 +90,7 @@ def search_space_general(dataframe_mapper_default=False,
         xgb_init_kwargs = {
             'booster': Choice(['gbtree', 'dart']),
             'max_depth': Choice([3, 5, 7, 9, 15]),
-            'n_estimators': Choice([10, 30, 50, 100, 200, 300]),
+            'n_estimators': n_esitimators,  # Choice([10, 30, 50, 100, 200, 300]),
             'learning_rate': Choice([0.001, 0.01, 0.5, 0.1]),
             'min_child_weight': Choice([1, 5, 10]),
             'gamma': Choice([0.5, 1, 1.5, 2, 5]),
@@ -105,7 +106,7 @@ def search_space_general(dataframe_mapper_default=False,
         xgb_init_kwargs1 = {
             # 'booster': Choice(['gbtree', 'dart']),
             'max_depth': Choice([3, 5, 7, 9, 15]),
-            'n_estimators': Choice([10, 30, 50, 80, 100]),
+            'n_estimators': n_esitimators,  # Choice([10, 30, 50, 80, 100]),
             'learning_rate': Choice([0.001, 0.01, 0.5, 0.1]),
             # 'min_child_weight': Choice([1, 5, 10]),
             'gamma': Choice([0.5, 1, 1.5, 2, 5]),
@@ -120,9 +121,10 @@ def search_space_general(dataframe_mapper_default=False,
 
         catboost_init_kwargs = {
             'silent': True,
+            'n_estimators': n_esitimators,
             'depth': Choice([3, 5, 7, 10]),
             'learning_rate': Choice([0.001, 0.01, 0.5, 0.1]),
-            'iterations': Choice([30, 50, 100, 200, 300]),
+            # 'iterations': Choice([30, 50, 100, 200, 300]),
             'l2_leaf_reg': Choice([None, 2, 10, 20, 30]),
             'class_balancing': class_balancing,
 
@@ -133,10 +135,10 @@ def search_space_general(dataframe_mapper_default=False,
         }
 
         catboost_init_kwargs1 = {
+            'n_estimators': n_esitimators,
             'silent': True,
             'depth': Choice([3, 5, 7, 10]),
             'learning_rate': Choice([0.001, 0.01, 0.5, 0.1]),
-            'iterations': Choice([10, 30, 50, 80, 100]),
             'l2_leaf_reg': Choice([None, 2, 10, 20, 30]),
             'class_balancing': class_balancing,
 
