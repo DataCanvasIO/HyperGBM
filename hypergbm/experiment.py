@@ -823,18 +823,23 @@ class CompeteExperiment(Experiment):
             es = self.ensemble_size if self.ensemble_size > 0 else 10
             best_trials = self.hyper_model.get_top_trails(es)
             estimators = []
-            for trail in best_trials:
+            oofs = None
+            for i, trail in enumerate(best_trials):
+                if self.cv and trail.memo.__contains__('oof'):
+                    oof = trail.memo['oof']
+                    if oofs is None:
+                        if len(oof.shape) == 1:
+                            oofs = np.zeros((oof.shape[0], len(best_trials)), dtype=np.float64)
+                        else:
+                            oofs = np.zeros((oof.shape[0], len(best_trials), oof.shape[-1]), dtype=np.float64)
+                    oofs[:, i] = oof
                 estimators.append(self.hyper_model.load_estimator(trail.model_file))
-            ensemble = GreedyEnsemble(self.task, estimators, scoring=self.scorer, ensemble_size=es)
-
-            if X_eval is not None:
-                X_whole = pd.concat([X_train, X_eval], axis=0)
-                y_whole = pd.concat([y_train, y_eval], axis=0)
+            ensemble = GreedyEnsemble(self.task, estimators, scoring=self.scorer, ensemble_size=self.ensemble_size)
+            if oofs is not None:
+                print('fit on oofs')
+                ensemble.fit(None, y_train, oofs)
             else:
-                X_whole = X_train
-                y_whole = y_train
-            ensemble.fit(X_whole, y_whole)
-
+                ensemble.fit(X_eval, y_eval)
             proba = ensemble.predict_proba(X_test)[:, 1]
             if self.task == 'binary':
                 proba_threshold = self.pseudo_labeling_proba_threshold
@@ -988,6 +993,7 @@ class CompeteExperiment(Experiment):
 
             best_trials = self.hyper_model.get_top_trails(self.ensemble_size)
             estimators = []
+            oofs = None
             if self.retrain_on_wholedata:
                 display_markdown('#### retrain on whole data', raw=True)
                 for trail in best_trials:
@@ -1000,16 +1006,22 @@ class CompeteExperiment(Experiment):
                     estimator = self.hyper_model.final_train(trail.space_sample, X_whole, y_whole, **kwargs)
                     estimators.append(estimator)
             else:
-                for trail in best_trials:
+                for i, trail in enumerate(best_trials):
+                    if self.cv and trail.memo.__contains__('oof'):
+                        oof = trail.memo['oof']
+                        if oofs is None:
+                            if len(oof.shape) == 1:
+                                oofs = np.zeros((oof.shape[0], len(best_trials)), dtype=np.float64)
+                            else:
+                                oofs = np.zeros((oof.shape[0], len(best_trials), oof.shape[-1]), dtype=np.float64)
+                        oofs[:, i] = oof
                     estimators.append(self.hyper_model.load_estimator(trail.model_file))
             ensemble = GreedyEnsemble(self.task, estimators, scoring=self.scorer, ensemble_size=self.ensemble_size)
-            if X_eval is not None and y_eval is not None:
-                X_whole = pd.concat([X_train, X_eval], axis=0)
-                y_whole = pd.concat([y_train, y_eval], axis=0)
+            if oofs is not None:
+                print('fit on oofs')
+                ensemble.fit(None, y_train, oofs)
             else:
-                X_whole = X_train
-                y_whole = y_train
-            ensemble.fit(X_whole, y_whole)
+                ensemble.fit(X_eval, y_eval)
             self.estimator = ensemble
             self.step_end(output={'ensemble': ensemble})
             display(ensemble)
