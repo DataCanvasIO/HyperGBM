@@ -116,7 +116,7 @@ class DataCleanStep(ExperimentStep):
                                                                         stratify=stratify)
                 self.step_progress('split into train set and eval set')
             else:
-                X_eval, y_eval = self.data_cleaner.transform(X_eval, y_eval)
+                X_eval, y_eval = data_cleaner.transform(X_eval, y_eval)
                 self.step_progress('transform eval set')
 
         self.step_end(output={'X_train.shape': X_train.shape,
@@ -140,6 +140,7 @@ class DataCleanStep(ExperimentStep):
                                       'y_eval.shape',
                                       'X_test.shape']), display_id='output_cleaner_info2')
         original_features = X_train.columns.to_list()
+
         self.selected_features_ = original_features
         self.data_cleaner = data_cleaner
 
@@ -280,10 +281,11 @@ class PermutationImportanceSelectionStep(FeatureSelectStep):
 
 
 class BaseSearchAndTrainStep(ExperimentStep):
-    def __init__(self, experiment, name, scorer, cv=False, num_folds=5, retrain_on_wholedata=False, ensemble_size=0):
+    def __init__(self, experiment, name, scorer=None, cv=False, num_folds=3,
+                 retrain_on_wholedata=False, ensemble_size=7):
         super().__init__(experiment, name)
 
-        self.scorer = scorer
+        self.scorer = scorer if scorer is not None else get_scorer('neg_log_loss')
         self.cv = cv
         self.num_folds = num_folds
         self.retrain_on_wholedata = retrain_on_wholedata
@@ -374,11 +376,11 @@ class BaseSearchAndTrainStep(ExperimentStep):
 
 
 class TwoStageSearchAndTrainStep(BaseSearchAndTrainStep):
-    def __init__(self, experiment, name, scorer, cv=False, num_flods=5, retrain_on_wholedata=False,
-                 pseudo_labeling=True, pseudo_labeling_proba_threshold=None,
-                 ensemble_size=None, pseudo_labeling_resplit=True,
-                 two_stage_importance_selection=True, n_est_feature_importance=0, importance_threshold=0.0):
-        super().__init__(experiment, name, scorer, cv=cv, num_folds=num_flods,
+    def __init__(self, experiment, name, scorer=None, cv=False, num_folds=3, retrain_on_wholedata=False,
+                 pseudo_labeling=False, pseudo_labeling_proba_threshold=0.8,
+                 ensemble_size=7, pseudo_labeling_resplit=False,
+                 two_stage_importance_selection=True, n_est_feature_importance=10, importance_threshold=1e-5):
+        super().__init__(experiment, name, scorer=scorer, cv=cv, num_folds=num_folds,
                          retrain_on_wholedata=retrain_on_wholedata, ensemble_size=ensemble_size)
 
         self.pseudo_labeling = pseudo_labeling
@@ -547,18 +549,17 @@ class TwoStageSearchAndTrainStep(BaseSearchAndTrainStep):
 class SteppedExperiment(Experiment):
     def __init__(self, steps, *args, **kwargs):
         assert isinstance(steps, (tuple, list)) and all([isinstance(step, ExperimentStep) for step in steps])
-        self.steps = steps
-
         super(SteppedExperiment, self).__init__(*args, **kwargs)
 
-    def train(self, hyper_model, X_train, y_train, X_test, X_eval=None, y_eval=None, **kwargs):
-        # ignore warnings
-        import warnings
-        warnings.filterwarnings('ignore')
+        if logger.is_info_enabled():
+            names = [step.name for step in steps]
+            logger.info(f'create experiment with {names}')
+        self.steps = steps
 
+    def train(self, hyper_model, X_train, y_train, X_test, X_eval=None, y_eval=None, **kwargs):
         for step in self.steps:
             X_train, y_train, X_test, X_eval, y_eval = \
-                step.fit_transform(hyper_model, X_train, y_train, X_test, X_eval, y_eval, **kwargs)
+                step.fit_transform(hyper_model, X_train, y_train, X_test=X_test, X_eval=X_eval, y_eval=y_eval, **kwargs)
 
         last_step = self.steps[-1]
         assert hasattr(last_step, 'estimator_')
@@ -591,32 +592,44 @@ class CompeteExperimentV2(SteppedExperiment):
                  feature_generation=False,
                  retrain_on_wholedata=False,
                  log_level=None):
-        steps = [
-            DataCleanStep(self, 'data_clean',
-                          data_cleaner_args=data_cleaner_args, cv=cv,
-                          train_test_split_strategy=train_test_split_strategy,
-                          random_state=random_state),
-            SelectByMulticollinearityStep(self, 'select_by_multicollinearity',
-                                          drop_feature_with_collinearity=drop_feature_with_collinearity),
-            DriftDetectStep(self, 'drift_dected',
-                            drift_detection=drift_detection),
-            TwoStageSearchAndTrainStep(self, 'two_stage_search_and_train',
-                                       scorer=scorer if scorer is not None else get_scorer('neg_log_loss'),
-                                       cv=cv, num_flods=num_folds,
-                                       retrain_on_wholedata=retrain_on_wholedata,
-                                       pseudo_labeling=pseudo_labeling,
-                                       pseudo_labeling_proba_threshold=pseudo_labeling_proba_threshold,
-                                       ensemble_size=ensemble_size,
-                                       pseudo_labeling_resplit=pseudo_labeling_resplit,
-                                       two_stage_importance_selection=two_stage_importance_selection,
-                                       n_est_feature_importance=n_est_feature_importance,
-                                       importance_threshold=importance_threshold)
-        ]
+
+        # ignore warnings
+        import warnings
+        warnings.filterwarnings('ignore')
+
+        steps = [DataCleanStep(self, 'data_clean',
+                               data_cleaner_args=data_cleaner_args, cv=cv,
+                               train_test_split_strategy=train_test_split_strategy,
+                               random_state=random_state),
+                 ]
+        if drop_feature_with_collinearity:
+            steps.append(SelectByMulticollinearityStep(self, 'select_by_multicollinearity',
+                                                       drop_feature_with_collinearity=drop_feature_with_collinearity))
+        if drift_detection:
+            steps.append(DriftDetectStep(self, 'drift_dected', drift_detection=drift_detection))
+
+        if mode == 'two-stage':
+            last_step = TwoStageSearchAndTrainStep(self, 'two_stage_search_and_train',
+                                                   scorer=scorer, cv=cv, num_folds=num_folds,
+                                                   retrain_on_wholedata=retrain_on_wholedata,
+                                                   pseudo_labeling=pseudo_labeling,
+                                                   pseudo_labeling_proba_threshold=pseudo_labeling_proba_threshold,
+                                                   ensemble_size=ensemble_size,
+                                                   pseudo_labeling_resplit=pseudo_labeling_resplit,
+                                                   two_stage_importance_selection=two_stage_importance_selection,
+                                                   n_est_feature_importance=n_est_feature_importance,
+                                                   importance_threshold=importance_threshold)
+        else:
+            last_step = BaseSearchAndTrainStep(self, 'base_search_and_train',
+                                               scorer=scorer, cv=cv, num_folds=num_folds,
+                                               retrain_on_wholedata=retrain_on_wholedata)
+        steps.append(last_step)
+
         super(CompeteExperimentV2, self).__init__(steps,
-                                                  hyper_model, X_train, y_train, X_eval=X_eval, y_eval=y_eval,
-                                                  X_test=X_test, eval_size=eval_size, task=task,
-                                                  callbacks=callbacks,
-                                                  random_state=random_state)
+                                                hyper_model, X_train, y_train, X_eval=X_eval, y_eval=y_eval,
+                                                X_test=X_test, eval_size=eval_size, task=task,
+                                                callbacks=callbacks,
+                                                random_state=random_state)
 
 
 class CompeteExperiment(Experiment):
@@ -642,9 +655,9 @@ class CompeteExperiment(Experiment):
                  retrain_on_wholedata=False,
                  log_level=None):
         super(CompeteExperiment, self).__init__(hyper_model, X_train, y_train, X_eval=X_eval, y_eval=y_eval,
-                                                X_test=X_test, eval_size=eval_size, task=task,
-                                                callbacks=callbacks,
-                                                random_state=random_state)
+                                                  X_test=X_test, eval_size=eval_size, task=task,
+                                                  callbacks=callbacks,
+                                                  random_state=random_state)
         self.data_cleaner_args = data_cleaner_args if data_cleaner_args is not None else {}
         self.drop_feature_with_collinearity = drop_feature_with_collinearity
         self.train_test_split_strategy = train_test_split_strategy
