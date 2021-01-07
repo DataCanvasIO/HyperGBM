@@ -2,6 +2,7 @@
 """
 
 """
+import copy
 import hashlib
 import pickle
 import re
@@ -9,22 +10,21 @@ import time
 
 import numpy as np
 import pandas as pd
-import copy
+from imblearn.over_sampling import RandomOverSampler, SMOTE, ADASYN
+from imblearn.under_sampling import RandomUnderSampler, NearMiss, TomekLinks, EditedNearestNeighbours
 from sklearn import pipeline as sk_pipeline
-from sklearn.utils import class_weight
 from sklearn.model_selection import KFold, StratifiedKFold
 
 from hypergbm.pipeline import ComposeTransformer
 from hypernets.model.estimator import Estimator
 from hypernets.model.hyper_model import HyperModel
 from hypernets.utils import logging, fs
+from tabular_toolbox import dask_ex as dex
 from tabular_toolbox.data_cleaner import DataCleaner
 from tabular_toolbox.metrics import calc_score
 from tabular_toolbox.persistence import read_parquet, to_parquet
 from tabular_toolbox.utils import hash_dataframe
 from .estimators import HyperEstimator
-from imblearn.over_sampling import RandomOverSampler, SMOTE, ADASYN
-from imblearn.under_sampling import RandomUnderSampler, NearMiss, TomekLinks, EditedNearestNeighbours
 
 try:
     import shap
@@ -318,12 +318,13 @@ class HyperGBMEstimator(Estimator):
             logger.info(f'taken {time.time() - starttime}s')
 
     def _get_sample_weight(self, y):
-        unique = np.unique(y)
-        cw = list(class_weight.compute_class_weight('balanced', unique, y))
-        sample_weight = np.ones(y.shape)
-        for i, c in enumerate(unique):
-            sample_weight[y == c] *= cw[i]
-        return sample_weight
+        # unique = np.unique(y)
+        # cw = list(class_weight.compute_class_weight('balanced', unique, y))
+        # sample_weight = np.ones(y.shape)
+        # for i, c in enumerate(unique):
+        #     sample_weight[y == c] *= cw[i]
+        # return sample_weight
+        return dex.compute_sample_weight(y)
 
     def predict(self, X, use_cache=None, verbose=0, **kwargs):
         starttime = time.time()
@@ -433,7 +434,7 @@ class HyperGBMEstimator(Estimator):
                         self.data_pipeline, self.data_cleaner = pickle.load(input)
                 except:
                     if fs.exists(data_path):
-                        fs.rm(data_path)
+                        fs.rm(data_path, recursive=True)
                     return None
             done_at = time.time()
             logger.debug(f'load cache in {done_at - start_at} seconds')
@@ -452,7 +453,7 @@ class HyperGBMEstimator(Estimator):
             except Exception as e:
                 logger.error(e)
                 if fs.exists(pipeline_path):
-                    fs.rm(pipeline_path)
+                    fs.rm(pipeline_path, recursive=True)
         done_at = time.time()
         logger.debug(f'save cache in {done_at - start_at} seconds')
 
@@ -465,7 +466,7 @@ class HyperGBMEstimator(Estimator):
             return df
         except:
             if fs.exists(filepath):
-                fs.rm(filepath)
+                fs.rm(filepath, recursive=True)
             return None
 
     def _save_df(self, filepath, df):
@@ -479,7 +480,7 @@ class HyperGBMEstimator(Estimator):
             logger.error(e)
             # traceback.print_exc()
             if fs.exists(filepath):
-                fs.rm(filepath)
+                fs.rm(filepath, recursive=True)
 
     def get_explainer(self, data=None):
         explainer = HyperGBMExplainer(self, data=data)
