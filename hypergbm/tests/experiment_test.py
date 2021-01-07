@@ -247,6 +247,7 @@ class Test_HyperGBM():
         log_callback = LogCallback(output_elapsed=True)
         experiment = CompeteExperiment(hk, X_train, y_train, X_test=X_test,
                                        # train_test_split_strategy='adversarial_validation',
+                                       retrain_on_wholedata=True,
                                        cv=True, num_folds=3,
                                        callbacks=[log_callback],
                                        scorer=get_scorer('roc_auc_ovo'),

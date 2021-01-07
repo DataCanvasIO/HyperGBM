@@ -132,6 +132,8 @@ class Test_Estimator():
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, stratify=y, random_state=9527)
         import lightgbm as lgbm
         clf = lgbm.LGBMClassifier(n_estimators=1000)
+
+        clf.n_estimators
         clf.fit(X_train, y_train, eval_set=[(X_test, y_test)], early_stopping_rounds=5)
 
         assert clf.best_iteration_ == 11
