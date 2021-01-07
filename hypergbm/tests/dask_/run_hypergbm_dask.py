@@ -7,7 +7,7 @@ from dask_ml import preprocessing as dm_pre
 from dask_ml.model_selection import train_test_split
 
 from hypergbm import HyperGBM
-from hypergbm.dask.dask_ops import get_space_num_cat_pipeline_complex
+from hypergbm.dask.search_space import search_space_general
 from hypergbm.tests import test_output_dir
 from hypernets.core.callbacks import *
 from hypernets.core.searcher import OptimizeDirection
@@ -22,8 +22,8 @@ def main():
     print(client)
 
     def search_space():
-        return get_space_num_cat_pipeline_complex(lightgbm_init_kwargs={'n_jobs': 4},
-                                                  xgb_init_kwargs={'n_jobs': 4})
+        return search_space_general(lightgbm_init_kwargs={'n_jobs': 4},
+                                    xgb_init_kwargs={'n_jobs': 4})
 
     rs = RandomSearcher(search_space, optimize_direction=OptimizeDirection.Maximize)
     hk = HyperGBM(rs, task='binary', reward_metric='accuracy',
