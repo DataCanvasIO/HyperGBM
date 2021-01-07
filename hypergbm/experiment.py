@@ -26,6 +26,16 @@ logger = logging.get_logger(__name__)
 DEFAULT_EVAL_SIZE = 0.3
 
 
+def _set_log_level(log_level):
+    logging.set_level(log_level)
+
+    from tabular_toolbox.utils import logging as tlogging
+    tlogging.set_level(log_level)
+
+    # import logging as pylogging
+    # pylogging.basicConfig(level=log_level)
+
+
 class ExperimentStep(object):
     def __init__(self, experiment, name):
         super(ExperimentStep, self).__init__()
@@ -593,10 +603,6 @@ class CompeteExperimentV2(SteppedExperiment):
                  retrain_on_wholedata=False,
                  log_level=None):
 
-        # ignore warnings
-        import warnings
-        warnings.filterwarnings('ignore')
-
         steps = [DataCleanStep(self, 'data_clean',
                                data_cleaner_args=data_cleaner_args, cv=cv,
                                train_test_split_strategy=train_test_split_strategy,
@@ -625,11 +631,18 @@ class CompeteExperimentV2(SteppedExperiment):
                                                retrain_on_wholedata=retrain_on_wholedata)
         steps.append(last_step)
 
+        # ignore warnings
+        import warnings
+        warnings.filterwarnings('ignore')
+
+        if log_level is not None:
+            _set_log_level(log_level)
+
         super(CompeteExperimentV2, self).__init__(steps,
-                                                hyper_model, X_train, y_train, X_eval=X_eval, y_eval=y_eval,
-                                                X_test=X_test, eval_size=eval_size, task=task,
-                                                callbacks=callbacks,
-                                                random_state=random_state)
+                                                  hyper_model, X_train, y_train, X_eval=X_eval, y_eval=y_eval,
+                                                  X_test=X_test, eval_size=eval_size, task=task,
+                                                  callbacks=callbacks,
+                                                  random_state=random_state)
 
 
 class CompeteExperiment(Experiment):
@@ -655,9 +668,12 @@ class CompeteExperiment(Experiment):
                  retrain_on_wholedata=False,
                  log_level=None):
         super(CompeteExperiment, self).__init__(hyper_model, X_train, y_train, X_eval=X_eval, y_eval=y_eval,
-                                                  X_test=X_test, eval_size=eval_size, task=task,
-                                                  callbacks=callbacks,
-                                                  random_state=random_state)
+                                                X_test=X_test, eval_size=eval_size, task=task,
+                                                callbacks=callbacks,
+                                                random_state=random_state)
+        if log_level:
+            _set_log_level(log_level)
+
         self.data_cleaner_args = data_cleaner_args if data_cleaner_args is not None else {}
         self.drop_feature_with_collinearity = drop_feature_with_collinearity
         self.train_test_split_strategy = train_test_split_strategy
