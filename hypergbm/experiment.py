@@ -1012,21 +1012,24 @@ class CompeteExperiment(Experiment):
 
             best_trials = self.hyper_model.get_top_trails(self.ensemble_size)
             estimators = []
-            oofs = None
-            if self.retrain_on_wholedata:
-                display_markdown('#### retrain on whole data', raw=True)
-                for trail in best_trials:
-                    if X_eval is not None and y_eval is not None:
-                        X_whole = pd.concat([X_train, X_eval], axis=0)
-                        y_whole = pd.concat([y_train, y_eval], axis=0)
-                    else:
-                        X_whole = X_train
-                        y_whole = y_train
-                    estimator = self.hyper_model.final_train(trail.space_sample, X_whole, y_whole, **kwargs)
-                    estimators.append(estimator)
-            else:
+            if self.cv:
+                #
+                # if self.retrain_on_wholedata:
+                #     display_markdown('#### retrain on whole data', raw=True)
+                #     if X_eval is None or y_eval is None:
+                #         stratify = y_train
+                #         if self.task == 'regression':
+                #             stratify = None
+                #         X_train, X_eval, y_train, y_eval = train_test_split(X_train, y_train, test_size=self.eval_size,
+                #                                                             random_state=self.random_state,
+                #                                                             stratify=stratify)
+                #     for i, trail in enumerate(best_trials):
+                #         kwargs['eval_set'] = [(X_eval, y_eval)]
+                #         estimator = self.hyper_model.final_train(trail.space_sample, X_train, y_train, **kwargs)
+                #         estimators.append(estimator)
+                oofs = None
                 for i, trail in enumerate(best_trials):
-                    if self.cv and trail.memo.__contains__('oof'):
+                    if trail.memo.__contains__('oof'):
                         oof = trail.memo['oof']
                         if oofs is None:
                             if len(oof.shape) == 1:
@@ -1035,12 +1038,15 @@ class CompeteExperiment(Experiment):
                                 oofs = np.zeros((oof.shape[0], len(best_trials), oof.shape[-1]), dtype=np.float64)
                         oofs[:, i] = oof
                     estimators.append(self.hyper_model.load_estimator(trail.model_file))
-            ensemble = GreedyEnsemble(self.task, estimators, scoring=self.scorer, ensemble_size=self.ensemble_size)
-            if oofs is not None:
+                ensemble = GreedyEnsemble(self.task, estimators, scoring=self.scorer, ensemble_size=self.ensemble_size)
                 print('fit on oofs')
                 ensemble.fit(None, y_train, oofs)
             else:
+                for trail in best_trials:
+                    estimators.append(self.hyper_model.load_estimator(trail.model_file))
+                ensemble = GreedyEnsemble(self.task, estimators, scoring=self.scorer, ensemble_size=self.ensemble_size)
                 ensemble.fit(X_eval, y_eval)
+
             self.estimator = ensemble
             self.step_end(output={'ensemble': ensemble})
             display(ensemble)
@@ -1086,36 +1092,47 @@ class CompeteExperiment(Experiment):
                                       'y_eval.shape',
                                       'X_test.shape']), display_id='output_intput')
 
+        if isnotebook():
+            import seaborn as sns
+            import matplotlib.pyplot as plt
+            # Draw Plot
+            plt.figure(figsize=(8, 4), dpi=80)
+            sns.distplot(y_train, color="g", label="y")
+            # Decoration
+            plt.title('Distribution of y', fontsize=16)
+            plt.legend()
+            plt.show()
+
         # 1. Clean Data
         X_train, y_train, X_test, X_eval, y_eval, original_features = \
             self.do_data_clean(hyper_model, X_train, y_train, X_test, X_eval, y_eval)
-        print('-' * 20, 'do_data_clean done')
+        # print('-' * 20, 'do_data_clean done')
 
         # 2. Drop features with multicollinearity
         X_train, y_train, X_test, X_eval, y_eval = \
             self.do_select_by_multicollinearity(hyper_model, X_train, y_train, X_test, X_eval, y_eval)
-        print('-' * 20, 'do_select_by_multicollinearity done')
+        # print('-' * 20, 'do_select_by_multicollinearity done')
 
         # 3. Shift detection
         X_train, y_train, X_test, X_eval, y_eval = \
             self.do_drift_detect(hyper_model, X_train, y_train, X_test, X_eval, y_eval)
-        print('-' * 20, 'do_drift_detect done')
+        # print('-' * 20, 'do_drift_detect done')
 
         # 4. Baseline search
         X_train, y_train, X_test, X_eval, y_eval = \
             self.do_base_search(hyper_model, X_train, y_train, X_test, X_eval, y_eval, **kwargs)
-        print('-' * 20, 'do_base_search done')
+        # print('-' * 20, 'do_base_search done')
 
         if self.mode == 'two-stage':
             # # 5. Pseudo Labeling
             X_train, y_train, X_test, X_eval, y_eval, X_pseudo, y_pseudo = \
                 self.do_pseudo_label(hyper_model, X_train, y_train, X_test, X_eval, y_eval)
-            print('-' * 20, 'do_pseudo_label done')
+            # print('-' * 20, 'do_pseudo_label done')
             # # 5. Feature importance evaluation
             X_train, y_train, X_test, X_eval, y_eval, X_pseudo, y_pseudo, unselected_features = \
                 self.do_two_stage_importance_selection(hyper_model, X_train, y_train, X_test, X_eval, y_eval,
                                                        X_pseudo, y_pseudo, **kwargs)
-            print('-' * 20, 'do_two_stage_importance_selection done')
+            # print('-' * 20, 'do_two_stage_importance_selection done')
 
             # if len(unselected_features) > 0 or X_pseudo is not None:
             #     # 6. Final search
@@ -1125,12 +1142,12 @@ class CompeteExperiment(Experiment):
             X_train, y_train, X_test, X_eval, y_eval = \
                 self.do_two_stage_search(hyper_model, X_train, y_train, X_test, X_eval, y_eval, X_pseudo, y_pseudo,
                                          unselected_features, **kwargs)
-            print('-' * 20, 'do_two_stage_search done')
+            # print('-' * 20, 'do_two_stage_search done')
 
         # # 7. Ensemble
         X_train, y_train, X_test, X_eval, y_eval = \
             self.do_ensemble(hyper_model, X_train, y_train, X_test, X_eval, y_eval, original_features)
-        print('-' * 20, 'do_ensemble done')
+        # print('-' * 20, 'do_ensemble done')
 
         # 8. Compose pipeline
         self.step_start('compose pipeline')

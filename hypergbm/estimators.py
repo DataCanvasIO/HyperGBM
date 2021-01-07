@@ -98,7 +98,10 @@ class LGBMClassifierWrapper(lightgbm.LGBMClassifier):
 
     @property
     def best_n_estimators(self):
-        return self.best_iteration_
+        if self.best_iteration_ is None or self.best_iteration_ <= 0:
+            return self.n_estimators
+        else:
+            return self.best_iteration_
 
 
 class LGBMRegressorWrapper(lightgbm.LGBMRegressor):
@@ -110,7 +113,10 @@ class LGBMRegressorWrapper(lightgbm.LGBMRegressor):
 
     @property
     def best_n_estimators(self):
-        return self.best_iteration_
+        if self.best_iteration_ is None or self.best_iteration_ <= 0:
+            return self.n_estimators
+        else:
+            return self.best_iteration_
 
 
 class LightGBMEstimator(HyperEstimator):
@@ -189,6 +195,9 @@ class LightGBMDaskEstimator(LightGBMEstimator):
 
 
 class XGBClassifierWrapper(xgboost.XGBClassifier):
+    def fit(self, X, y, **kwargs):
+        super(XGBClassifierWrapper, self).fit(X, y, **kwargs)
+
     @property
     def best_n_estimators(self):
         booster = self.get_booster()
@@ -207,6 +216,9 @@ class XGBClassifierWrapper(xgboost.XGBClassifier):
 
 
 class XGBRegressorWrapper(xgboost.XGBRegressor):
+    def fit(self, X, y, **kwargs):
+        super(XGBRegressorWrapper, self).fit(X, y, **kwargs)
+
     @property
     def best_n_estimators(self):
         booster = self.get_booster()
