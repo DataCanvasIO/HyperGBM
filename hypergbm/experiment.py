@@ -15,6 +15,7 @@ from sklearn.pipeline import Pipeline
 from hypernets.experiment import Experiment
 from hypernets.utils import logging
 from hypernets.utils.common import isnotebook
+from tabular_toolbox import dask_ex as dex
 from tabular_toolbox import drift_detection as dd
 from tabular_toolbox.data_cleaner import DataCleaner
 from tabular_toolbox.ensemble import GreedyEnsemble
@@ -111,7 +112,6 @@ class DataCleanStep(ExperimentStep):
 
         if not self.cv:
             if X_eval is None or y_eval is None:
-                stratify = y_train
                 eval_size = kwargs.get('eval_size', DEFAULT_EVAL_SIZE)
                 if self.train_test_split_strategy == 'adversarial_validation' and X_test is not None:
                     logger.debug('DriftDetector.train_test_split')
@@ -119,11 +119,13 @@ class DataCleanStep(ExperimentStep):
                     detector.fit(X_train, X_test)
                     X_train, X_eval, y_train, y_eval = detector.train_test_split(X_train, y_train, test_size=eval_size)
                 else:
-                    if self.task == 'regression':
-                        stratify = None
-                    X_train, X_eval, y_train, y_eval = train_test_split(X_train, y_train, test_size=eval_size,
-                                                                        random_state=self.random_state,
-                                                                        stratify=stratify)
+                    if self.task == 'regression' or dex.is_dask_object(X_train):
+                        X_train, X_eval, y_train, y_eval = dex.train_test_split(X_train, y_train, test_size=eval_size,
+                                                                                random_state=self.random_state)
+                    else:
+                        X_train, X_eval, y_train, y_eval = dex.train_test_split(X_train, y_train, test_size=eval_size,
+                                                                                random_state=self.random_state,
+                                                                                stratify=y_train)
                 self.step_progress('split into train set and eval set')
             else:
                 X_eval, y_eval = data_cleaner.transform(X_eval, y_eval)
@@ -320,7 +322,8 @@ class BaseSearchAndTrainStep(ExperimentStep):
         self.step_start('first stage search')
         display_markdown('### Pipeline search', raw=True)
 
-        kwargs['eval_set'] = (X_eval, y_eval)
+        if not dex.is_dask_object(X_eval):
+            kwargs['eval_set'] = (X_eval, y_eval)
         model = copy.deepcopy(hyper_model)
         model.search(X_train, y_train, X_eval, y_eval, cv=self.cv, num_folds=self.num_folds, **kwargs)
 
@@ -513,7 +516,8 @@ class TwoStageSearchAndTrainStep(BaseSearchAndTrainStep):
         # self.second_hyper_model = copy.deepcopy(hyper_model)
         second_hyper_model = copy.deepcopy(hyper_model)
 
-        kwargs['eval_set'] = (X_eval, y_eval)
+        if not dex.is_dask_object(X_eval):
+            kwargs['eval_set'] = (X_eval, y_eval)
         if X_pseudo is not None:
             if self.pseudo_labeling_resplit:
                 x_list = [X_train, X_pseudo]
@@ -628,6 +632,7 @@ class CompeteExperimentV2(SteppedExperiment):
         else:
             last_step = BaseSearchAndTrainStep(self, 'base_search_and_train',
                                                scorer=scorer, cv=cv, num_folds=num_folds,
+                                               ensemble_size=ensemble_size,
                                                retrain_on_wholedata=retrain_on_wholedata)
         steps.append(last_step)
 
