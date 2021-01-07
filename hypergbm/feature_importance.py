@@ -68,7 +68,9 @@ def feature_importance_batch(estimators, X, y, scoring=None, n_repeats=5,
 
     for i, est in enumerate(estimators):
         logger.info(f'permutation_importance: {i}/{len(estimators)}')
-        importance = permutation_importance(est, X, y, scoring, n_repeats, n_jobs, random_state)
+        importance = permutation_importance(est, X, y,
+                                            scoring=scoring, n_repeats=n_repeats, n_jobs=n_jobs,
+                                            random_state=random_state)
         importances.append(importance.importances)
 
     importances = np.reshape(np.stack(importances, axis=2), (X.shape[1], -1), 'F')
