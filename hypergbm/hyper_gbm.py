@@ -305,6 +305,8 @@ class HyperGBMEstimator(Estimator):
 
         if verbose > 0:
             logger.info('estimator is fitting the data')
+
+
         self.gbm_model.fit(X, y, **kwargs)
 
         if self.classes_ is None and hasattr(self.gbm_model, 'classes_'):

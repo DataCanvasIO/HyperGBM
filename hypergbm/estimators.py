@@ -198,6 +198,12 @@ class LightGBMDaskEstimator(LightGBMEstimator):
 
 class XGBClassifierWrapper(xgboost.XGBClassifier):
     def fit(self, X, y, **kwargs):
+        task = self.__dict__.get('task')
+        if kwargs.get('eval_metric') is None:
+            if task is not None and task == 'multiclass':
+                kwargs['eval_metric'] = 'mlogloss'
+            else:
+                kwargs['eval_metric'] = 'logloss'
         super(XGBClassifierWrapper, self).fit(X, y, **kwargs)
 
     @property
@@ -219,6 +225,8 @@ class XGBClassifierWrapper(xgboost.XGBClassifier):
 
 class XGBRegressorWrapper(xgboost.XGBRegressor):
     def fit(self, X, y, **kwargs):
+        if kwargs.get('eval_metric') is None:
+            kwargs['eval_metric'] = 'logloss'
         super(XGBRegressorWrapper, self).fit(X, y, **kwargs)
 
     @property
@@ -308,6 +316,7 @@ class XGBoostEstimator(HyperEstimator):
             xgb = XGBRegressorWrapper(**kwargs)
         else:
             xgb = XGBClassifierWrapper(**kwargs)
+        xgb.__dict__['task'] = task
         return xgb
 
 
