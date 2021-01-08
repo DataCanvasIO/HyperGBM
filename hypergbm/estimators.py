@@ -8,10 +8,12 @@ from hypernets.core.search_space import ModuleSpace
 from sklearn.experimental import enable_hist_gradient_boosting
 from sklearn.ensemble import HistGradientBoostingRegressor, HistGradientBoostingClassifier
 from tabular_toolbox.column_selector import column_object_category_bool, column_zero_or_positive_int32
+from tabular_toolbox import dask_ex as dex
 
 import lightgbm
 import xgboost
 import catboost
+import dask_xgboost
 
 
 def get_categorical_features(X):
@@ -309,18 +311,68 @@ class XGBoostEstimator(HyperEstimator):
         return xgb
 
 
+class XGBDaskClassifierWrapper(dask_xgboost.XGBClassifier):
+    def fit(self, X, y=None, classes=None, eval_set=None,
+            sample_weight=None, sample_weight_eval_set=None,
+            eval_metric=None, early_stopping_rounds=None, **kwargs):
+        return super(XGBDaskClassifierWrapper, self) \
+            .fit(X, y, classes=classes, eval_set=eval_set,
+                 sample_weight=sample_weight, sample_weight_eval_set=sample_weight_eval_set,
+                 eval_metric=eval_metric, early_stopping_rounds=early_stopping_rounds)
+
+    @property
+    def best_n_estimators(self):
+        booster = self.get_booster()
+        if booster is not None:
+            return booster.best_ntree_limit
+        else:
+            return None
+
+    def predict_proba(self, data, ntree_limit=None, **kwargs):
+        data = data[self.get_booster().feature_names]
+        proba = super(XGBDaskClassifierWrapper, self).predict_proba(data, ntree_limit=ntree_limit)
+
+        if self.n_classes_ == 2:
+            proba = dex.fix_binary_predict_proba_result(proba)
+
+        return proba
+
+    def predict(self, data, **kwargs):
+        data = data[self.get_booster().feature_names]
+        return super(XGBDaskClassifierWrapper, self).predict(data)
+
+
+class XGBDaskRegressorWrapper(dask_xgboost.XGBRegressor):
+    def fit(self, X, y=None, eval_set=None,
+            sample_weight=None, sample_weight_eval_set=None,
+            eval_metric=None, early_stopping_rounds=None, **kwargs):
+        return super(XGBDaskRegressorWrapper, self) \
+            .fit(X, y, eval_set=eval_set,
+                 sample_weight=sample_weight, sample_weight_eval_set=sample_weight_eval_set,
+                 eval_metric=eval_metric, early_stopping_rounds=early_stopping_rounds)
+
+    @property
+    def best_n_estimators(self):
+        booster = self.get_booster()
+        if booster is not None:
+            return booster.best_ntree_limit
+        else:
+            return None
+
+    def predict(self, data, **kwargs):
+        data = data[self.get_booster().feature_names]
+        return super(XGBDaskRegressorWrapper, self).predict(data)
+
+
 class XGBoostDaskEstimator(XGBoostEstimator):
     def _build_estimator(self, task, kwargs):
-        # import xgboost
-        from dask_ml import xgboost
-
         if 'task' in kwargs:
             kwargs.pop('task')
 
         if task == 'regression':
-            xgb = xgboost.XGBRegressor(**kwargs)
+            xgb = XGBDaskRegressorWrapper(**kwargs)
         else:
-            xgb = xgboost.XGBClassifier(**kwargs)
+            xgb = XGBDaskClassifierWrapper(**kwargs)
         return xgb
 
 

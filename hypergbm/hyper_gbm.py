@@ -288,7 +288,7 @@ class HyperGBMEstimator(Estimator):
                     es.append((X_eval, y_eval))
                     kwargs['eval_set'] = es
 
-        if kwargs.get('verbose') is None and str(type(self.gbm_model)).find('dask') < 0:
+        if kwargs.get('verbose') is None:
             kwargs['verbose'] = verbose
 
         if self.task != 'regression' and self.class_balancing is not None:
