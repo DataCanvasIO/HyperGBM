@@ -339,21 +339,24 @@ class BaseSearchAndTrainStep(ExperimentStep):
 
             best_trials = hyper_model.get_top_trails(self.ensemble_size)
             estimators = []
-            oofs = None
-            if self.retrain_on_wholedata:
-                display_markdown('#### retrain on whole data', raw=True)
-                for trail in best_trials:
-                    if X_eval is not None and y_eval is not None:
-                        X_whole = pd.concat([X_train, X_eval], axis=0)
-                        y_whole = pd.concat([y_train, y_eval], axis=0)
-                    else:
-                        X_whole = X_train
-                        y_whole = y_train
-                    estimator = hyper_model.final_train(trail.space_sample, X_whole, y_whole, **kwargs)
-                    estimators.append(estimator)
-            else:
+            if self.cv:
+                #
+                # if self.retrain_on_wholedata:
+                #     display_markdown('#### retrain on whole data', raw=True)
+                #     if X_eval is None or y_eval is None:
+                #         stratify = y_train
+                #         if self.task == 'regression':
+                #             stratify = None
+                #         X_train, X_eval, y_train, y_eval = train_test_split(X_train, y_train, test_size=self.eval_size,
+                #                                                             random_state=self.random_state,
+                #                                                             stratify=stratify)
+                #     for i, trail in enumerate(best_trials):
+                #         kwargs['eval_set'] = [(X_eval, y_eval)]
+                #         estimator = self.hyper_model.final_train(trail.space_sample, X_train, y_train, **kwargs)
+                #         estimators.append(estimator)
+                oofs = None
                 for i, trail in enumerate(best_trials):
-                    if self.cv and trail.memo.__contains__('oof'):
+                    if trail.memo.__contains__('oof'):
                         oof = trail.memo['oof']
                         if oofs is None:
                             if len(oof.shape) == 1:
@@ -362,12 +365,15 @@ class BaseSearchAndTrainStep(ExperimentStep):
                                 oofs = np.zeros((oof.shape[0], len(best_trials), oof.shape[-1]), dtype=np.float64)
                         oofs[:, i] = oof
                     estimators.append(hyper_model.load_estimator(trail.model_file))
-            ensemble = GreedyEnsemble(self.task, estimators, scoring=self.scorer, ensemble_size=self.ensemble_size)
-            if oofs is not None:
+                ensemble = GreedyEnsemble(self.task, estimators, scoring=self.scorer, ensemble_size=self.ensemble_size)
                 print('fit on oofs')
                 ensemble.fit(None, y_train, oofs)
             else:
+                for trail in best_trials:
+                    estimators.append(hyper_model.load_estimator(trail.model_file))
+                ensemble = GreedyEnsemble(self.task, estimators, scoring=self.scorer, ensemble_size=self.ensemble_size)
                 ensemble.fit(X_eval, y_eval)
+
             estimator = ensemble
             self.step_end(output={'ensemble': ensemble})
             display(ensemble)
@@ -648,6 +654,20 @@ class CompeteExperimentV2(SteppedExperiment):
                                                   X_test=X_test, eval_size=eval_size, task=task,
                                                   callbacks=callbacks,
                                                   random_state=random_state)
+
+    def train(self, hyper_model, X_train, y_train, X_test, X_eval=None, y_eval=None, **kwargs):
+        if isnotebook():
+            import seaborn as sns
+            import matplotlib.pyplot as plt
+            # Draw Plot
+            plt.figure(figsize=(8, 4), dpi=80)
+            sns.distplot(y_train, color="g", label="y")
+            # Decoration
+            plt.title('Distribution of y', fontsize=16)
+            plt.legend()
+            plt.show()
+
+        return super().train(hyper_model, X_train, y_train, X_test, X_eval, y_eval, **kwargs)
 
 
 class CompeteExperiment(Experiment):
