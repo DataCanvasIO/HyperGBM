@@ -126,6 +126,8 @@ class DataCleanStep(ExperimentStep):
                         X_train, X_eval, y_train, y_eval = dex.train_test_split(X_train, y_train, test_size=eval_size,
                                                                                 random_state=self.random_state,
                                                                                 stratify=y_train)
+                if self.task != 'regression':
+                    assert y_train.nunique() == y_eval.nunique(), 'The number of classes of `y_train` and `y_eval` must be equal. Try to increase eval_size.'
                 self.step_progress('split into train set and eval set')
             else:
                 X_eval, y_eval = data_cleaner.transform(X_eval, y_eval)
@@ -662,19 +664,25 @@ class CompeteExperiment(SteppedExperiment):
                                y_train.shape,
                                X_eval.shape if X_eval is not None else None,
                                y_eval.shape if y_eval is not None else None,
-                               X_test.shape if X_test is not None else None)],
+                               X_test.shape if X_test is not None else None,
+                               self.task if self.task == 'regression' else f'{self.task}({y_train.nunique()})')],
                              columns=['X_train.shape',
                                       'y_train.shape',
                                       'X_eval.shape',
                                       'y_eval.shape',
-                                      'X_test.shape']), display_id='output_intput')
+                                      'X_test.shape',
+                                      'Task', ]), display_id='output_intput')
 
         if isnotebook():
             import seaborn as sns
             import matplotlib.pyplot as plt
+            from sklearn.preprocessing import LabelEncoder
+
+            le = LabelEncoder()
+            y = le.fit_transform(y_train.dropna())
             # Draw Plot
             plt.figure(figsize=(8, 4), dpi=80)
-            sns.distplot(y_train, color="g", label="y")
+            sns.distplot(y, kde=False, color="g", label="y")
             # Decoration
             plt.title('Distribution of y', fontsize=12)
             plt.legend()
