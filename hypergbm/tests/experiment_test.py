@@ -67,12 +67,12 @@ class Test_HyperGBM():
     #     X_train, X_test, y_train, y_test = train_test_split(df, y, test_size=0.3, random_state=9527)
     #     log_callback = LogCallback()
     #     experiment = GeneralExperiment('regression', hk, X_train, y_train, X_test, callbacks=[log_callback])
-    #     estimator = experiment.run(use_cache=True, max_trails=20)
+    #     estimator = experiment.run(use_cache=True, max_trials=20)
     #     assert log_callback.logs == ['experiment start',
     #                                  '   step start, step:data split',
     #                                  '   step end, step:data split, output:',
     #                                  '   step start, step:search',
-    #                                  "   step end, step:search, output:dict_keys(['best_trail'])",
+    #                                  "   step end, step:search, output:dict_keys(['best_trial'])",
     #                                  '   step start, step:load estimator',
     #                                  "   step end, step:load estimator, output:dict_keys(['estimator'])",
     #                                  'experiment end']
@@ -95,7 +95,7 @@ class Test_HyperGBM():
     #                                    importance_threshold=1e-5,
     #                                    ensemble_size=5
     #                                    )
-    #     pipeline = experiment.run(use_cache=True, max_trails=20)
+    #     pipeline = experiment.run(use_cache=True, max_trials=20)
     #     mse2 = mse_scorer(pipeline, X_test, y_test)
     #     assert mse2
     def test_multiclass_cv(self):
@@ -108,7 +108,7 @@ class Test_HyperGBM():
         self.run_multiclass(train_test_split_strategy='adversarial_validation')
 
     def run_multiclass(self, train_test_split_strategy=None, cv=False, mode='one-stage', pseudo_labeling=False,
-                       drop_feature_with_collinearity=False, drift_detection=True, max_trails=3):
+                       drop_feature_with_collinearity=False, drift_detection=True, max_trials=3):
         df = dsutils.load_glass_uci()
         df.columns = [f'x_{c}' for c in df.columns.to_list()]
         df.pop('x_0')
@@ -134,7 +134,7 @@ class Test_HyperGBM():
                                        importance_threshold=1e-5,
                                        ensemble_size=10
                                        )
-        pipeline = experiment.run(use_cache=True, max_trails=max_trails)
+        pipeline = experiment.run(use_cache=True, max_trials=max_trials)
         acc_scorer = get_scorer('accuracy')
         acc = acc_scorer(pipeline, X_test, y_test)
         assert acc
@@ -153,19 +153,19 @@ class Test_HyperGBM():
         X_train, X_test, y_train, y_test = train_test_split(df, y, test_size=0.3, random_state=9527)
         log_callback = LogCallback()
         experiment = GeneralExperiment(hk, X_train, y_train, X_test=X_test, callbacks=[log_callback])
-        experiment.run(use_cache=True, max_trails=5)
+        experiment.run(use_cache=True, max_trials=5)
         assert log_callback.logs == ['experiment start',
                                      '   step start, step:data split',
                                      "   step end, step:data split, output:dict_keys(['X_train.shape', "
                                      "'y_train.shape', 'X_eval.shape', 'y_eval.shape', 'X_test.shape'])",
                                      '   step start, step:search',
-                                     "   step end, step:search, output:dict_keys(['best_trail'])",
+                                     "   step end, step:search, output:dict_keys(['best_trial'])",
                                      '   step start, step:load estimator',
                                      "   step end, step:load estimator, output:dict_keys(['estimator'])",
                                      'experiment end']
 
     def run_binary(self, train_test_split_strategy=None, cv=False, mode='one-stage', pseudo_labeling=False,
-                   drop_feature_with_collinearity=False, drift_detection=True, max_trails=3):
+                   drop_feature_with_collinearity=False, drift_detection=True, max_trials=3):
         rs = RandomSearcher(lambda: search_space_general(early_stopping_rounds=20, verbose=0),
                             optimize_direction=OptimizeDirection.Maximize)
         hk = HyperGBM(rs, reward_metric='auc', cache_dir=f'hypergbm_cache', callbacks=[])
@@ -188,7 +188,7 @@ class Test_HyperGBM():
                                        importance_threshold=1e-5,
                                        ensemble_size=5
                                        )
-        pipeline = experiment.run(use_cache=True, max_trails=max_trails)
+        pipeline = experiment.run(use_cache=True, max_trials=max_trials)
         auc_scorer = get_scorer('roc_auc_ovo')
         acc_scorer = get_scorer('accuracy')
         auc = auc_scorer(pipeline, X_test, y_test)

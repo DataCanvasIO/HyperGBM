@@ -251,10 +251,10 @@ class PermutationImportanceSelectionStep(FeatureSelectStep):
         self.step_start('evaluate feature importance')
         display_markdown('### Evaluate feature importance', raw=True)
 
-        best_trials = hyper_model.get_top_trails(self.n_est_feature_importance)
+        best_trials = hyper_model.get_top_trials(self.n_est_feature_importance)
         estimators = []
-        for trail in best_trials:
-            estimators.append(hyper_model.load_estimator(trail.model_file))
+        for trial in best_trials:
+            estimators.append(hyper_model.load_estimator(trial.model_file))
         self.step_progress('load estimators')
 
         importances = feature_importance_batch(estimators, X_eval, y_eval, self.scorer, n_repeats=5)
@@ -329,7 +329,7 @@ class BaseSearchAndTrainStep(ExperimentStep):
         model = copy.deepcopy(hyper_model)
         model.search(X_train, y_train, X_eval, y_eval, cv=self.cv, num_folds=self.num_folds, **kwargs)
 
-        self.step_end(output={'best_reward': model.get_best_trail().reward})
+        self.step_end(output={'best_reward': model.get_best_trial().reward})
 
         return X_train, y_train, X_test, X_eval, y_eval, model
 
@@ -339,7 +339,7 @@ class BaseSearchAndTrainStep(ExperimentStep):
             self.step_start('ensemble')
             display_markdown('### Ensemble', raw=True)
 
-            best_trials = hyper_model.get_top_trails(self.ensemble_size)
+            best_trials = hyper_model.get_top_trials(self.ensemble_size)
             estimators = []
             if self.cv:
                 #
@@ -352,27 +352,27 @@ class BaseSearchAndTrainStep(ExperimentStep):
                 #         X_train, X_eval, y_train, y_eval = train_test_split(X_train, y_train, test_size=self.eval_size,
                 #                                                             random_state=self.random_state,
                 #                                                             stratify=stratify)
-                #     for i, trail in enumerate(best_trials):
+                #     for i, trial in enumerate(best_trials):
                 #         kwargs['eval_set'] = [(X_eval, y_eval)]
-                #         estimator = self.hyper_model.final_train(trail.space_sample, X_train, y_train, **kwargs)
+                #         estimator = self.hyper_model.final_train(trial.space_sample, X_train, y_train, **kwargs)
                 #         estimators.append(estimator)
                 oofs = None
-                for i, trail in enumerate(best_trials):
-                    if trail.memo.__contains__('oof'):
-                        oof = trail.memo['oof']
+                for i, trial in enumerate(best_trials):
+                    if trial.memo.__contains__('oof'):
+                        oof = trial.memo['oof']
                         if oofs is None:
                             if len(oof.shape) == 1:
                                 oofs = np.zeros((oof.shape[0], len(best_trials)), dtype=np.float64)
                             else:
                                 oofs = np.zeros((oof.shape[0], len(best_trials), oof.shape[-1]), dtype=np.float64)
                         oofs[:, i] = oof
-                    estimators.append(hyper_model.load_estimator(trail.model_file))
+                    estimators.append(hyper_model.load_estimator(trial.model_file))
                 ensemble = GreedyEnsemble(self.task, estimators, scoring=self.scorer, ensemble_size=self.ensemble_size)
                 print('fit on oofs')
                 ensemble.fit(None, y_train, oofs)
             else:
-                for trail in best_trials:
-                    estimators.append(hyper_model.load_estimator(trail.model_file))
+                for trial in best_trials:
+                    estimators.append(hyper_model.load_estimator(trial.model_file))
                 ensemble = GreedyEnsemble(self.task, estimators, scoring=self.scorer, ensemble_size=self.ensemble_size)
                 ensemble.fit(X_eval, y_eval)
 
@@ -385,12 +385,12 @@ class BaseSearchAndTrainStep(ExperimentStep):
             self.step_start('load estimator')
             if self.retrain_on_wholedata:
                 display_markdown('#### retrain on whole data', raw=True)
-                trail = hyper_model.get_best_trail()
+                trial = hyper_model.get_best_trial()
                 X_all = pd.concat([X_train, X_eval], axis=0)
                 y_all = pd.concat([y_train, y_eval], axis=0)
-                estimator = hyper_model.final_train(trail.space_sample, X_all, y_all, **kwargs)
+                estimator = hyper_model.final_train(trial.space_sample, X_all, y_all, **kwargs)
             else:
-                estimator = hyper_model.load_estimator(hyper_model.get_best_trail().model_file)
+                estimator = hyper_model.load_estimator(hyper_model.get_best_trial().model_file)
             self.step_end()
 
         return estimator
@@ -453,19 +453,19 @@ class TwoStageSearchAndTrainStep(BaseSearchAndTrainStep):
         y_pseudo = None
         if self.task in ['binary', 'multiclass'] and self.pseudo_labeling and X_test is not None:
             es = self.ensemble_size if self.ensemble_size > 0 else 10
-            best_trials = hyper_model.get_top_trails(es)
+            best_trials = hyper_model.get_top_trials(es)
             estimators = []
             oofs = None
-            for i, trail in enumerate(best_trials):
-                if self.cv and trail.memo.__contains__('oof'):
-                    oof = trail.memo['oof']
+            for i, trial in enumerate(best_trials):
+                if self.cv and trial.memo.__contains__('oof'):
+                    oof = trial.memo['oof']
                     if oofs is None:
                         if len(oof.shape) == 1:
                             oofs = np.zeros((oof.shape[0], len(best_trials)), dtype=np.float64)
                         else:
                             oofs = np.zeros((oof.shape[0], len(best_trials), oof.shape[-1]), dtype=np.float64)
                     oofs[:, i] = oof
-                estimators.append(hyper_model.load_estimator(trail.model_file))
+                estimators.append(hyper_model.load_estimator(trial.model_file))
             ensemble = GreedyEnsemble(self.task, estimators, scoring=self.scorer, ensemble_size=self.ensemble_size)
             if oofs is not None:
                 print('fit on oofs')
@@ -563,7 +563,7 @@ class TwoStageSearchAndTrainStep(BaseSearchAndTrainStep):
         second_hyper_model.search(X_train, y_train, X_eval, y_eval, cv=self.cv, num_folds=self.num_folds,
                                   **kwargs)
 
-        self.step_end(output={'best_reward': second_hyper_model.get_best_trail().reward})
+        self.step_end(output={'best_reward': second_hyper_model.get_best_trial().reward})
 
         return X_train, y_train, X_test, X_eval, y_eval, second_hyper_model
 

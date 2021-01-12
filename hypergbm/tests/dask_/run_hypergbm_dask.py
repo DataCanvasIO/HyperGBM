@@ -53,10 +53,10 @@ def main():
     # X_train, X_test, y_train, y_test =  X_train.persist(), X_test.persist(), y_train.persist(), y_test.persist()
     X_train, X_test, y_train, y_test = client.persist([X_train, X_test, y_train, y_test])
 
-    hk.search(X_train, y_train, X_test, y_test, max_trails=200, use_cache=False, verbose=1)
+    hk.search(X_train, y_train, X_test, y_test, max_trials=200, use_cache=False, verbose=1)
     print('-' * 30)
 
-    best_trial = hk.get_best_trail()
+    best_trial = hk.get_best_trial()
     print(f'best_train:{best_trial}')
 
     estimator = hk.final_train(best_trial.space_sample, X_train, y_train)

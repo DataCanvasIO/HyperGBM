@@ -243,7 +243,7 @@ def search_space_feature_gen(dataframe_mapper_default=False,
     return space
 
 
-def search_space_one_trail(dataframe_mapper_default=False,
+def search_space_one_trial(dataframe_mapper_default=False,
                            eval_set=None,
                            early_stopping_rounds=None,
                            lightgbm_fit_kwargs=None):

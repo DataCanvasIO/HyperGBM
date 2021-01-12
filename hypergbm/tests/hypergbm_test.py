@@ -25,8 +25,8 @@ class Test_HyperGBM():
 
         X_train, X_test, y_train, y_test = data_partition()
 
-        hk.search(X_train, y_train, X_test, y_test, cv=cv, num_folds=num_folds, max_trails=30)
-        best_trial = hk.get_best_trail()
+        hk.search(X_train, y_train, X_test, y_test, cv=cv, num_folds=num_folds, max_trials=30)
+        best_trial = hk.get_best_trial()
 
         estimator = hk.final_train(best_trial.space_sample, X_train, y_train)
         score = estimator.predict(X_test)

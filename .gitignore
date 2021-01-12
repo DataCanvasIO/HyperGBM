@@ -134,6 +134,7 @@ dmypy.json
 dt_output/
 log/
 trail_store/
+trial_store/
 tmp/
 catboost_info/
 

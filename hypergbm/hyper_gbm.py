@@ -584,8 +584,8 @@ class HyperGBM(HyperModel):
         assert model_file is not None
         return HyperGBMEstimator.load(model_file)
 
-    def export_trail_configuration(self, trail):
-        return '`export_trail_configuration` does not implemented'
+    def export_trial_configuration(self, trial):
+        return '`export_trial_configuration` does not implemented'
 
     @staticmethod
     def _prepare_cache_dir(cache_dir, clear_cache):

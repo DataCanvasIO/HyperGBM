@@ -26,8 +26,8 @@ def main():
     y_train = X_train.pop('y')
     y_test = X_test.pop('y')
 
-    hk.search(X_train, y_train, X_test, y_test, max_trails=500, use_cache=True)
-    best_trial = hk.get_best_trail()
+    hk.search(X_train, y_train, X_test, y_test, max_trials=500, use_cache=True)
+    best_trial = hk.get_best_trial()
     print(f'best_train:{best_trial}')
     estimator = hk.final_train(best_trial.space_sample, X_train, y_train)
     score = estimator.predict(X_test)

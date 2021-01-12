@@ -58,11 +58,11 @@ class Test_FeatureImportance():
         df.drop(['id'], axis=1, inplace=True)
         X_train, X_test, y_train, y_test = train_test_split(df, y, test_size=0.3, random_state=42)
 
-        hk.search(X_train, y_train, X_test, y_test, max_trails=5, use_cache=True)
-        best_trials = hk.get_top_trails(3)
+        hk.search(X_train, y_train, X_test, y_test, max_trials=5, use_cache=True)
+        best_trials = hk.get_top_trials(3)
         estimators = []
-        for trail in best_trials:
-            estimators.append(hk.load_estimator(trail.model_file))
+        for trial in best_trials:
+            estimators.append(hk.load_estimator(trial.model_file))
 
         importances = feature_importance_batch(estimators, X_test, y_test, get_scorer('roc_auc_ovr'), n_repeats=2)
         assert importances
