@@ -340,40 +340,14 @@ class BaseSearchAndTrainStep(ExperimentStep):
             display_markdown('### Ensemble', raw=True)
 
             best_trials = hyper_model.get_top_trials(self.ensemble_size)
-            estimators = []
+            estimators = [hyper_model.load_estimator(trial.model_file) for trial in best_trials]
+            ensemble = self.get_ensemble(estimators)
             if self.cv:
-                #
-                # if self.retrain_on_wholedata:
-                #     display_markdown('#### retrain on whole data', raw=True)
-                #     if X_eval is None or y_eval is None:
-                #         stratify = y_train
-                #         if self.task == 'regression':
-                #             stratify = None
-                #         X_train, X_eval, y_train, y_eval = train_test_split(X_train, y_train, test_size=self.eval_size,
-                #                                                             random_state=self.random_state,
-                #                                                             stratify=stratify)
-                #     for i, trial in enumerate(best_trials):
-                #         kwargs['eval_set'] = [(X_eval, y_eval)]
-                #         estimator = self.hyper_model.final_train(trial.space_sample, X_train, y_train, **kwargs)
-                #         estimators.append(estimator)
-                oofs = None
-                for i, trial in enumerate(best_trials):
-                    if trial.memo.__contains__('oof'):
-                        oof = trial.memo['oof']
-                        if oofs is None:
-                            if len(oof.shape) == 1:
-                                oofs = np.zeros((oof.shape[0], len(best_trials)), dtype=np.float64)
-                            else:
-                                oofs = np.zeros((oof.shape[0], len(best_trials), oof.shape[-1]), dtype=np.float64)
-                        oofs[:, i] = oof
-                    estimators.append(hyper_model.load_estimator(trial.model_file))
-                ensemble = GreedyEnsemble(self.task, estimators, scoring=self.scorer, ensemble_size=self.ensemble_size)
                 print('fit on oofs')
+                oofs = self.get_ensemble_predictions(best_trials, ensemble)
+                assert oofs is not None
                 ensemble.fit(None, y_train, oofs)
             else:
-                for trial in best_trials:
-                    estimators.append(hyper_model.load_estimator(trial.model_file))
-                ensemble = GreedyEnsemble(self.task, estimators, scoring=self.scorer, ensemble_size=self.ensemble_size)
                 ensemble.fit(X_eval, y_eval)
 
             estimator = ensemble
@@ -394,6 +368,23 @@ class BaseSearchAndTrainStep(ExperimentStep):
             self.step_end()
 
         return estimator
+
+    def get_ensemble(self, estimators):
+        return GreedyEnsemble(self.task, estimators, scoring=self.scorer, ensemble_size=self.ensemble_size)
+
+    def get_ensemble_predictions(self, trials, ensemble):
+        oofs = None
+        for i, trial in enumerate(trials):
+            if trial.memo.__contains__('oof'):
+                oof = trial.memo['oof']
+                if oofs is None:
+                    if len(oof.shape) == 1:
+                        oofs = np.zeros((oof.shape[0], len(trials)), dtype=np.float64)
+                    else:
+                        oofs = np.zeros((oof.shape[0], len(trials), oof.shape[-1]), dtype=np.float64)
+                oofs[:, i] = oof
+
+        return oofs
 
 
 class TwoStageSearchAndTrainStep(BaseSearchAndTrainStep):
@@ -454,19 +445,9 @@ class TwoStageSearchAndTrainStep(BaseSearchAndTrainStep):
         if self.task in ['binary', 'multiclass'] and self.pseudo_labeling and X_test is not None:
             es = self.ensemble_size if self.ensemble_size > 0 else 10
             best_trials = hyper_model.get_top_trials(es)
-            estimators = []
-            oofs = None
-            for i, trial in enumerate(best_trials):
-                if self.cv and trial.memo.__contains__('oof'):
-                    oof = trial.memo['oof']
-                    if oofs is None:
-                        if len(oof.shape) == 1:
-                            oofs = np.zeros((oof.shape[0], len(best_trials)), dtype=np.float64)
-                        else:
-                            oofs = np.zeros((oof.shape[0], len(best_trials), oof.shape[-1]), dtype=np.float64)
-                    oofs[:, i] = oof
-                estimators.append(hyper_model.load_estimator(trial.model_file))
-            ensemble = GreedyEnsemble(self.task, estimators, scoring=self.scorer, ensemble_size=self.ensemble_size)
+            estimators = [hyper_model.load_estimator(trial.model_file) for trial in best_trials]
+            ensemble = self.get_ensemble(estimators)
+            oofs = self.get_ensemble_predictions(best_trials, ensemble)
             if oofs is not None:
                 print('fit on oofs')
                 ensemble.fit(None, y_train, oofs)
