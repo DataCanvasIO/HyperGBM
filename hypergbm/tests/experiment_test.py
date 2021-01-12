@@ -53,51 +53,31 @@ class LogCallback(ExperimentCallback):
 
 class Test_HyperGBM():
 
-    # def test_stat(self):
-    #     rs = RandomSearcher(lambda: search_space_general(task='regression'),
-    #                         optimize_direction=OptimizeDirection.Maximize)
-    #     hk = HyperGBM(rs, task='regression', reward_metric='mse',
-    #                   cache_dir=f'hypergbm_cache',
-    #                   callbacks=[])
-    #     df = pd.read_csv('/Users/jack/Desktop/satisfaction_train.csv')  # .head(10000)
-    #     # df = dsutils.load_bank().head(1000)
-    #     # df.drop(['id'], axis=1, inplace=True)
-    #     y = df.pop('satisfaction_level')
-    #
-    #     X_train, X_test, y_train, y_test = train_test_split(df, y, test_size=0.3, random_state=9527)
-    #     log_callback = LogCallback()
-    #     experiment = GeneralExperiment('regression', hk, X_train, y_train, X_test, callbacks=[log_callback])
-    #     estimator = experiment.run(use_cache=True, max_trials=20)
-    #     assert log_callback.logs == ['experiment start',
-    #                                  '   step start, step:data split',
-    #                                  '   step end, step:data split, output:',
-    #                                  '   step start, step:search',
-    #                                  "   step end, step:search, output:dict_keys(['best_trial'])",
-    #                                  '   step start, step:load estimator',
-    #                                  "   step end, step:load estimator, output:dict_keys(['estimator'])",
-    #                                  'experiment end']
-    #     mse_scorer = get_scorer('neg_mean_squared_error')
-    #     mse = mse_scorer(estimator, X_test, y_test)
-    #
-    #     log_callback = LogCallback(output_elapsed=True)
-    #     rs = RandomSearcher(lambda: search_space_general(task='regression'),
-    #                         optimize_direction=OptimizeDirection.Maximize)
-    #     hk = HyperGBM(rs, task='regression', reward_metric='mse',
-    #                   cache_dir=f'hypergbm_cache',
-    #                   callbacks=[])
-    #     experiment = CompeteExperiment('regression', hk, X_train, y_train, X_test,
-    #                                    callbacks=[log_callback],
-    #                                    scorer=get_scorer('neg_mean_squared_error'),
-    #                                    drop_feature_with_collinearity=True,
-    #                                    drift_detection=True,
-    #                                    mode='two-stage',
-    #                                    n_est_feature_importance=5,
-    #                                    importance_threshold=1e-5,
-    #                                    ensemble_size=5
-    #                                    )
-    #     pipeline = experiment.run(use_cache=True, max_trials=20)
-    #     mse2 = mse_scorer(pipeline, X_test, y_test)
-    #     assert mse2
+    def test_regression(self):
+        df = dsutils.load_Bike_Sharing()
+        y = df.pop('count')
+
+        X_train, X_test, y_train, y_test = train_test_split(df, y, test_size=0.3, random_state=9527)
+
+        log_callback = LogCallback(output_elapsed=True)
+        rs = RandomSearcher(lambda: search_space_general(task='regression', early_stopping_rounds=5, ),
+                            optimize_direction='min')
+        hk = HyperGBM(rs, task='regression', reward_metric='mse', cache_dir=f'hypergbm_cache', callbacks=[])
+        experiment = CompeteExperiment(hk, X_train, y_train, X_test=X_test,
+                                       callbacks=[log_callback],
+                                       scorer=get_scorer('neg_root_mean_squared_error'),
+                                       drop_feature_with_collinearity=True,
+                                       drift_detection=True,
+                                       mode='one-stage',
+                                       n_est_feature_importance=5,
+                                       importance_threshold=1e-5,
+                                       ensemble_size=5
+                                       )
+        pipeline = experiment.run(use_cache=True, max_trials=20)
+        rmse_scorer = get_scorer('neg_root_mean_squared_error')
+        rmse = rmse_scorer(pipeline, X_test, y_test)
+        assert rmse
+
     def test_multiclass_cv(self):
         self.run_multiclass(cv=True)
 
