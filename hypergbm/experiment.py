@@ -127,7 +127,8 @@ class DataCleanStep(ExperimentStep):
                                                                                 random_state=self.random_state,
                                                                                 stratify=y_train)
                 if self.task != 'regression':
-                    assert y_train.nunique() == y_eval.nunique(), 'The number of classes of `y_train` and `y_eval` must be equal. Try to increase eval_size.'
+                    assert set(y_train) == set(y_eval), \
+                        'The classes of `y_train` and `y_eval` must be equal. Try to increase eval_size.'
                 self.step_progress('split into train set and eval set')
             else:
                 X_eval, y_eval = data_cleaner.transform(X_eval, y_eval)
@@ -571,7 +572,7 @@ class DaskBaseSearchAndTrainStep(BaseSearchAndTrainStep):
 
 class DaskTwoStageSearchAndTrainStep(TwoStageSearchAndTrainStep):
     def get_ensemble(self, estimators, X_train, y_train):
-        if not ex.exist_dask_object(X_train, y_train):
+        if not dex.exist_dask_object(X_train, y_train):
             return super().get_ensemble(estimators, X_train, y_train)
 
         return DaskGreedyEnsemble(self.task, estimators, scoring=self.scorer, ensemble_size=self.ensemble_size)
@@ -605,7 +606,7 @@ class DaskTwoStageSearchAndTrainStep(TwoStageSearchAndTrainStep):
         y_p2 = da.zeros_like(negative, dtype='int64')
 
         X_pseudo = dex.concat_df([X_test_p1, X_test_p2], axis=0)
-        y_pseudo = dex.vstack_array([y_p1, y_p2])
+        y_pseudo = dex.hstack_array([y_p1, y_p2])
 
         if classes is not None:
             y_pseudo = da.take(da.array(classes), y_pseudo, axis=0)
@@ -687,7 +688,7 @@ class SteppedExperiment(Experiment):
         assert hasattr(last_step, 'estimator_')
 
         pipeline_steps = [(step.name, step) for step in self.steps]
-        pipeline_steps += [('estimator', self.steps[-1].estimator_)]
+        pipeline_steps += [('estimator', last_step.estimator_)]
 
         return Pipeline(pipeline_steps)
 
