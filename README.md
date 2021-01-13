@@ -22,6 +22,23 @@ The underlying search space representation and search algorithm in HyperGBM are 
 pip install hypergbm
 ```
 
+Hypergbm also provides command line tools to train models and predict data:
+```
+hypergm -h
+
+usage: hypergbm [-h] --train_file TRAIN_FILE [--eval_file EVAL_FILE]
+                [--eval_size EVAL_SIZE] [--test_file TEST_FILE] --target
+                TARGET [--pos_label POS_LABEL] [--max_trials MAX_TRIALS]
+                [--model_output MODEL_OUTPUT]
+                [--prediction_output PREDICTION_OUTPUT] [--searcher SEARCHER]
+...
+```
+
+For example,  train dataset [blood.csv](https://github.com/DataCanvasIO/tabular-toolbox/blob/main/tabular_toolbox/datasets/blood.csv):
+```shell script
+hypergbm --train_file=blood.csv --test_file=blood.csv --target=Class --pos_label=1 --model_output=model.pkl
+```
+
 ## Hypernets related projects
 
 * [HyperGBM](https://github.com/DataCanvasIO/HyperGBM): A full pipeline AutoML tool integrated various GBM models.

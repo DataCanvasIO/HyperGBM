@@ -79,5 +79,10 @@ setup(
     package_data={
     },
     zip_safe=False,
+    entry_points={
+                'console_scripts': [
+                    'hypergbm = hypergbm.utils.cli:main',
+                ]
+            },
     include_package_data=True,
 )
