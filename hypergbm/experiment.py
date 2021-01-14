@@ -256,8 +256,10 @@ class PermutationImportanceSelectionStep(FeatureSelectStep):
         for trial in best_trials:
             estimators.append(hyper_model.load_estimator(trial.model_file))
         self.step_progress('load estimators')
-
-        importances = feature_importance_batch(estimators, X_eval, y_eval, self.scorer, n_repeats=5)
+        if X_eval is None or y_eval is None:
+            importances = feature_importance_batch(estimators, X_train, y_train, self.scorer, n_repeats=5)
+        else:
+            importances = feature_importance_batch(estimators, X_eval, y_eval, self.scorer, n_repeats=5)
         display_markdown('#### importances', raw=True)
 
         display(pd.DataFrame(
