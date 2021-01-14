@@ -290,8 +290,8 @@ class HyperGBMEstimator(Estimator):
         for n_fold, (train_idx, valid_idx) in enumerate(iterators.split(X_values, y_values)):
             x_train_fold, y_train_fold = X_values[train_idx], y_values[train_idx]
             x_val_fold, y_val_fold = X_values[valid_idx], y_values[valid_idx]
-            x_train_fold = dd.from_dask_array(x_train_fold, columns=X.columns)
-            x_val_fold = dd.from_dask_array(x_val_fold, columns=X.columns)
+            x_train_fold = dex.array_to_df(x_train_fold, meta=X)
+            x_val_fold = dex.array_to_df(x_val_fold, meta=X)
 
             sample_weight = None
             if self.task != 'regression' and self.class_balancing is not None:

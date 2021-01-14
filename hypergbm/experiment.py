@@ -257,6 +257,7 @@ class PermutationImportanceSelectionStep(FeatureSelectStep):
         for trial in best_trials:
             estimators.append(hyper_model.load_estimator(trial.model_file))
         self.step_progress('load estimators')
+
         if X_eval is None or y_eval is None:
             importances = feature_importance_batch(estimators, X_train, y_train, self.scorer, n_repeats=5)
         else:
@@ -394,13 +395,15 @@ class TwoStageSearchAndTrainStep(BaseSearchAndTrainStep):
     def __init__(self, experiment, name, scorer=None, cv=False, num_folds=3, retrain_on_wholedata=False,
                  pseudo_labeling=False, pseudo_labeling_proba_threshold=0.8,
                  ensemble_size=7, pseudo_labeling_resplit=False,
-                 two_stage_importance_selection=True, n_est_feature_importance=10, importance_threshold=1e-5):
+                 two_stage_importance_selection=True, n_est_feature_importance=10, importance_threshold=1e-5,
+                 random_state=None):
         super().__init__(experiment, name, scorer=scorer, cv=cv, num_folds=num_folds,
                          retrain_on_wholedata=retrain_on_wholedata, ensemble_size=ensemble_size)
 
         self.pseudo_labeling = pseudo_labeling
         self.pseudo_labeling_proba_threshold = pseudo_labeling_proba_threshold
         self.pseudo_labeling_resplit = pseudo_labeling_resplit
+        self.random_state = random_state
 
         if two_stage_importance_selection:
             self.pi = PermutationImportanceSelectionStep(experiment, f'{name}_pi', scorer, n_est_feature_importance,
@@ -601,8 +604,8 @@ class DaskTwoStageSearchAndTrainStep(TwoStageSearchAndTrainStep):
         negative = dex.make_divisions_known(negative).ravel()
 
         X_test_values = X_test.to_dask_array(lengths=True)
-        X_test_p1 = dd.from_dask_array(X_test_values[positive], columns=X_test.columns)
-        X_test_p2 = dd.from_dask_array(X_test_values[negative], columns=X_test.columns)
+        X_test_p1 = dex.array_to_df(X_test_values[positive], meta=X_test)
+        X_test_p2 = dex.array_to_df(X_test_values[negative], meta=X_test)
 
         y_p1 = da.ones_like(positive, dtype='int64')
         y_p2 = da.zeros_like(negative, dtype='int64')
@@ -632,24 +635,33 @@ class DaskTwoStageSearchAndTrainStep(TwoStageSearchAndTrainStep):
         if X_pseudo is not None:
             if self.pseudo_labeling_resplit:
                 x_list = [X_train, X_pseudo]
-                y_list = [y_train, pd.Series(y_pseudo)]
+                y_list = [y_train, y_pseudo]
                 if X_eval is not None and y_eval is not None:
                     x_list.append(X_eval)
                     y_list.append(y_eval)
                 X_mix = dex.concat_df(x_list, axis=0)
                 y_mix = dex.concat_df(y_list, axis=0)
-                if self.task == 'regression':
-                    stratify = None
-                else:
-                    stratify = y_mix
+                # if self.task == 'regression':
+                #     stratify = None
+                # else:
+                #     stratify = y_mix
+
+                X_mix = dex.concat_df([X_mix, y_mix], axis=1).reset_index(drop=True)
+                y_mix = X_mix.pop(y_mix.name)
 
                 eval_size = kwargs.get('eval_size', DEFAULT_EVAL_SIZE)
                 X_train, X_eval, y_train, y_eval = dex.train_test_split(X_mix, y_mix, test_size=eval_size,
-                                                                        random_state=self.random_state,
-                                                                        stratify=stratify)
+                                                                        random_state=self.random_state)
+                X_train, X_eval, y_train, y_eval = \
+                    X_train.persist(), X_eval.persist(), y_train.persist(), y_eval.persist()
             else:
                 X_train = dex.concat_df([X_train, X_pseudo], axis=0)
-                y_train = dex.concat_df([y_train, pd.Series(y_pseudo)], axis=0)
+                y_train = dex.concat_df([y_train, y_pseudo], axis=0)
+
+                X_train = dex.concat_df([X_train, y_train], axis=1)
+                y_train = X_train.pop(y_train.name)
+
+                X_train, y_train = X_train.persist(), y_train.persist()
 
             display_markdown('#### Final train set & eval set', raw=True)
             display(pd.DataFrame([(X_train.shape,
@@ -696,7 +708,8 @@ class SteppedExperiment(Experiment):
 
 
 class CompeteExperiment(SteppedExperiment):
-    def __init__(self, hyper_model, X_train, y_train, X_eval=None, y_eval=None, X_test=None, eval_size=0.3,
+    def __init__(self, hyper_model, X_train, y_train, X_eval=None, y_eval=None, X_test=None,
+                 eval_size=DEFAULT_EVAL_SIZE,
                  train_test_split_strategy=None,
                  cv=False, num_folds=3,
                  task=None,
