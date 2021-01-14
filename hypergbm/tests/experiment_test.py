@@ -52,8 +52,17 @@ class LogCallback(ExperimentCallback):
 
 
 class Test_HyperGBM():
+    def test_regression_cv(self):
+        self.run_regression(cv=True)
 
-    def test_regression(self):
+    def test_regression_twostage(self):
+        self.run_regression(mode='two-stage', pseudo_labeling=True)
+
+    def test_regression_adversarial_validation(self):
+        self.run_regression(train_test_split_strategy='adversarial_validation')
+
+    def run_regression(self, train_test_split_strategy=None, cv=False, mode='one-stage', pseudo_labeling=False,
+                       drop_feature_with_collinearity=False, drift_detection=True, max_trials=3):
         df = dsutils.load_Bike_Sharing()
         y = df.pop('count')
 
@@ -65,13 +74,16 @@ class Test_HyperGBM():
         hk = HyperGBM(rs, task='regression', reward_metric='mse', cache_dir=f'hypergbm_cache', callbacks=[])
         experiment = CompeteExperiment(hk, X_train, y_train, X_test=X_test,
                                        callbacks=[log_callback],
-                                       scorer=get_scorer('neg_root_mean_squared_error'),
-                                       drop_feature_with_collinearity=True,
-                                       drift_detection=True,
-                                       mode='one-stage',
+                                       train_test_split_strategy=train_test_split_strategy,
+                                       cv=cv, num_folds=3,
+                                       mode=mode,
+                                       pseudo_labeling=pseudo_labeling,
+                                       scorer=get_scorer('roc_auc_ovr'),
+                                       drop_feature_with_collinearity=drop_feature_with_collinearity,
+                                       drift_detection=drift_detection,
                                        n_est_feature_importance=5,
                                        importance_threshold=1e-5,
-                                       ensemble_size=5
+                                       ensemble_size=10
                                        )
         pipeline = experiment.run(use_cache=True, max_trials=20)
         rmse_scorer = get_scorer('neg_root_mean_squared_error')
