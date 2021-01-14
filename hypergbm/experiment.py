@@ -18,7 +18,7 @@ from hypernets.utils.common import isnotebook
 from tabular_toolbox import dask_ex as dex
 from tabular_toolbox import drift_detection as dd
 from tabular_toolbox.data_cleaner import DataCleaner
-from tabular_toolbox.ensemble import GreedyEnsemble
+from tabular_toolbox.ensemble import GreedyEnsemble, DaskGreedyEnsemble
 from tabular_toolbox.feature_selection import select_by_multicollinearity
 from .feature_importance import feature_importance_batch
 
@@ -127,7 +127,8 @@ class DataCleanStep(ExperimentStep):
                                                                                 random_state=self.random_state,
                                                                                 stratify=y_train)
                 if self.task != 'regression':
-                    assert y_train.nunique() == y_eval.nunique(), 'The number of classes of `y_train` and `y_eval` must be equal. Try to increase eval_size.'
+                    assert set(y_train) == set(y_eval), \
+                        'The classes of `y_train` and `y_eval` must be equal. Try to increase eval_size.'
                 self.step_progress('split into train set and eval set')
             else:
                 X_eval, y_eval = data_cleaner.transform(X_eval, y_eval)
@@ -343,7 +344,7 @@ class BaseSearchAndTrainStep(ExperimentStep):
 
             best_trials = hyper_model.get_top_trials(self.ensemble_size)
             estimators = [hyper_model.load_estimator(trial.model_file) for trial in best_trials]
-            ensemble = self.get_ensemble(estimators)
+            ensemble = self.get_ensemble(estimators, X_train, y_train)
             if self.cv:
                 print('fit on oofs')
                 oofs = self.get_ensemble_predictions(best_trials, ensemble)
@@ -371,7 +372,7 @@ class BaseSearchAndTrainStep(ExperimentStep):
 
         return estimator
 
-    def get_ensemble(self, estimators):
+    def get_ensemble(self, estimators, X_train, y_train):
         return GreedyEnsemble(self.task, estimators, scoring=self.scorer, ensemble_size=self.ensemble_size)
 
     def get_ensemble_predictions(self, trials, ensemble):
@@ -448,7 +449,7 @@ class TwoStageSearchAndTrainStep(BaseSearchAndTrainStep):
             es = self.ensemble_size if self.ensemble_size > 0 else 10
             best_trials = hyper_model.get_top_trials(es)
             estimators = [hyper_model.load_estimator(trial.model_file) for trial in best_trials]
-            ensemble = self.get_ensemble(estimators)
+            ensemble = self.get_ensemble(estimators, X_train, y_train)
             oofs = self.get_ensemble_predictions(best_trials, ensemble)
             if oofs is not None:
                 print('fit on oofs')
@@ -458,28 +459,18 @@ class TwoStageSearchAndTrainStep(BaseSearchAndTrainStep):
             proba = ensemble.predict_proba(X_test)[:, 1]
             if self.task == 'binary':
                 proba_threshold = self.pseudo_labeling_proba_threshold
-                positive = np.argwhere(proba > proba_threshold).ravel()
-                negative = np.argwhere(proba < 1 - proba_threshold).ravel()
-                rate = 0.6
-                X_test_p1 = X_test.iloc[positive]
-                X_test_p2 = X_test.iloc[negative]
-                y_p1 = np.ones(positive.shape, dtype='int64')
-                y_p2 = np.zeros(negative.shape, dtype='int64')
-                X_pseudo = pd.concat([X_test_p1, X_test_p2], axis=0)
-                y_pseudo = np.concatenate([y_p1, y_p2], axis=0)
-                if ensemble.classes_ is not None:
-                    y_pseudo = np.array(ensemble.classes_).take(y_pseudo, axis=0)
+                X_pseudo, y_pseudo = self.extract_pseduo_label(X_test, proba, proba_threshold, ensemble.classes_)
 
                 display_markdown('### Pseudo label set', raw=True)
                 display(pd.DataFrame([(X_pseudo.shape,
                                        y_pseudo.shape,
-                                       len(positive),
-                                       len(negative),
+                                       # len(positive),
+                                       # len(negative),
                                        proba_threshold)],
                                      columns=['X_pseudo.shape',
                                               'y_pseudo.shape',
-                                              'positive samples',
-                                              'negative samples',
+                                              # 'positive samples',
+                                              # 'negative samples',
                                               'proba threshold']), display_id='output_presudo_labelings')
                 try:
                     if isnotebook():
@@ -498,6 +489,20 @@ class TwoStageSearchAndTrainStep(BaseSearchAndTrainStep):
                     print(proba)
         return X_pseudo, y_pseudo
 
+    def extract_pseduo_label(self, X_test, proba, proba_threshold, classes):
+        positive = np.argwhere(proba > proba_threshold).ravel()
+        negative = np.argwhere(proba < 1 - proba_threshold).ravel()
+        X_test_p1 = X_test.iloc[positive]
+        X_test_p2 = X_test.iloc[negative]
+        y_p1 = np.ones(positive.shape, dtype='int64')
+        y_p2 = np.zeros(negative.shape, dtype='int64')
+        X_pseudo = pd.concat([X_test_p1, X_test_p2], axis=0)
+        y_pseudo = np.concatenate([y_p1, y_p2], axis=0)
+        if classes is not None:
+            y_pseudo = np.array(classes).take(y_pseudo, axis=0)
+
+        return X_pseudo, y_pseudo
+
     def do_two_stage_search(self, hyper_model, X_train, y_train, X_test=None, X_eval=None, y_eval=None,
                             X_pseudo=None, y_pseudo=None, **kwargs):
         # 6. Final search
@@ -507,8 +512,7 @@ class TwoStageSearchAndTrainStep(BaseSearchAndTrainStep):
         # self.second_hyper_model = copy.deepcopy(hyper_model)
         second_hyper_model = copy.deepcopy(hyper_model)
 
-        if not dex.is_dask_object(X_eval):
-            kwargs['eval_set'] = (X_eval, y_eval)
+        kwargs['eval_set'] = (X_eval, y_eval)
         if X_pseudo is not None:
             if self.pseudo_labeling_resplit:
                 x_list = [X_train, X_pseudo]
@@ -523,13 +527,129 @@ class TwoStageSearchAndTrainStep(BaseSearchAndTrainStep):
                 else:
                     stratify = y_mix
 
-                eval_size = kwargs.get('eval_size', 0.3)
+                eval_size = kwargs.get('eval_size', DEFAULT_EVAL_SIZE)
                 X_train, X_eval, y_train, y_eval = train_test_split(X_mix, y_mix, test_size=eval_size,
                                                                     random_state=self.random_state,
                                                                     stratify=stratify)
             else:
                 X_train = pd.concat([X_train, X_pseudo], axis=0)
                 y_train = pd.concat([y_train, pd.Series(y_pseudo)], axis=0)
+
+            display_markdown('#### Final train set & eval set', raw=True)
+            display(pd.DataFrame([(X_train.shape,
+                                   y_train.shape,
+                                   X_eval.shape if X_eval is not None else None,
+                                   y_eval.shape if y_eval is not None else None,
+                                   X_test.shape if X_test is not None else None)],
+                                 columns=['X_train.shape',
+                                          'y_train.shape',
+                                          'X_eval.shape',
+                                          'y_eval.shape',
+                                          'X_test.shape']), display_id='output_cleaner_info2')
+
+        second_hyper_model.search(X_train, y_train, X_eval, y_eval, cv=self.cv, num_folds=self.num_folds,
+                                  **kwargs)
+
+        self.step_end(output={'best_reward': second_hyper_model.get_best_trial().reward})
+
+        return X_train, y_train, X_test, X_eval, y_eval, second_hyper_model
+
+
+class DaskBaseSearchAndTrainStep(BaseSearchAndTrainStep):
+    def get_ensemble(self, estimators, X_train, y_train):
+        if dex.exist_dask_object(X_train, y_train):
+            return DaskGreedyEnsemble(self.task, estimators, scoring=self.scorer, ensemble_size=self.ensemble_size)
+        else:
+            return super().get_ensemble(estimators, X_train, y_train)
+
+    def get_ensemble_predictions(self, trials, ensemble):
+        if isinstance(ensemble, DaskGreedyEnsemble):
+            oofs = [trial.memo.get('oof') for trial in trials]
+            if all([oof is None for oof in oofs]):
+                oofs = None
+            return oofs
+
+        return super().get_ensemble_predictions(trials, ensemble)
+
+
+class DaskTwoStageSearchAndTrainStep(TwoStageSearchAndTrainStep):
+    def get_ensemble(self, estimators, X_train, y_train):
+        if not dex.exist_dask_object(X_train, y_train):
+            return super().get_ensemble(estimators, X_train, y_train)
+
+        return DaskGreedyEnsemble(self.task, estimators, scoring=self.scorer, ensemble_size=self.ensemble_size)
+
+    def get_ensemble_predictions(self, trials, ensemble):
+        if not isinstance(ensemble, DaskGreedyEnsemble):
+            return super().get_ensemble_predictions(trials, ensemble)
+
+        oofs = [trial.memo.get('oof') for trial in trials]
+        if all([oof is None for oof in oofs]):
+            oofs = None
+        return oofs
+
+    def extract_pseduo_label(self, X_test, proba, proba_threshold, classes):
+        if not dex.exist_dask_object(X_test, proba):
+            return super().extract_pseduo_label(X_test, proba, proba_threshold, classes)
+
+        da = dex.da
+        dd = dex.dd
+        positive = da.argwhere(proba > proba_threshold)
+        positive = dex.make_divisions_known(positive).ravel()
+
+        negative = da.argwhere(proba < 1 - proba_threshold)
+        negative = dex.make_divisions_known(negative).ravel()
+
+        X_test_values = X_test.to_dask_array(lengths=True)
+        X_test_p1 = dd.from_dask_array(X_test_values[positive], columns=X_test.columns)
+        X_test_p2 = dd.from_dask_array(X_test_values[negative], columns=X_test.columns)
+
+        y_p1 = da.ones_like(positive, dtype='int64')
+        y_p2 = da.zeros_like(negative, dtype='int64')
+
+        X_pseudo = dex.concat_df([X_test_p1, X_test_p2], axis=0)
+        y_pseudo = dex.hstack_array([y_p1, y_p2])
+
+        if classes is not None:
+            y_pseudo = da.take(da.array(classes), y_pseudo, axis=0)
+
+        return X_pseudo, y_pseudo
+
+    def do_two_stage_search(self, hyper_model, X_train, y_train, X_test=None, X_eval=None, y_eval=None, X_pseudo=None,
+                            y_pseudo=None, **kwargs):
+        if not dex.exist_dask_object(X_train, y_train, X_test, X_eval, y_eval, X_pseudo, y_pseudo):
+            return super().do_two_stage_search(hyper_model, X_train, y_train, X_test, X_eval, y_eval,
+                                               X_pseudo, y_pseudo, **kwargs)
+
+        self.step_start('two stage search')
+        display_markdown('### Pipeline search stage 2', raw=True)
+
+        # self.second_hyper_model = copy.deepcopy(hyper_model)
+        second_hyper_model = copy.deepcopy(hyper_model)
+
+        # kwargs['eval_set'] = (X_eval, y_eval)
+        kwargs['eval_set'] = None
+        if X_pseudo is not None:
+            if self.pseudo_labeling_resplit:
+                x_list = [X_train, X_pseudo]
+                y_list = [y_train, pd.Series(y_pseudo)]
+                if X_eval is not None and y_eval is not None:
+                    x_list.append(X_eval)
+                    y_list.append(y_eval)
+                X_mix = dex.concat_df(x_list, axis=0)
+                y_mix = dex.concat_df(y_list, axis=0)
+                if self.task == 'regression':
+                    stratify = None
+                else:
+                    stratify = y_mix
+
+                eval_size = kwargs.get('eval_size', DEFAULT_EVAL_SIZE)
+                X_train, X_eval, y_train, y_eval = dex.train_test_split(X_mix, y_mix, test_size=eval_size,
+                                                                        random_state=self.random_state,
+                                                                        stratify=stratify)
+            else:
+                X_train = dex.concat_df([X_train, X_pseudo], axis=0)
+                y_train = dex.concat_df([y_train, pd.Series(y_pseudo)], axis=0)
 
             display_markdown('#### Final train set & eval set', raw=True)
             display(pd.DataFrame([(X_train.shape,
@@ -570,7 +690,7 @@ class SteppedExperiment(Experiment):
         assert hasattr(last_step, 'estimator_')
 
         pipeline_steps = [(step.name, step) for step in self.steps]
-        pipeline_steps += [('estimator', self.steps[-1].estimator_)]
+        pipeline_steps += [('estimator', last_step.estimator_)]
 
         return Pipeline(pipeline_steps)
 
@@ -596,6 +716,7 @@ class CompeteExperiment(SteppedExperiment):
                  pseudo_labeling_resplit=False,
                  feature_generation=False,
                  retrain_on_wholedata=False,
+                 enable_dask=False,
                  log_level=None):
 
         steps = [DataCleanStep(self, 'data_clean',
@@ -610,21 +731,23 @@ class CompeteExperiment(SteppedExperiment):
             steps.append(DriftDetectStep(self, 'drift_dected', drift_detection=drift_detection))
 
         if mode == 'two-stage':
-            last_step = TwoStageSearchAndTrainStep(self, 'two_stage_search_and_train',
-                                                   scorer=scorer, cv=cv, num_folds=num_folds,
-                                                   retrain_on_wholedata=retrain_on_wholedata,
-                                                   pseudo_labeling=pseudo_labeling,
-                                                   pseudo_labeling_proba_threshold=pseudo_labeling_proba_threshold,
-                                                   ensemble_size=ensemble_size,
-                                                   pseudo_labeling_resplit=pseudo_labeling_resplit,
-                                                   two_stage_importance_selection=two_stage_importance_selection,
-                                                   n_est_feature_importance=n_est_feature_importance,
-                                                   importance_threshold=importance_threshold)
+            step_cls = TwoStageSearchAndTrainStep if not enable_dask else DaskTwoStageSearchAndTrainStep
+            last_step = step_cls(self, 'two_stage_search_and_train',
+                                 scorer=scorer, cv=cv, num_folds=num_folds,
+                                 retrain_on_wholedata=retrain_on_wholedata,
+                                 pseudo_labeling=pseudo_labeling,
+                                 pseudo_labeling_proba_threshold=pseudo_labeling_proba_threshold,
+                                 ensemble_size=ensemble_size,
+                                 pseudo_labeling_resplit=pseudo_labeling_resplit,
+                                 two_stage_importance_selection=two_stage_importance_selection,
+                                 n_est_feature_importance=n_est_feature_importance,
+                                 importance_threshold=importance_threshold)
         else:
-            last_step = BaseSearchAndTrainStep(self, 'base_search_and_train',
-                                               scorer=scorer, cv=cv, num_folds=num_folds,
-                                               ensemble_size=ensemble_size,
-                                               retrain_on_wholedata=retrain_on_wholedata)
+            step_cls = BaseSearchAndTrainStep if not enable_dask else DaskBaseSearchAndTrainStep
+            last_step = step_cls(self, 'base_search_and_train',
+                                 scorer=scorer, cv=cv, num_folds=num_folds,
+                                 ensemble_size=ensemble_size,
+                                 retrain_on_wholedata=retrain_on_wholedata)
         steps.append(last_step)
 
         # ignore warnings
