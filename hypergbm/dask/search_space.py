@@ -16,19 +16,6 @@ from tabular_toolbox.column_selector import column_object, column_all
 logger = logging.get_logger(__name__)
 
 
-def search_space_generalx(dataframe_mapper_default=False,
-                          lightgbm_fit_kwargs=None,
-                          xgb_fit_kwargs=None,
-                          catboost_fit_kwargs=None,
-                          histgb_fit_kwargs=None,
-                          cat_pipeline_mode='simple',
-                          task=None,
-                          class_balancing=None,
-                          n_esitimators=200,
-                          **kwargs):
-    pass
-
-
 def search_space_general(dataframe_mapper_default=False,
                          lightgbm_init_kwargs=None,
                          lightgbm_fit_kwargs=None,
