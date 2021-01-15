@@ -298,8 +298,6 @@ class HyperGBMEstimator(Estimator):
                 sampler = get_sampler(self.class_balancing)
                 if sampler is None:
                     sample_weight = self._get_sample_weight(y_train_fold)
-                    if sample_weight.npartitions > 1:
-                        sample_weight = None  # fixme
                 else:
                     x_train_fold, y_train_fold = sampler.fit_sample(x_train_fold, y_train_fold)
             kwargs['sample_weight'] = sample_weight
