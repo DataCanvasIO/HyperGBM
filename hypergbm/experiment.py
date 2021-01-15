@@ -695,6 +695,15 @@ class SteppedExperiment(Experiment):
 
     def train(self, hyper_model, X_train, y_train, X_test, X_eval=None, y_eval=None, **kwargs):
         for step in self.steps:
+            if X_test is not None and X_train.columns.to_list() != X_test.columns.to_list():
+                logger.warning(f'X_train{X_train.columns.to_list()} and X_test{X_test.columns.to_list()}'
+                               f' have different columns before {step.name}, try fix it.')
+                X_test = X_test[X_train.columns]
+            if X_eval is not None and X_eval.columns.to_list() != X_eval.columns.to_list():
+                logger.warning(f'X_train{X_train.columns.to_list()} and X_eval{X_eval.columns.to_list()}'
+                               f' have different columns before {step.name}, try fix it.')
+                X_eval = X_eval[X_train.columns]
+
             X_train, y_train, X_test, X_eval, y_eval = \
                 step.fit_transform(hyper_model, X_train, y_train, X_test=X_test, X_eval=X_eval, y_eval=y_eval, **kwargs)
 
@@ -741,7 +750,7 @@ class CompeteExperiment(SteppedExperiment):
             steps.append(SelectByMulticollinearityStep(self, 'select_by_multicollinearity',
                                                        drop_feature_with_collinearity=drop_feature_with_collinearity))
         if drift_detection:
-            steps.append(DriftDetectStep(self, 'drift_dected', drift_detection=drift_detection))
+            steps.append(DriftDetectStep(self, 'drift_detected', drift_detection=drift_detection))
 
         if mode == 'two-stage':
             step_cls = TwoStageSearchAndTrainStep if not enable_dask else DaskTwoStageSearchAndTrainStep
