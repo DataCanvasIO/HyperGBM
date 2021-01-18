@@ -25,7 +25,7 @@ class StandardScaler(HyperTransformer):
         HyperTransformer.__init__(self, dm_pre.StandardScaler, space, name, **kwargs)
 
 
-class OneHotEncoder(HyperTransformer):
+class SafeOneHotEncoder(HyperTransformer):
     def __init__(self, categories='auto', drop=None, sparse=True, dtype=np.float64, space=None,
                  name=None, **kwargs):
         if categories is not None and categories != 'auto':
@@ -42,7 +42,7 @@ class OneHotEncoder(HyperTransformer):
         # kwargs['handle_unknown'] = 'ignore' #fixme
 
         # HyperTransformer.__init__(self, dpre.OneHotEncoder, space, name, **kwargs)
-        HyperTransformer.__init__(self, dex.OneHotEncoder, space, name, **kwargs)
+        HyperTransformer.__init__(self, dex.SafeOneHotEncoder, space, name, **kwargs)
 
 
 class MinMaxScaler(HyperTransformer):

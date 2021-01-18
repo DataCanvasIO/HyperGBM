@@ -42,7 +42,7 @@ def categorical_pipeline_complex(impute_strategy=None, svd_components=5, seq_no=
         svd_components = Choice(svd_components)
 
     def onehot_svd():
-        onehot = decorate(tf.OneHotEncoder(name=f'categorical_onehot_{seq_no}', sparse=False))
+        onehot = decorate(tf.SafeOneHotEncoder(name=f'categorical_onehot_{seq_no}', sparse=False))
         svd = decorate(tf.TruncatedSVD(n_components=svd_components, name=f'categorical_svd_{seq_no}'))
         optional_svd = Optional(svd, name=f'categorical_optional_svd_{seq_no}', keep_link=True)(onehot)
         return optional_svd
@@ -55,7 +55,7 @@ def categorical_pipeline_complex(impute_strategy=None, svd_components=5, seq_no=
 
     onehot = onehot_svd()
 
-    # onehot = OneHotEncoder(name=f'categorical_onehot_{seq_no}', sparse=False)
+    # onehot = SafeOneHotEncoder(name=f'categorical_onehot_{seq_no}', sparse=False)
     le_or_onehot_pca = ModuleChoice([label_encoder, onehot], name=f'categorical_le_or_onehot_svd_{seq_no}')
 
     pipeline = Pipeline([imputer, le_or_onehot_pca],
