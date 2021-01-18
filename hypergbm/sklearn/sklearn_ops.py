@@ -2,7 +2,7 @@
 """
 
 """
-from hypergbm.sklearn.transformers import SimpleImputer, MultiLabelEncoder, OneHotEncoder, TruncatedSVD, \
+from hypergbm.sklearn.transformers import SimpleImputer, MultiLabelEncoder, SafeOneHotEncoder, TruncatedSVD, \
     StandardScaler, MinMaxScaler, MaxAbsScaler, RobustScaler, OrdinalEncoder, SafeOrdinalEncoder, \
     SkewnessKurtosisTransformer, LogStandardScaler
 from hypergbm.pipeline import Pipeline
@@ -32,7 +32,7 @@ def categorical_pipeline_complex(impute_strategy=None, svd_components=3, seq_no=
         svd_components = Choice(svd_components)
 
     def onehot_svd():
-        onehot = OneHotEncoder(name=f'categorical_onehot_{seq_no}')
+        onehot = SafeOneHotEncoder(name=f'categorical_onehot_{seq_no}')
         optional_svd = Optional(TruncatedSVD(n_components=svd_components, name=f'categorical_svd_{seq_no}'),
                                 name=f'categorical_optional_svd_{seq_no}',
                                 keep_link=True)(onehot)

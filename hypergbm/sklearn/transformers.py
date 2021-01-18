@@ -95,6 +95,23 @@ class OneHotEncoder(HyperTransformer):
         HyperTransformer.__init__(self, sk_pre.OneHotEncoder, space, name, **kwargs)
 
 
+class SafeOneHotEncoder(HyperTransformer):
+    def __init__(self, categories='auto', drop=None, sparse=True, dtype=np.float64, space=None,
+                 name=None, **kwargs):
+        if categories is not None and categories != 'auto':
+            kwargs['categories'] = categories
+        if drop is not None:
+            kwargs['drop'] = drop
+        if sparse is not None and sparse != True:
+            kwargs['sparse'] = sparse
+        if dtype is not None and dtype != True:
+            kwargs['dtype'] = dtype
+        # if handle_unknown is not None and handle_unknown != 'error':
+        kwargs['handle_unknown'] = 'ignore'
+
+        HyperTransformer.__init__(self, sklearn_ex.SafeOneHotEncoder, space, name, **kwargs)
+
+
 class OrdinalEncoder(HyperTransformer):
     def __init__(self, categories='auto', dtype=np.float64, space=None,
                  name=None, **kwargs):
