@@ -47,7 +47,7 @@ hypergbm --train_file=blood.csv --test_file=blood.csv --target=Class --pos_label
 * [Cooka](https://github.com/DataCanvasIO/Cooka): Lightweight interactive AutoML system.
 * [Hypernets](https://github.com/DataCanvasIO/Hypernets): A general automated machine learning framework.
 
-![DataCanvas AutoML Toolkit](docs/source/images/datacanvas_automl_toolkit.png)
+![DataCanvas AutoML Toolkit](docs/static/images/datacanvas_automl_toolkit.png)
 
 
 ## DataCanvas
