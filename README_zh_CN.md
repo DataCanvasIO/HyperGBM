@@ -28,7 +28,7 @@ pip install hypergbm
 * [Cooka](https://github.com/DataCanvasIO/Cooka): 一个交互式的轻量级自动机器学习系统.
 * [Hypernets](https://github.com/DataCanvasIO/Hypernets): 一个通用的自动机器学习框架.
 
-![DataCanvas AutoML Toolkit](docs/source/images/datacanvas_automl_toolkit.png)
+![DataCanvas AutoML Toolkit](docs/static/images/datacanvas_automl_toolkit.png)
 
 
 ## DataCanvas
