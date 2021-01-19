@@ -364,8 +364,8 @@ class BaseSearchAndTrainStep(ExperimentStep):
             if self.retrain_on_wholedata:
                 display_markdown('#### retrain on whole data', raw=True)
                 trial = hyper_model.get_best_trial()
-                X_all = pd.concat([X_train, X_eval], axis=0)
-                y_all = pd.concat([y_train, y_eval], axis=0)
+                X_all = dex.concat_df([X_train, X_eval], axis=0)
+                y_all = dex.concat_df([y_train, y_eval], axis=0)
                 estimator = hyper_model.final_train(trial.space_sample, X_all, y_all, **kwargs)
             else:
                 estimator = hyper_model.load_estimator(hyper_model.get_best_trial().model_file)

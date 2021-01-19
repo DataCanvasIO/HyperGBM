@@ -331,7 +331,7 @@ class HyperGBMEstimator(Estimator):
         else:
             proba = oof_
             preds = self.proba2predict(oof_)
-            preds = da.take(da.array(self.classes_), preds, axis=0)
+            preds = da.take(np.array(self.classes_), preds, axis=0)
         scores = calc_score(y, preds, proba, metrics, self.task)
         if verbose > 0:
             logger.info(f'taken {time.time() - starttime}s')
