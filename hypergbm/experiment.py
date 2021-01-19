@@ -574,6 +574,12 @@ class DaskBaseSearchAndTrainStep(BaseSearchAndTrainStep):
 
         return super().get_ensemble_predictions(trials, ensemble)
 
+    def fit_transform(self, hyper_model, X_train, y_train, X_test=None, X_eval=None, y_eval=None, **kwargs):
+        X_train, y_train, X_test, X_eval, y_eval = \
+            [v.persist() if dex.is_dask_object(v) else v for v in (X_train, y_train, X_test, X_eval, y_eval)]
+
+        return super().fit_transform(hyper_model, X_train, y_train, X_test, X_eval, y_eval, **kwargs)
+
 
 class DaskTwoStageSearchAndTrainStep(TwoStageSearchAndTrainStep):
     def get_ensemble(self, estimators, X_train, y_train):
@@ -590,6 +596,12 @@ class DaskTwoStageSearchAndTrainStep(TwoStageSearchAndTrainStep):
         if all([oof is None for oof in oofs]):
             oofs = None
         return oofs
+
+    def fit_transform(self, hyper_model, X_train, y_train, X_test=None, X_eval=None, y_eval=None, **kwargs):
+        X_train, y_train, X_test, X_eval, y_eval = \
+            [v.persist() if dex.is_dask_object(v) else v for v in (X_train, y_train, X_test, X_eval, y_eval)]
+
+        return super().fit_transform(hyper_model, X_train, y_train, X_test, X_eval, y_eval, **kwargs)
 
     def extract_pseduo_label(self, X_test, proba, proba_threshold, classes):
         if not dex.exist_dask_object(X_test, proba):
