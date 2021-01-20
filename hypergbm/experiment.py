@@ -1,5 +1,8 @@
 # -*- coding:utf-8 -*-
 __author__ = 'yangjian'
+
+from sklearn.base import BaseEstimator
+
 """
 
 """
@@ -37,7 +40,7 @@ def _set_log_level(log_level):
     # pylogging.basicConfig(level=log_level)
 
 
-class ExperimentStep(object):
+class ExperimentStep(BaseEstimator):
     def __init__(self, experiment, name):
         super(ExperimentStep, self).__init__()
 
@@ -59,6 +62,12 @@ class ExperimentStep(object):
     def transform(self, X, y=None, **kwargs):
         raise NotImplemented()
         # return X
+
+    # override this to remove 'experiment' from estimator __expr__
+    @classmethod
+    def _get_param_names(cls):
+        params = super()._get_param_names()
+        return filter(lambda x: x != 'experiment', params)
 
 
 class FeatureSelectStep(ExperimentStep):
