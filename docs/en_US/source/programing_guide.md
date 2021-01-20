@@ -186,16 +186,75 @@ searcher = RandomSearcher(lambda: search_space_general(n_estimators=300, early_s
 ```
 
 ### CompeteExperiment
-There are still many challenges in the Machine Learning modeling process for tabular data, such as imbalanced data, data drift, poor generalization ability, etc.  This challenges cannot be completely solved by pipeline search, so we introduced in HyperGBM a more powerful tool is `CompeteExperiment`.
+There are still many challenges in the machine learning modeling process for tabular data, such as imbalanced data, data drift, poor generalization ability, etc.  This challenges cannot be completely solved by pipeline search, so we introduced in HyperGBM a more powerful tool is `CompeteExperiment`.
 
-`CompteExperiment` is composed of a series of steps and *Pipeline Search* is just one step. It also includes advanced steps such as data cleaning, data drift handling, two-stage search, etc., as shown in the figure below:
+`CompteExperiment` is composed of a series of steps and *Pipeline Search* is just one step. It also includes advanced steps such as data cleaning, data drift handling, two-stage search, ensemble etc., as shown in the figure below:
 ![](images/hypergbm-competeexperiment.png)
 
 
+**Code example**
+```
+```
 
 
-#### imbalance data handling
-#### pseudo labeling 
-#### concept crift handling
-#### ensemble
+**Required Parameters**
+- hyper_model, 
+- X_train, 
+- y_train: 
+
+**Optinal Parameters**
+- X_eval=None, 
+- y_eval=None, 
+- X_test=None,
+- eval_size=DEFAULT_EVAL_SIZE,
+- train_test_split_strategy=None,
+- cv=False, 
+- num_folds=3,
+- task=None,
+- callbacks=None,
+- random_state=9527,
+- scorer=None,
+- data_cleaner_args=None,
+- drop_feature_with_collinearity=False,
+- drift_detection=True,
+- mode='one-stage',
+- two_stage_importance_selection=True,
+- n_est_feature_importance=10,
+- importance_threshold=1e-5,
+- ensemble_size=7,
+- pseudo_labeling=False,
+- pseudo_labeling_proba_threshold=0.8,
+- pseudo_labeling_resplit=False,
+- feature_generation=False,
+- retrain_on_wholedata=False,
+- enable_dask=False,
+- log_level=None
+
+#### Imbalance data handling
+Imbalanced data typically refers to a classification problem where the number of samples per class is not equally distributed; often you'll have a large amount of samples for one class (referred to as the majority class), and much fewer samples for one or more other classes (referred to as the minority classes). 
+We have provided several approaches to deal with imbalanced data: *Class Weight*, *Oversampling* and *Undersampling*.
+
+**Class Weight**
+- ClassWeight
+
+**Oversampling**
+- RandomOverSampling
+- SMOTE
+- ADASYN
+
+**Undersampling**
+- RandomUnderSampling
+- Near miss
+- Tomeks links
+
+#### Pseudo labeling 
+Pseudo labeling is a semi-supervised learning technique, instead of manually labeling the unlabelled data, we give approximate labels on the basis of the labelled data. Pseudo-labeling can sometimes improve the generalization capabilities of the model. Let’s make it simpler by breaking into steps as shown in the figure below.
+
+![](images/pseudo-labeling.png)
+
+
+#### Concept drift handling
+
+
+#### Ensemble
 
