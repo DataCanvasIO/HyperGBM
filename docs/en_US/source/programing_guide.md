@@ -79,7 +79,7 @@ pred = estimator.predict(X_real)
 - task
 
 
-#### Method`search` 
+#### search
 
 **Required Parameters**
 
@@ -114,8 +114,7 @@ reward.
 ```
 from hypernets.searchers import MCTSSearcher
 
-searcher = MCTSSearcher(self.search_space_fn, use_meta_learner=False, max_node_space=10, candidates_size=10, optimize_direction=OptimizeDirection.Maximize)
-
+searcher = MCTSSearcher(search_space_fn, use_meta_learner=False, max_node_space=10, candidates_size=10, optimize_direction='max')
 ```
 
 **Required Parameters**
@@ -129,17 +128,72 @@ searcher = MCTSSearcher(self.search_space_fn, use_meta_learner=False, max_node_s
 - use_meta_learner: 
 - space_sample_validation_fn: 
 
-* Evolutionary Algorithm
+#### Evolutionary Algorithm
+
+Evolutionary algorithm (EA) is a subset of evolutionary computation, a generic population-based metaheuristic optimization algorithm. An EA uses mechanisms inspired by biological evolution, such as reproduction, mutation, recombination, and selection. Candidate solutions to the optimization problem play the role of individuals in a population, and the fitness function determines the quality of the solutions (see also loss function). Evolution of the population then takes place after the repeated application of the above operators.
 
 
-* Random Search
+**Code example**
+```
+from hypernets.searchers import EvolutionSearcher
+
+searcher = EvolutionSearcher(search_space_fn, population_size=20, sample_size=5, optimize_direction='min')
+```
+
+**Required Parameters**
+- space_fn: 
+- population_size:
+- sample_size:
+
+**Optinal Parameters**
+- regularized: =False,
+- candidates_size: =10, 
+- optimize_direction: =OptimizeDirection.Minimize, 
+- use_meta_learner: =True,
+- space_sample_validation_fn: =None
+
+#### Random Search
+
+As its name suggests, Random Search uses random combinations of hyperparameters.
+**Code example**
+```
+from hypernets.searchers import RandomSearcher
+
+searcher = RandomSearcher(search_space_fn, optimize_direction='min')
+```
+
+**Required Parameters**
+- space_fn: 
+
+**Optinal Parameters**
+- optimize_direction: =OptimizeDirection.Minimize, 
+- space_sample_validation_fn: =None
 
 ### Search Space
 #### Build-in Search Space
-#### Custom Search Space
+**Code example**
+```
+from hypergbm.search_space import search_space_general
 
+searcher = RandomSearcher(search_space_general, optimize_direction='min')
+# or 
+searcher = RandomSearcher(lambda: search_space_general(n_estimators=300, early_stopping_rounds=10, verbose=0), optimize_direction='min')
+```
+
+#### Custom Search Space
+**Code example**
+```
+```
 
 ### CompeteExperiment
+There are still many challenges in the Machine Learning modeling process for tabular data, such as imbalanced data, data drift, poor generalization ability, etc.  This challenges cannot be completely solved by pipeline search, so we introduced in HyperGBM a more powerful tool is `CompeteExperiment`.
+
+`CompteExperiment` is composed of a series of steps and *Pipeline Search* is just one step. It also includes advanced steps such as data cleaning, data drift handling, two-stage search, etc., as shown in the figure below:
+![](images/hypergbm-competeexperiment.png)
+
+
+
+
 #### imbalance data handling
 #### pseudo labeling 
 #### concept crift handling
