@@ -67,7 +67,7 @@ def feature_importance_batch(estimators, X, y, scoring=None, n_repeats=5,
         permutation_importance = sk_permutation_importance
 
     for i, est in enumerate(estimators):
-        print(f'permutation_importance: {i}/{len(estimators)}')
+        logger.info(f'score permutation importance by estimator {i}/{len(estimators)}')
         importance = permutation_importance(est, X, y,
                                             scoring=scoring, n_repeats=n_repeats, n_jobs=n_jobs,
                                             random_state=random_state)
