@@ -66,17 +66,17 @@ pred = estimator.predict(X_real)
 
 **Required Parameters**
 
-- searcher: hypernets.searcher.Searcher, a searcher object
+- searcher: hypernets.searcher.Searcher, a searcher object.
     `hypernets.searchers.RandomSearcher`
     `hypernets.searcher.MCTSSearcher`
     `hypernets.searchers.EvolutionSearcher`
 
 **Optinal Parameters**
 
-- dispatcher
-- callbacks
-- reward_metric
-- task
+- dispatcher: hypernets.core.Dispatcher, Dispatcher is used to provide different execution modes for search trials, such as stand-alone mode (`InProcessDispatcher`), distributed parallel mode (`DaskDispatcher`), etc. `InProcessDispatcher` is used by default.
+- callbacks: list of callback functions or None, optional (default=None), List of callback functions that are applied at each trial. See `hypernets.callbacks` for more information.
+- reward_metric: str or None, optinal(default=accuracy), Set corresponding metric  according to task type to guide search direction of searcher.
+- task: str or None, optinal(default=None), Task type(*binary*,*multiclass* or *regression*)
 
 
 #### search
@@ -118,15 +118,15 @@ searcher = MCTSSearcher(search_space_fn, use_meta_learner=False, max_node_space=
 ```
 
 **Required Parameters**
-- space_fn: 
+- space_fn: Callable, A search space function which when called returns a `HyperSpace` object.
 
 **Optinal Parameters**
-- policy: 
-- max_node_space: 
-- candidates_size: 
-- optimize_direction: 
-- use_meta_learner: 
-- space_sample_validation_fn: 
+- policy: hypernets.searchers.mcts_core.BasePolicy, (default=None), The policy for *Selection* and *Backpropagation* phases, `UCT` by default.
+- max_node_space: int, (default=10), Maximum space for node expansion
+- use_meta_learner: bool, (default=True), Meta-learner aims to evaluate the performance of unseen samples based on previously evaluated samples. It provides a practical solution to accurately estimate a search branch with many simulations without involving the actual training.
+- candidates_size: int, (default=10), The number of samples for the meta-learner to evaluate candidate paths when roll out
+- optimize_direction: 'min' or 'max', (default='min'), Whether the search process is approaching the maximum or minimum reward value.
+- space_sample_validation_fn: Callable or None, (default=None), Used to verify the validity of samples from the search space, and can be used to add specific constraint rules to the search space to reduce the size of the space.
 
 #### Evolutionary Algorithm
 
@@ -141,16 +141,17 @@ searcher = EvolutionSearcher(search_space_fn, population_size=20, sample_size=5,
 ```
 
 **Required Parameters**
-- space_fn: 
-- population_size:
-- sample_size:
+- space_fn: Callable, A search space function which when called returns a `HyperSpace` object
+- population_size: int, Size of population
+- sample_size: int, The number of parent candidates selected in each cycle of evolution
 
 **Optinal Parameters**
-- regularized: =False,
-- candidates_size: =10, 
-- optimize_direction: =OptimizeDirection.Minimize, 
-- use_meta_learner: =True,
-- space_sample_validation_fn: =None
+- regularized: bool, (default=False), Whether to enable regularized
+- use_meta_learner: bool, (default=True), Meta-learner aims to evaluate the performance of unseen samples based on previously evaluated samples. It provides a practical solution to accurately estimate a search branch with many simulations without involving the actual training.
+- candidates_size: int, (default=10), The number of samples for the meta-learner to evaluate candidate paths when roll out
+- optimize_direction: 'min' or 'max', (default='min'), Whether the search process is approaching the maximum or minimum reward value.
+- space_sample_validation_fn: Callable or None, (default=None), Used to verify the validity of samples from the search space, and can be used to add specific constraint rules to the search space to reduce the size of the space.
+
 
 #### Random Search
 
@@ -163,11 +164,12 @@ searcher = RandomSearcher(search_space_fn, optimize_direction='min')
 ```
 
 **Required Parameters**
-- space_fn: 
+- space_fn: Callable, A search space function which when called returns a `HyperSpace` object
 
 **Optinal Parameters**
-- optimize_direction: =OptimizeDirection.Minimize, 
-- space_sample_validation_fn: =None
+- optimize_direction: 'min' or 'max', (default='min'), Whether the search process is approaching the maximum or minimum reward value.
+- space_sample_validation_fn: Callable or None, (default=None), Used to verify the validity of samples from the search space, and can be used to add specific constraint rules to the search space to reduce the size of the space.
+
 
 ### Search Space
 #### Build-in Search Space
@@ -254,7 +256,8 @@ Pseudo labeling is a semi-supervised learning technique, instead of manually lab
 
 
 #### Concept drift handling
+Concept drift in the input data is one of the main challenges. Over time, it will worsen the performance of model on new data. We introduce an adversarial validation approach to concept drift problems in HyperGBM. This approach will detect concept drift and identify the drifted features and process them automatically.
 
 
 #### Ensemble
-
+During the AutoML process, a lot of models will be generated with different preprocessing pipelines, different models, and different hyperparameters. Usually selecting some of the models that perform well to ensemble can obtain better generalization ability than just selecting the single best model.
