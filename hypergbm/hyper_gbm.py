@@ -564,8 +564,6 @@ class HyperGBMEstimator(Estimator):
 class HyperGBM(HyperModel):
     def __init__(self, searcher, dispatcher=None, callbacks=None, reward_metric='accuracy', task=None,
                  data_cleaner_params=None, cache_dir=None, clear_cache=True):
-        if callbacks is None:
-            callbacks = []
         self.data_cleaner_params = data_cleaner_params
         self.cache_dir = self._prepare_cache_dir(cache_dir, clear_cache)
         self.clear_cache = clear_cache
