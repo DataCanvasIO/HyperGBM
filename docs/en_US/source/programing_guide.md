@@ -123,9 +123,9 @@ searcher = MCTSSearcher(search_space_fn, use_meta_learner=False, max_node_space=
 **Optinal Parameters**
 - policy: hypernets.searchers.mcts_core.BasePolicy, (default=None), The policy for *Selection* and *Backpropagation* phases, `UCT` by default.
 - max_node_space: int, (default=10), Maximum space for node expansion
+- use_meta_learner: bool, (default=True), Meta-learner aims to evaluate the performance of unseen samples based on previously evaluated samples. It provides a practical solution to accurately estimate a search branch with many simulations without involving the actual training.
 - candidates_size: int, (default=10), The number of samples for the meta-learner to evaluate candidate paths when roll out
 - optimize_direction: 'min' or 'max', (default='min'), Whether the search process is approaching the maximum or minimum reward value.
-- use_meta_learner: bool, (default=True), Meta-learner aims to evaluate the performance of unseen samples based on previously evaluated samples. It provides a practical solution to accurately estimate a search branch with many simulations without involving the actual training.
 - space_sample_validation_fn: Callable or None, (default=None), Used to verify the validity of samples from the search space, and can be used to add specific constraint rules to the search space to reduce the size of the space.
 
 #### Evolutionary Algorithm
@@ -141,16 +141,17 @@ searcher = EvolutionSearcher(search_space_fn, population_size=20, sample_size=5,
 ```
 
 **Required Parameters**
-- space_fn: 
-- population_size:
-- sample_size:
+- space_fn: Callable, A search space function which when called returns a `HyperSpace` object
+- population_size: int, Size of population
+- sample_size: int, The number of parent candidates selected in each cycle of evolution
 
 **Optinal Parameters**
-- regularized: =False,
-- candidates_size: =10, 
-- optimize_direction: =OptimizeDirection.Minimize, 
-- use_meta_learner: =True,
-- space_sample_validation_fn: =None
+- regularized: bool, (default=False), Whether to enable regularized
+- use_meta_learner: bool, (default=True), Meta-learner aims to evaluate the performance of unseen samples based on previously evaluated samples. It provides a practical solution to accurately estimate a search branch with many simulations without involving the actual training.
+- candidates_size: int, (default=10), The number of samples for the meta-learner to evaluate candidate paths when roll out
+- optimize_direction: 'min' or 'max', (default='min'), Whether the search process is approaching the maximum or minimum reward value.
+- space_sample_validation_fn: Callable or None, (default=None), Used to verify the validity of samples from the search space, and can be used to add specific constraint rules to the search space to reduce the size of the space.
+
 
 #### Random Search
 
@@ -163,11 +164,12 @@ searcher = RandomSearcher(search_space_fn, optimize_direction='min')
 ```
 
 **Required Parameters**
-- space_fn: 
+- space_fn: Callable, A search space function which when called returns a `HyperSpace` object
 
 **Optinal Parameters**
-- optimize_direction: =OptimizeDirection.Minimize, 
-- space_sample_validation_fn: =None
+- optimize_direction: 'min' or 'max', (default='min'), Whether the search process is approaching the maximum or minimum reward value.
+- space_sample_validation_fn: Callable or None, (default=None), Used to verify the validity of samples from the search space, and can be used to add specific constraint rules to the search space to reduce the size of the space.
+
 
 ### Search Space
 #### Build-in Search Space
