@@ -4,11 +4,12 @@ USER root
 ENV LANG C.UTF-8
 ENV NotebookToken ''
 
-# llvm9 in epel; gcc9 in centos-release-scl; gcc9 is need by xgboost
+# llvm9 in epel, need by compile shap;
+# gcc9 in centos-release-scl; gcc9 is need by compile xgboost
 # `scl enable devtoolset-9 bash` to enable gcc9
-# scl enable devtoolset-9 bash
-# echo "source /opt/rh/devtoolset-9/enable" >> /etc/profile
+# `echo "source /opt/rh/devtoolset-9/enable" >> /etc/profile` is equals to `scl enable devtoolset-9 bash`
 # xgboost need cmake3
+
 RUN  yum install epel-release  centos-release-scl -y \
      && yum clean all \
      && yum makecache \
@@ -42,9 +43,6 @@ RUN cd /opt/datacanvas/hypergbm && pip3 install .
 
 EXPOSE 8888
 
-RUN echo "#\!/bin/bash\njupyter notebook --notebook-dir=/opt/datacanvas/hypergbm/hypergbm/examples --ip=0.0.0.0 --no-browser --allow-root --NotebookApp.token=\$NotebookToken" > /entrypoint.sh \
-    && chmod +x /entrypoint.sh
+CMD [ "bash", "-c", "/usr/local/bin/jupyter notebook --notebook-dir=/opt/datacanvas/hypergbm/hypergbm/examples  --allow-root --NotebookApp.token=$NotebookToken"]
 
-CMD ["/entrypoint.sh"]
-
-# docker run --rm --name hypergbm -p 8830:8888 -e NotebookToken=your-token datacanvas/hypergbm-example
+# docker run --rm  -p 8888:8888 -e NotebookToken=your-token datacanvas/hypergbm-example
