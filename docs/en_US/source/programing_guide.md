@@ -66,33 +66,35 @@ pred = estimator.predict(X_real)
 
 **Required Parameters**
 
-- searcher: hypernets.searcher.Searcher, A Searcher instance.
+- *searcher*: hypernets.searcher.Searcher, A Searcher instance.
     `hypernets.searchers.RandomSearcher`
     `hypernets.searcher.MCTSSearcher`
     `hypernets.searchers.EvolutionSearcher`
 
 **Optinal Parameters**
 
-- dispatcher: hypernets.core.Dispatcher, Dispatcher is used to provide different execution modes for search trials, such as stand-alone mode (`InProcessDispatcher`), distributed parallel mode (`DaskDispatcher`), etc. `InProcessDispatcher` is used by default.
-- callbacks: list of callback functions or None, optional (default=None), List of callback functions that are applied at each trial. See `hypernets.callbacks` for more information.
-- reward_metric: str or None, optinal(default=accuracy), Set corresponding metric  according to task type to guide search direction of searcher.
-- task: str or None, optinal(default=None), Task type(*binary*,*multiclass* or *regression*). If None, inference the type of task automatically
-
+- *dispatcher*: hypernets.core.Dispatcher, Dispatcher is used to provide different execution modes for search trials, such as stand-alone mode (`InProcessDispatcher`), distributed parallel mode (`DaskDispatcher`), etc. `InProcessDispatcher` is used by default.
+- *callbacks*: list of callback functions or None, optional (default=None), List of callback functions that are applied at each trial. See `hypernets.callbacks` for more information.
+- *reward_metric*: str or None, optinal(default=accuracy), Set corresponding metric  according to task type to guide search direction of searcher.
+- *task*: str or None, optinal(default=None), Task type(*binary*,*multiclass* or *regression*). If None, inference the type of task automatically
+- *param data_cleaner_params*: dict, (default=None), Dictionary of parameters to initialize the `DataCleaner` instance. If None, `DataCleaner` will initialized with default values.
+- *param cache_dir*: str or None, (default=None), Path of data cache. If None, uses 'working directory/tmp/cache' as cache dir
+- *param clear_cache*: bool, (default=True), Whether clear the cache dir before searching
 
 #### search
 
 **Required Parameters**
 
-- X: Pandas or Dask DataFrame, feature data for training
-- y: Pandas or Dask Series, target values for training
-- X_eval: (Pandas or Dask DataFrame) or None, feature data for evaluation
-- y_eval: (Pandas or Dask Series) or None, target values for evaluation
+- *X*: Pandas or Dask DataFrame, feature data for training
+- *y*: Pandas or Dask Series, target values for training
+- *X_eval*: (Pandas or Dask DataFrame) or None, feature data for evaluation
+- *y_eval*: (Pandas or Dask Series) or None, target values for evaluation
 
 **Optinal Parameters**
 
-- cv: bool, (default=False), If True, use cross-validation instead of evaluation set reward to guide the search process
-- num_folds: int, (default=3), Number of cross-validated folds, only valid when cv is true
-- max_trials: int, (default=10), The upper limit of the number of search trials, the search process stops when the number is exceeded
+- *cv*: bool, (default=False), If True, use cross-validation instead of evaluation set reward to guide the search process
+- *num_folds*: int, (default=3), Number of cross-validated folds, only valid when cv is true
+- *max_trials*: int, (default=10), The upper limit of the number of search trials, the search process stops when the number is exceeded
 - **fit_kwargs: dict, parameters for fit method of model
 
 ### Searchers
@@ -118,7 +120,7 @@ searcher = MCTSSearcher(search_space_fn, use_meta_learner=False, max_node_space=
 ```
 
 **Required Parameters**
-- space_fn: callable, A search space function which when called returns a `HyperSpace` instance.
+- *space_fn*: callable, A search space function which when called returns a `HyperSpace` instance.
 
 **Optinal Parameters**
 - policy: hypernets.searchers.mcts_core.BasePolicy, (default=None), The policy for *Selection* and *Backpropagation* phases, `UCT` by default.

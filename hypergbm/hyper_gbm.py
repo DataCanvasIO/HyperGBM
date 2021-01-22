@@ -562,8 +562,40 @@ class HyperGBMEstimator(Estimator):
 
 
 class HyperGBM(HyperModel):
+    """
+    HyperGBM
+    """
     def __init__(self, searcher, dispatcher=None, callbacks=None, reward_metric='accuracy', task=None,
                  data_cleaner_params=None, cache_dir=None, clear_cache=True):
+        """
+
+        :param searcher: hypernets.searcher.Searcher
+            A Searcher instance. Available searcher:
+                - hypernets.searchers.RandomSearcher
+                - hypernets.searcher.MCTSSearcher
+                - hypernets.searchers.EvolutionSearcher
+        :param dispatcher: hypernets.core.Dispatcher
+            Dispatcher is used to provide different execution modes for search trials,
+            such as in process mode (`InProcessDispatcher`), distributed parallel mode (`DaskDispatcher`), etc.
+             `InProcessDispatcher` is used by default.
+        :param callbacks: list of callback functions or None, optional (default=None)
+            List of callback functions that are applied at each trial. See `hypernets.callbacks` for more information.
+        :param reward_metric: str or None, optinal(default=accuracy)
+            Set corresponding metric  according to task type to guide search direction of searcher.
+        :param task: str or None, optinal(default=None)
+            Task type. If None, inference the type of task automatically
+            Possible values:
+                - 'binary'
+                - 'multiclass'
+                - 'regression'
+        :param data_cleaner_params: dict, (default=None)
+            dictionary of parameters to initialize the `DataCleaner` instance. If None, `DataCleaner` will initialized with
+            default values.
+        :param cache_dir: str or None, (default=None)
+            Path of data cache. If None, uses 'working directory/tmp/cache' as cache dir
+        :param clear_cache: bool, (default=True)
+            Whether clear the cache dir before searching
+        """
         self.data_cleaner_params = data_cleaner_params
         self.cache_dir = self._prepare_cache_dir(cache_dir, clear_cache)
         self.clear_cache = clear_cache
