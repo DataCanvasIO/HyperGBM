@@ -50,13 +50,21 @@ class ExperimentStep(BaseEstimator):
         self.name = name
         self.experiment = experiment
 
-        self.step_start = experiment.step_start
-        self.step_end = experiment.step_end
-        self.step_progress = experiment.step_progress
+    def step_start(self, *args, **kwargs):
+        if self.experiment is not None:
+            self.experiment.step_start(*args, **kwargs)
+
+    def step_end(self, *args, **kwargs):
+        if self.experiment is not None:
+            self.experiment.step_end(*args, **kwargs)
+
+    def step_progress(self, *args, **kwargs):
+        if self.experiment is not None:
+            self.experiment.step_progress(*args, **kwargs)
 
     @property
     def task(self):
-        return self.experiment.task
+        return self.experiment.task if self.experiment is not None else None
 
     def fit_transform(self, hyper_model, X_train, y_train, X_test=None, X_eval=None, y_eval=None, **kwargs):
         raise NotImplemented()
@@ -74,6 +82,13 @@ class ExperimentStep(BaseEstimator):
     def _get_param_names(cls):
         params = super()._get_param_names()
         return filter(lambda x: x != 'experiment', params)
+
+    def __getstate__(self):
+        state = super().__getstate__()
+        # Don't pickle experiment
+        if 'experiment' in state.keys():
+            state['experiment'] = None
+        return state
 
 
 class FeatureSelectStep(ExperimentStep):
