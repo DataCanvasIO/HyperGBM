@@ -1028,8 +1028,9 @@ def make_experiment(train_data,
         search_callbacks = default_search_callbacks()
 
     from hypergbm.hyper_gbm import HyperGBM
-    hm = HyperGBM(searcher, reward_metric=reward_metric, cache_dir=f'hypergbm_cache', clear_cache=True,
-                  callbacks=search_callbacks)
+    hm = HyperGBM(searcher, reward_metric=reward_metric, callbacks=search_callbacks,
+                  cache_dir=kwargs.pop('cache_dir', 'hypergbm_cache'),
+                  clear_cache=kwargs.pop('clear_cache', True))
 
     experiment = CompeteExperiment(hm, X_train, y_train, X_eval=X_eval, y_eval=y_eval, X_test=X_test,
                                    task=task, scorer=scorer, **kwargs)
