@@ -28,6 +28,7 @@ from .feature_importance import feature_importance_batch
 logger = logging.get_logger(__name__)
 
 DEFAULT_EVAL_SIZE = 0.3
+DEFAULT_TARGET_SET = {'y', 'target'}
 
 
 def _set_log_level(log_level):
@@ -342,6 +343,15 @@ class SpaceSearchStep(ExperimentStep):
         return True
 
 
+class DaskSpaceSearchStep(SpaceSearchStep):
+
+    def fit_transform(self, hyper_model, X_train, y_train, X_test=None, X_eval=None, y_eval=None, **kwargs):
+        X_train, y_train, X_test, X_eval, y_eval = \
+            [v.persist() if dex.is_dask_object(v) else v for v in (X_train, y_train, X_test, X_eval, y_eval)]
+
+        return super().fit_transform(hyper_model, X_train, y_train, X_test, X_eval, y_eval, **kwargs)
+
+
 class EstimatorBuilderStep(ExperimentStep):
     def __init__(self, experiment, name):
         super().__init__(experiment, name)
@@ -654,10 +664,17 @@ class SteppedExperiment(Experiment):
             hyper_model, X_train, y_train, X_test, X_eval, y_eval = \
                 step.fit_transform(hyper_model, X_train, y_train, X_test=X_test, X_eval=X_eval, y_eval=y_eval, **kwargs)
 
-        last_step = self.steps[-1]
+        estimator = self.to_estimator(self.steps)
+        self.hyper_model = hyper_model
+
+        return estimator
+
+    @staticmethod
+    def to_estimator(steps):
+        last_step = steps[-1]
         assert hasattr(last_step, 'estimator_')
 
-        pipeline_steps = [(step.name, step) for step in self.steps if not step.is_transform_skipped()]
+        pipeline_steps = [(step.name, step) for step in steps if not step.is_transform_skipped()]
 
         if len(pipeline_steps) > 0:
             pipeline_steps += [('estimator', last_step.estimator_)]
@@ -685,7 +702,7 @@ class CompeteExperiment(SteppedExperiment):
                  data_cleaner_args=None,
                  drop_feature_with_collinearity=False,
                  drift_detection=True,
-                 two_stage_importance_selection=True,
+                 two_stage_importance_selection=False,
                  n_est_feature_importance=10,
                  importance_threshold=1e-5,
                  ensemble_size=7,
@@ -693,10 +710,16 @@ class CompeteExperiment(SteppedExperiment):
                  pseudo_labeling_proba_threshold=0.8,
                  pseudo_labeling_resplit=False,
                  retrain_on_wholedata=False,
-                 log_level=None):
+                 log_level=None,
+                 **kwargs):
         steps = []
         two_stage = False
         enable_dask = dex.exist_dask_object(X_train, y_train, X_test, X_eval, y_eval)
+
+        if enable_dask:
+            search_cls, ensemble_cls, pseudo_cls = DaskSpaceSearchStep, DaskEnsembleStep, DaskPseudoLabelStep
+        else:
+            search_cls, ensemble_cls, pseudo_cls = SpaceSearchStep, EnsembleStep, PseudoLabelStep
 
         # data clean
         steps.append(DataCleanStep(self, 'data_clean',
@@ -706,28 +729,26 @@ class CompeteExperiment(SteppedExperiment):
 
         # select by collinearity
         if drop_feature_with_collinearity:
-            steps.append(SelectByMulticollinearityStep(self, 'select_by_multicollinearity',
+            steps.append(SelectByMulticollinearityStep(self, 'drop_feature_with_collinearity',
                                                        drop_feature_with_collinearity=drop_feature_with_collinearity))
         # drift detection
         if drift_detection:
-            steps.append(DriftDetectStep(self, 'drift_detected', drift_detection=drift_detection))
+            steps.append(DriftDetectStep(self, 'drift_detection', drift_detection=drift_detection))
 
         # first-stage search
-        steps.append(SpaceSearchStep(self, 'space_search', cv=cv, num_folds=num_folds))
+        steps.append(search_cls(self, 'space_search', cv=cv, num_folds=num_folds))
 
         # pseudo label
         if pseudo_labeling and task != 'regression':
             if ensemble_size is not None and ensemble_size > 1:
-                step_cls = DaskEnsembleStep if enable_dask else EnsembleStep
-                estimator_builder = step_cls(self, 'final_ensemble', scorer=scorer, ensemble_size=ensemble_size)
+                estimator_builder = ensemble_cls(self, 'pseudo_ensemble', scorer=scorer, ensemble_size=ensemble_size)
             else:
-                estimator_builder = FinalTrainStep(self, 'final_train', retrain_on_wholedata=retrain_on_wholedata)
-            step_cls = DaskPseudoLabelStep if enable_dask else PseudoLabelStep
-            step = step_cls(self, 'pseudo_label',
-                            estimator_builder=estimator_builder,
-                            pseudo_labeling_resplit=pseudo_labeling_resplit,
-                            pseudo_labeling_proba_threshold=pseudo_labeling_proba_threshold,
-                            random_state=random_state)
+                estimator_builder = FinalTrainStep(self, 'pseudo_train', retrain_on_wholedata=retrain_on_wholedata)
+            step = pseudo_cls(self, 'pseudo_labeling',
+                              estimator_builder=estimator_builder,
+                              pseudo_labeling_resplit=pseudo_labeling_resplit,
+                              pseudo_labeling_proba_threshold=pseudo_labeling_proba_threshold,
+                              random_state=random_state)
             steps.append(step)
             two_stage = True
 
@@ -742,12 +763,11 @@ class CompeteExperiment(SteppedExperiment):
 
         # two-stage search
         if two_stage:
-            steps.append(SpaceSearchStep(self, 'two_stage_search', cv=cv, num_folds=num_folds))
+            steps.append(search_cls(self, 'two_stage_search', cv=cv, num_folds=num_folds))
 
         # final train
         if ensemble_size is not None and ensemble_size > 1:
-            step_cls = DaskEnsembleStep if enable_dask else EnsembleStep
-            last_step = step_cls(self, 'final_ensemble', scorer=scorer, ensemble_size=ensemble_size)
+            last_step = ensemble_cls(self, 'final_ensemble', scorer=scorer, ensemble_size=ensemble_size)
         else:
             last_step = FinalTrainStep(self, 'final_train', retrain_on_wholedata=retrain_on_wholedata)
         steps.append(last_step)
@@ -759,6 +779,7 @@ class CompeteExperiment(SteppedExperiment):
         if log_level is not None:
             _set_log_level(log_level)
 
+        self.run_kwargs = kwargs
         super(CompeteExperiment, self).__init__(steps,
                                                 hyper_model, X_train, y_train, X_eval=X_eval, y_eval=y_eval,
                                                 X_test=X_test, eval_size=eval_size, task=task,
@@ -797,3 +818,8 @@ class CompeteExperiment(SteppedExperiment):
             plt.show()
 
         return super().train(hyper_model, X_train, y_train, X_test, X_eval, y_eval, **kwargs)
+
+    def run(self, **kwargs):
+        run_kwargs = {**self.run_kwargs, **kwargs}
+        return super().run(**run_kwargs)
+
