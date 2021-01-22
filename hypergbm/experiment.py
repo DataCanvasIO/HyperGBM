@@ -705,7 +705,7 @@ class CompeteExperiment(SteppedExperiment):
                  two_stage_importance_selection=False,
                  n_est_feature_importance=10,
                  importance_threshold=1e-5,
-                 ensemble_size=7,
+                 ensemble_size=20,
                  pseudo_labeling=False,
                  pseudo_labeling_proba_threshold=0.8,
                  pseudo_labeling_resplit=False,
