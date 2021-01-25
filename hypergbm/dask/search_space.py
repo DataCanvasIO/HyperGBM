@@ -24,7 +24,7 @@ def search_space_general(dataframe_mapper_default=False,
                          catboost_init_kwargs=None,
                          catboost_fit_kwargs=None,
                          class_balancing=None,
-                         n_esitimators=None,
+                         n_esitimators=200,
                          enable_persist=True,
                          **kwargs):
     assert dex.dask_enabled(), 'Dask client must be initialized.'

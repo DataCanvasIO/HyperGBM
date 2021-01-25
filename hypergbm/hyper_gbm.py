@@ -560,11 +560,25 @@ class HyperGBMEstimator(Estimator):
         explainer = HyperGBMExplainer(self, data=data)
         return explainer
 
+    def __getstate__(self):
+        try:
+            state = super().__getstate__()
+        except AttributeError:
+            state = self.__dict__.copy()
+        # Don't pickle eval_set
+        fit_kwargs = state.get('fit_kwargs')
+        if fit_kwargs is not None and 'eval_set' in fit_kwargs.keys():
+            fit_kwargs = fit_kwargs.copy()
+            fit_kwargs.pop('eval_set')
+            state['fit_kwargs'] = fit_kwargs
+        return state
+
 
 class HyperGBM(HyperModel):
     """
     HyperGBM
     """
+
     def __init__(self, searcher, dispatcher=None, callbacks=None, reward_metric='accuracy', task=None,
                  data_cleaner_params=None, cache_dir=None, clear_cache=True):
         """

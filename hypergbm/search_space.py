@@ -22,10 +22,41 @@ def search_space_general(dataframe_mapper_default=False,
                          catboost_fit_kwargs=None,
                          histgb_fit_kwargs=None,
                          cat_pipeline_mode='simple',
-                         task=None,
                          class_balancing=None,
                          n_esitimators=200,
                          **kwargs):
+    """
+    A general search space function
+
+    :param dataframe_mapper_default: bool, default=False
+        Param for DataFrameMapper, default transformer to apply to the columns not explicitly selected in the mapper.
+        If False (default), discard them.  If None, pass them through untouched. Any other transformer will be applied
+        to all the unselected columns as a whole,  taken as a 2d-array.
+    :param lightgbm_fit_kwargs: dict, default=None
+        kwargs for calling `fit` method of lightgbm
+    :param xgb_fit_kwargs: dict, default=None
+        kwargs for calling `fit` method of xgb
+    :param catboost_fit_kwargs: dict, default=None
+        kwargs for calling `fit` method of catboost
+    :param histgb_fit_kwargs: dict, default=None
+        kwargs for calling `fit` method of histgb
+    :param cat_pipeline_mode: 'simple' or None, default='simple'
+        Mode of categorical pipeline
+    :param class_balancing: str or None, default=None
+        Strategy for class balancing.
+            - 'ClassWeight'
+            - 'RandomOverSampling'
+            - 'SMOTE'
+            - 'ADASYN'
+            - 'RandomUnderSampling'
+            - 'NearMiss'
+            - 'TomeksLinks'
+            - 'EditedNearestNeighbours'
+    :param n_esitimators: int, default=200
+        Number of estimators
+    :param kwargs:
+    :return:
+    """
     if lightgbm_fit_kwargs is None:
         lightgbm_fit_kwargs = {}
     if xgb_fit_kwargs is None:
@@ -69,24 +100,8 @@ def search_space_general(dataframe_mapper_default=False,
             'reg_alpha': Choice([0.001, 0.01, 0.1, 1, 10, 100]),
             'reg_lambda': Choice([0.001, 0.01, 0.1, 0.5, 1]),
             'class_balancing': class_balancing,
-            # 'class_weight': 'balanced',
-            # subsample_for_bin = 200000, objective = None, class_weight = None,
-            #  min_split_gain = 0., min_child_weight = 1e-3, min_child_samples = 20,
         }
 
-        lightgbm_init_kwargs1 = {
-            'n_estimators': n_esitimators,  # Choice([10, 30, 50, 80, 100]),
-            'boosting_type': Choice(['gbdt', 'dart', 'goss']),
-            'num_leaves': Int(15, 513, 5),
-            'learning_rate': Choice([0.001, 0.01, 0.5, 0.1]),
-            'max_depth': Choice([3, 5, 7, 9, 15]),
-            'reg_alpha': Choice([0.001, 0.01, 0.1, 1, 10, 100]),
-            'reg_lambda': Choice([0.001, 0.01, 0.1, 0.5, 1]),
-            'class_balancing': class_balancing,
-            # 'class_weight': 'balanced',
-            # subsample_for_bin = 200000, objective = None, class_weight = None,
-            #  min_split_gain = 0., min_child_weight = 1e-3, min_child_samples = 20,
-        }
         xgb_init_kwargs = {
             'booster': Choice(['gbtree', 'dart']),
             'max_depth': Choice([3, 5, 7, 9, 15]),
@@ -97,26 +112,6 @@ def search_space_general(dataframe_mapper_default=False,
             'reg_alpha': Choice([0.001, 0.01, 0.1, 1, 10, 100]),
             'reg_lambda': Choice([0.001, 0.01, 0.1, 0.5, 1]),
             'class_balancing': class_balancing,
-
-            # 'subsample': Choice([0.6, 0.8, 1.0]),
-            # 'colsample_bytree': Choice([0.6, 0.8, 1.0]),
-            # 'scale_pos_weight': Int(1,5,1),
-        }
-
-        xgb_init_kwargs1 = {
-            # 'booster': Choice(['gbtree', 'dart']),
-            'max_depth': Choice([3, 5, 7, 9, 15]),
-            'n_estimators': n_esitimators,  # Choice([10, 30, 50, 80, 100]),
-            'learning_rate': Choice([0.001, 0.01, 0.5, 0.1]),
-            # 'min_child_weight': Choice([1, 5, 10]),
-            'gamma': Choice([0.5, 1, 1.5, 2, 5]),
-            'reg_alpha': Choice([0.1, 1, 10, 100]),
-            'reg_lambda': Choice([0.1, 0.5, 1]),
-            'class_balancing': class_balancing,
-
-            # 'subsample': Choice([0.6, 0.8, 1.0]),
-            # 'colsample_bytree': Choice([0.6, 0.8, 1.0]),
-            # 'scale_pos_weight': Int(1,5,1),
         }
 
         catboost_init_kwargs = {
@@ -124,29 +119,10 @@ def search_space_general(dataframe_mapper_default=False,
             'n_estimators': n_esitimators,
             'depth': Choice([3, 5, 7, 10]),
             'learning_rate': Choice([0.001, 0.01, 0.5, 0.1]),
-            # 'iterations': Choice([30, 50, 100, 200, 300]),
             'l2_leaf_reg': Choice([None, 2, 10, 20, 30]),
             'class_balancing': class_balancing,
-
-            # 'bagging_temperature': Choice([None, 0, 0.5, 1]),
-            # 'random_strength': Choice([None, 1, 5, 10]),
-            # 'class_weights': [0.59,3.07],
-            # 'border_count': Choice([5, 10, 20, 32, 50, 100, 200]),
         }
 
-        catboost_init_kwargs1 = {
-            'n_estimators': n_esitimators,
-            'silent': True,
-            'depth': Choice([3, 5, 7, 10]),
-            'learning_rate': Choice([0.001, 0.01, 0.5, 0.1]),
-            'l2_leaf_reg': Choice([None, 2, 10, 20, 30]),
-            'class_balancing': class_balancing,
-
-            # 'bagging_temperature': Choice([None, 0, 0.5, 1]),
-            # 'random_strength': Choice([None, 1, 5, 10]),
-            # 'class_weights': [0.59,3.07],
-            # 'border_count': Choice([5, 10, 20, 32, 50, 100, 200]),
-        }
         histgb_init_kwargs = {
             'learning_rate': Choice([0.01, 0.1, 0.2, 0.5, 0.8, 1]),
             'min_samples_leaf': Choice([10, 20, 50, 80, 100, 150, 180, 200]),
@@ -157,8 +133,7 @@ def search_space_general(dataframe_mapper_default=False,
         lightgbm_est = LightGBMEstimator(fit_kwargs=lightgbm_fit_kwargs, **lightgbm_init_kwargs)
         xgb_est = XGBoostEstimator(fit_kwargs=xgb_fit_kwargs, **xgb_init_kwargs)
         catboost_est = CatBoostEstimator(fit_kwargs=catboost_fit_kwargs, **catboost_init_kwargs)
-        histgb_est = HistGBEstimator(fit_kwargs=histgb_fit_kwargs, **histgb_init_kwargs)
-        # lightgbm_est,catboost_est
+        # histgb_est = HistGBEstimator(fit_kwargs=histgb_fit_kwargs, **histgb_init_kwargs)
         ModuleChoice([xgb_est, lightgbm_est, catboost_est], name='estimator_options')(union_pipeline)
         space.set_inputs(input)
     return space

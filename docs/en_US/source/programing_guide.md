@@ -18,19 +18,54 @@ It is the core interface of the HyperGBM project. By calling the `search` method
 
 ![](images/hypergbm-search-space.png)
 
+    The code example of Numeric Pipeline is as follows：
+```python
+import numpy as np
+from hypergbm.pipeline import Pipeline
+from hypergbm.sklearn.transformers import SimpleImputer, StandardScaler, MinMaxScaler, MaxAbsScaler, RobustScaler, LogStandardScaler
+from hypernets.core.ops import ModuleChoice, Optional, Choice
+from tabular_toolbox.column_selector import  column_number_exclude_timedelta
 
+
+def numeric_pipeline_complex(impute_strategy=None, seq_no=0):
+    if impute_strategy is None:
+        impute_strategy = Choice(['mean', 'median', 'constant', 'most_frequent'])
+    elif isinstance(impute_strategy, list):
+        impute_strategy = Choice(impute_strategy)
+
+    imputer = SimpleImputer(missing_values=np.nan, strategy=impute_strategy, name=f'numeric_imputer_{seq_no}',
+                            force_output_as_float=True)
+    scaler_options = ModuleChoice(
+        [
+            LogStandardScaler(name=f'numeric_log_standard_scaler_{seq_no}'),
+            StandardScaler(name=f'numeric_standard_scaler_{seq_no}'),
+            MinMaxScaler(name=f'numeric_minmax_scaler_{seq_no}'),
+            MaxAbsScaler(name=f'numeric_maxabs_scaler_{seq_no}'),
+            RobustScaler(name=f'numeric_robust_scaler_{seq_no}')
+        ], name=f'numeric_or_scaler_{seq_no}'
+    )
+    scaler_optional = Optional(scaler_options, keep_link=True, name=f'numeric_scaler_optional_{seq_no}')
+    pipeline = Pipeline([imputer, scaler_optional],
+                        name=f'numeric_pipeline_complex_{seq_no}',
+                        columns=column_number_exclude_timedelta)
+    return pipeline
+```
 * Searcher
 
     Searcher is an algorithm used to explore a search space.It encompasses the classical exploration-exploitation trade-off since, on the one hand, it is desirable to find well-performing model quickly, while on the other hand, premature convergence to a region of suboptimal solutions should be avoided.
-
+    Three algorithms are provided in HyperGBM: MCTSSearcher (Monte-Carlo tree search), EvolutionarySearcher and RandomSearcher.
+    
 * HyperGBMEstimator
 
     HyperGBMEstimator is an object built from a sample in the search space, including the full preprocessing pipeline and a GBM model. It can be used to `fit` on training data, `evaluate` on evaluation data, and `predict` on new data.
 
 * CompeteExperiment
 
-### Quick Start
+    `CompeteExperiment` is a powerful tool provided in HyperGBM. It not only performs pipeline search, but also contains some advanced features to further improve the model performance such as data drift handling, pseudo-labeling, ensemble, etc.
 
+### Use cases
+
+* Use case of HyperGBM
 ```python
 # import HyperGBM, Search Space and Searcher
 from hypergbm import HyperGBM
@@ -44,7 +79,7 @@ searcher = RandomSearcher(search_space_general, optimize_direction='max')
 hypergbm = HyperGBM(searcher, task='binary', reward_metric='accuracy')
 
 # load data into Pandas DataFrame
-df = pd.read_csv('/data_file_path/')
+df = pd.read_csv('[train_data_file]')
 y = df.pop('target')
 
 # split data into train set and eval set
@@ -62,6 +97,26 @@ estimator = hypergbm.load_estimator(best_trial.model_file)
 pred = estimator.predict(X_real)
 ```
 
+* Use case of Experiment
+```python
+from hypergbm import make_experiment
+import pandas as pd
+
+# load data into Pandas DataFrame
+df = pd.read_csv('[train_data_file]')
+target = 'target'
+
+#create an experiment
+experiment = make_experiment(df, target=target)
+
+#run experiment
+estimator = experiment.run()
+
+# predict on real data
+pred = estimator.predict(X_real)
+```
+
+
 ### HyperGBM
 
 **Required Parameters**
@@ -73,7 +128,7 @@ pred = estimator.predict(X_real)
 
 **Optinal Parameters**
 
-- *dispatcher*: hypernets.core.Dispatcher, Dispatcher is used to provide different execution modes for search trials, such as stand-alone mode (`InProcessDispatcher`), distributed parallel mode (`DaskDispatcher`), etc. `InProcessDispatcher` is used by default.
+- *dispatcher*: hypernets.core.Dispatcher, Dispatcher is used to provide different execution modes for search trials, such as in-process mode (`InProcessDispatcher`), distributed parallel mode (`DaskDispatcher`), etc. `InProcessDispatcher` is used by default.
 - *callbacks*: list of callback functions or None, optional (default=None), List of callback functions that are applied at each trial. See `hypernets.callbacks` for more information.
 - *reward_metric*: str or None, optinal(default=accuracy), Set corresponding metric  according to task type to guide search direction of searcher.
 - *task*: str or None, optinal(default=None), Task type(*binary*,*multiclass* or *regression*). If None, inference the type of task automatically
@@ -99,7 +154,7 @@ pred = estimator.predict(X_real)
 
 ### Searchers
 
-#### Monte-Carlo Tree Search
+#### MCTSSearcher: Monte-Carlo Tree Search
     
 Monte-Carlo Tree Search (MCTS) extends the celebrated Multi-armed Bandit algorithm to tree-structured search spaces. The MCTS algorithm iterates over four phases: selection, expansion, playout and backpropagation.
     
@@ -123,14 +178,14 @@ searcher = MCTSSearcher(search_space_fn, use_meta_learner=False, max_node_space=
 - *space_fn*: callable, A search space function which when called returns a `HyperSpace` instance.
 
 **Optinal Parameters**
-- policy: hypernets.searchers.mcts_core.BasePolicy, (default=None), The policy for *Selection* and *Backpropagation* phases, `UCT` by default.
-- max_node_space: int, (default=10), Maximum space for node expansion
-- use_meta_learner: bool, (default=True), Meta-learner aims to evaluate the performance of unseen samples based on previously evaluated samples. It provides a practical solution to accurately estimate a search branch with many simulations without involving the actual training.
-- candidates_size: int, (default=10), The number of samples for the meta-learner to evaluate candidate paths when roll out
-- optimize_direction: 'min' or 'max', (default='min'), Whether the search process is approaching the maximum or minimum reward value.
-- space_sample_validation_fn: callable or None, (default=None), Used to verify the validity of samples from the search space, and can be used to add specific constraint rules to the search space to reduce the size of the space.
+- *policy*: hypernets.searchers.mcts_core.BasePolicy, (default=None), The policy for *Selection* and *Backpropagation* phases, `UCT` by default.
+- *max_node_space*: int, (default=10), Maximum space for node expansion
+- *use_meta_learner*: bool, (default=True), Meta-learner aims to evaluate the performance of unseen samples based on previously evaluated samples. It provides a practical solution to accurately estimate a search branch with many simulations without involving the actual training.
+- *candidates_size*: int, (default=10), The number of samples for the meta-learner to evaluate candidate paths when roll out
+- *optimize_direction*: 'min' or 'max', (default='min'), Whether the search process is approaching the maximum or minimum reward value.
+- *space_sample_validation_fn*: callable or None, (default=None), Used to verify the validity of samples from the search space, and can be used to add specific constraint rules to the search space to reduce the size of the space.
 
-#### Evolutionary Algorithm
+#### EvolutionSearcher: Evolutionary Algorithm
 
 Evolutionary algorithm (EA) is a subset of evolutionary computation, a generic population-based metaheuristic optimization algorithm. An EA uses mechanisms inspired by biological evolution, such as reproduction, mutation, recombination, and selection. Candidate solutions to the optimization problem play the role of individuals in a population, and the fitness function determines the quality of the solutions (see also loss function). Evolution of the population then takes place after the repeated application of the above operators.
 
@@ -143,16 +198,16 @@ searcher = EvolutionSearcher(search_space_fn, population_size=20, sample_size=5,
 ```
 
 **Required Parameters**
-- space_fn: callable, A search space function which when called returns a `HyperSpace` instance
-- population_size: int, Size of population
-- sample_size: int, The number of parent candidates selected in each cycle of evolution
+- *space_fn*: callable, A search space function which when called returns a `HyperSpace` instance
+- *population_size*: int, Size of population
+- *sample_size*: int, The number of parent candidates selected in each cycle of evolution
 
 **Optinal Parameters**
-- regularized: bool, (default=False), Whether to enable regularized
-- use_meta_learner: bool, (default=True), Meta-learner aims to evaluate the performance of unseen samples based on previously evaluated samples. It provides a practical solution to accurately estimate a search branch with many simulations without involving the actual training.
-- candidates_size: int, (default=10), The number of samples for the meta-learner to evaluate candidate paths when roll out
-- optimize_direction: 'min' or 'max', (default='min'), Whether the search process is approaching the maximum or minimum reward value.
-- space_sample_validation_fn: callable or None, (default=None), Used to verify the validity of samples from the search space, and can be used to add specific constraint rules to the search space to reduce the size of the space.
+- *regularized*: bool, (default=False), Whether to enable regularized
+- *use_meta_learner*: bool, (default=True), Meta-learner aims to evaluate the performance of unseen samples based on previously evaluated samples. It provides a practical solution to accurately estimate a search branch with many simulations without involving the actual training.
+- *candidates_size*: int, (default=10), The number of samples for the meta-learner to evaluate candidate paths when roll out
+- *optimize_direction*: 'min' or 'max', (default='min'), Whether the search process is approaching the maximum or minimum reward value.
+- *space_sample_validation_fn*: callable or None, (default=None), Used to verify the validity of samples from the search space, and can be used to add specific constraint rules to the search space to reduce the size of the space.
 
 
 #### Random Search
@@ -166,11 +221,11 @@ searcher = RandomSearcher(search_space_fn, optimize_direction='min')
 ```
 
 **Required Parameters**
-- space_fn: callable, A search space function which when called returns a `HyperSpace` instance
+- *space_fn*: callable, A search space function which when called returns a `HyperSpace` instance
 
 **Optinal Parameters**
-- optimize_direction: 'min' or 'max', (default='min'), Whether the search process is approaching the maximum or minimum reward value.
-- space_sample_validation_fn: callable or None, (default=None), Used to verify the validity of samples from the search space, and can be used to add specific constraint rules to the search space to reduce the size of the space.
+- *optimize_direction*: 'min' or 'max', (default='min'), Whether the search process is approaching the maximum or minimum reward value.
+- *space_sample_validation_fn*: callable or None, (default=None), Used to verify the validity of samples from the search space, and can be used to add specific constraint rules to the search space to reduce the size of the space.
 
 
 ### Search Space
@@ -202,35 +257,35 @@ There are still many challenges in the machine learning modeling process for tab
 
 
 **Required Parameters**
-- hyper_model: hypergbm.HyperGBM, A `HyperGBM` instance
-- X_train: Pandas or Dask DataFrame, Feature data for training
-- y_train: Pandas or Dask Series, Target values for training
+- *hyper_model*: hypergbm.HyperGBM, A `HyperGBM` instance
+- *X_train*: Pandas or Dask DataFrame, Feature data for training
+- *y_train*: Pandas or Dask Series, Target values for training
 
 
 **Optinal Parameters**
-- X_eval: (Pandas or Dask DataFrame) or None, (default=None), Feature data for evaluation
-- y_eval: (Pandas or Dask Series) or None, (default=None), Target values for evaluation
-- X_test: (Pandas or Dask Series) or None, (default=None), Unseen data without target values for semi-supervised learning
-- eval_size: float or int, (default=None), Only valid when ``X_eval`` or ``y_eval`` is None. If float, should be between 0.0 and 1.0 and represent the proportion of the dataset to include in the eval split. If int, represents the absolute number of test samples. If None, the value is set to the complement of the train size. 
-- train_test_split_strategy: *'adversarial_validation'* or None, (default=None), Only valid when ``X_eval`` or ``y_eval`` is None. If None, use eval_size to split the dataset, otherwise use adversarial validation approach.
-- cv: bool, (default=False), If True, use cross-validation instead of evaluation set reward to guide the search process
-- num_folds: int, (default=3), Number of cross-validated folds, only valid when cv is true
-- task: str or None, optinal(default=None), Task type(*binary*, *multiclass* or *regression*). If None, inference the type of task automatically
-- callbacks: list of callback functions or None, (default=None), List of callback functions that are applied at each experiment step. See `hypernets.experiment.ExperimentCallback` for more information.
-- random_state: int or RandomState instance, (default=9527), Controls the shuffling applied to the data before applying the split.
-- scorer: str, callable or None, (default=None), Scorer to used for feature importance evaluation and ensemble. It can be a single string (see [get_scorer](https://scikit-learn.org/stable/modules/generated/sklearn.metrics.get_scorer.html)) or a callable (see [make_scorer](https://scikit-learn.org/stable/modules/generated/sklearn.metrics.make_scorer.html)). If None, exception will occur.
-- data_cleaner_args: dict, (default=None),  dictionary of parameters to initialize the `DataCleaner` instance. If None, `DataCleaner` will initialized with default values.
-- drop_feature_with_collinearity: bool, (default=False), Whether to clear multicollinearity features
-- drift_detection: bool,(default=True), Whether to enable data drift detection and processing. Only valid when *X_test* is provided. Concept drift in the input data is one of the main challenges. Over time, it will worsen the performance of model on new data. We introduce an adversarial validation approach to concept drift problems in HyperGBM. This approach will detect concept drift and identify the drifted features and process them automatically.
-- two_stage_importance_selection: bool, (default=True), Whether to enable two stage feature selection and searching
-- n_est_feature_importance: int, (default=10), The number of estimator to evaluate feature importance. Only valid when *two_stage_importance_selection* is True.
-- importance_threshold: float, (default=1e-5), The threshold for feature selection. Features with importance below the threshold will be dropped.  Only valid when *two_stage_importance_selection* is True.
-- ensemble_size: int, (default=20), The number of estimator to ensemble. During the AutoML process, a lot of models will be generated with different preprocessing pipelines, different models, and different hyperparameters. Usually selecting some of the models that perform well to ensemble can obtain better generalization ability than just selecting the single best model.
-- pseudo_labeling: bool, (default=False), Whether to enable pseudo labeling. Pseudo labeling is a semi-supervised learning technique, instead of manually labeling the unlabelled data, we give approximate labels on the basis of the labelled data. Pseudo-labeling can sometimes improve the generalization capabilities of the model.
-- pseudo_labeling_proba_threshold: float, (default=0.8), Confidence threshold of pseudo-label samples. Only valid when *two_stage_importance_selection* is True.
-- pseudo_labeling_resplit: bool, (default=False), Whether to re-split the training set and evaluation set after adding pseudo-labeled data. If False, the pseudo-labeled data is only appended to the training set. Only valid when *two_stage_importance_selection* is True.
-- retrain_on_wholedata: bool, (default=False), Whether to retrain the model with whole data after the search is completed.
-- log_level: int or None, (default=None), Level of logging, possible values:[logging.CRITICAL, logging.FATAL, logging.ERROR, logging.WARNING, logging.WARN, logging.INFO, logging.DEBUG, logging.NOTSET]
+- *X_eval*: (Pandas or Dask DataFrame) or None, (default=None), Feature data for evaluation
+- *y_eval*: (Pandas or Dask Series) or None, (default=None), Target values for evaluation
+- *X_test*: (Pandas or Dask Series) or None, (default=None), Unseen data without target values for semi-supervised learning
+- *eval_size*: float or int, (default=None), Only valid when ``X_eval`` or ``y_eval`` is None. If float, should be between 0.0 and 1.0 and represent the proportion of the dataset to include in the eval split. If int, represents the absolute number of test samples. If None, the value is set to the complement of the train size. 
+- *train_test_split_strategy*: *'adversarial_validation'* or None, (default=None), Only valid when ``X_eval`` or ``y_eval`` is None. If None, use eval_size to split the dataset, otherwise use adversarial validation approach.
+- *cv*: bool, (default=False), If True, use cross-validation instead of evaluation set reward to guide the search process
+- *num_folds*: int, (default=3), Number of cross-validated folds, only valid when cv is true
+- *task*: str or None, optinal(default=None), Task type(*binary*, *multiclass* or *regression*). If None, inference the type of task automatically
+- *callbacks*: list of callback functions or None, (default=None), List of callback functions that are applied at each experiment step. See `hypernets.experiment.ExperimentCallback` for more information.
+- *random_state*: int or RandomState instance, (default=9527), Controls the shuffling applied to the data before applying the split.
+- *scorer*: str, callable or None, (default=None), Scorer to used for feature importance evaluation and ensemble. It can be a single string (see [get_scorer](https://scikit-learn.org/stable/modules/generated/sklearn.metrics.get_scorer.html)) or a callable (see [make_scorer](https://scikit-learn.org/stable/modules/generated/sklearn.metrics.make_scorer.html)). If None, exception will occur.
+- *data_cleaner_args*: dict, (default=None),  dictionary of parameters to initialize the `DataCleaner` instance. If None, `DataCleaner` will initialized with default values.
+- *drop_feature_with_collinearity*: bool, (default=False), Whether to clear multicollinearity features
+- *drift_detection*: bool,(default=True), Whether to enable data drift detection and processing. Only valid when *X_test* is provided. Concept drift in the input data is one of the main challenges. Over time, it will worsen the performance of model on new data. We introduce an adversarial validation approach to concept drift problems in HyperGBM. This approach will detect concept drift and identify the drifted features and process them automatically.
+- *two_stage_importance_selection*: bool, (default=True), Whether to enable two stage feature selection and searching
+- *n_est_feature_importance*: int, (default=10), The number of estimator to evaluate feature importance. Only valid when *two_stage_importance_selection* is True.
+- *importance_threshold*: float, (default=1e-5), The threshold for feature selection. Features with importance below the threshold will be dropped.  Only valid when *two_stage_importance_selection* is True.
+- *ensemble_size*: int, (default=20), The number of estimator to ensemble. During the AutoML process, a lot of models will be generated with different preprocessing pipelines, different models, and different hyperparameters. Usually selecting some of the models that perform well to ensemble can obtain better generalization ability than just selecting the single best model.
+- *pseudo_labeling*: bool, (default=False), Whether to enable pseudo labeling. Pseudo labeling is a semi-supervised learning technique, instead of manually labeling the unlabelled data, we give approximate labels on the basis of the labelled data. Pseudo-labeling can sometimes improve the generalization capabilities of the model.
+- *pseudo_labeling_proba_threshold*: float, (default=0.8), Confidence threshold of pseudo-label samples. Only valid when *two_stage_importance_selection* is True.
+- *pseudo_labeling_resplit*: bool, (default=False), Whether to re-split the training set and evaluation set after adding pseudo-labeled data. If False, the pseudo-labeled data is only appended to the training set. Only valid when *two_stage_importance_selection* is True.
+- *retrain_on_wholedata*: bool, (default=False), Whether to retrain the model with whole data after the search is completed.
+- *log_level*: int or None, (default=None), Level of logging, possible values:[logging.CRITICAL, logging.FATAL, logging.ERROR, logging.WARNING, logging.WARN, logging.INFO, logging.DEBUG, logging.NOTSET]
 
 #### Imbalance data handling
 Imbalanced data typically refers to a classification problem where the number of samples per class is not equally distributed; often you'll have a large amount of samples for one class (referred to as the majority class), and much fewer samples for one or more other classes (referred to as the minority classes). 

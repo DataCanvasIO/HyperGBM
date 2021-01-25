@@ -23,6 +23,7 @@ from tabular_toolbox import drift_detection as dd
 from tabular_toolbox.data_cleaner import DataCleaner
 from tabular_toolbox.ensemble import GreedyEnsemble, DaskGreedyEnsemble
 from tabular_toolbox.feature_selection import select_by_multicollinearity
+from tabular_toolbox.utils import load_data, infer_task_type
 from .feature_importance import feature_importance_batch
 
 logger = logging.get_logger(__name__)
@@ -49,13 +50,21 @@ class ExperimentStep(BaseEstimator):
         self.name = name
         self.experiment = experiment
 
-        self.step_start = experiment.step_start
-        self.step_end = experiment.step_end
-        self.step_progress = experiment.step_progress
+    def step_start(self, *args, **kwargs):
+        if self.experiment is not None:
+            self.experiment.step_start(*args, **kwargs)
+
+    def step_end(self, *args, **kwargs):
+        if self.experiment is not None:
+            self.experiment.step_end(*args, **kwargs)
+
+    def step_progress(self, *args, **kwargs):
+        if self.experiment is not None:
+            self.experiment.step_progress(*args, **kwargs)
 
     @property
     def task(self):
-        return self.experiment.task
+        return self.experiment.task if self.experiment is not None else None
 
     def fit_transform(self, hyper_model, X_train, y_train, X_test=None, X_eval=None, y_eval=None, **kwargs):
         raise NotImplemented()
@@ -73,6 +82,13 @@ class ExperimentStep(BaseEstimator):
     def _get_param_names(cls):
         params = super()._get_param_names()
         return filter(lambda x: x != 'experiment', params)
+
+    def __getstate__(self):
+        state = super().__getstate__()
+        # Don't pickle experiment
+        if 'experiment' in state.keys():
+            state['experiment'] = None
+        return state
 
 
 class FeatureSelectStep(ExperimentStep):
@@ -602,7 +618,7 @@ class DaskPseudoLabelStep(PseudoLabelStep):
         y_pseudo = dex.hstack_array([y_p1, y_p2])
 
         if classes is not None:
-            y_pseudo = da.take(da.array(classes), y_pseudo, axis=0)
+            y_pseudo = da.take(np.array(classes), y_pseudo, axis=0)
 
         return X_pseudo, y_pseudo
 
@@ -915,3 +931,107 @@ class CompeteExperiment(SteppedExperiment):
         run_kwargs = {**self.run_kwargs, **kwargs}
         return super().run(**run_kwargs)
 
+
+def make_experiment(train_data,
+                    target=None,
+                    eval_data=None,
+                    test_data=None,
+                    searcher=None,
+                    search_space=None,
+                    search_callbacks=None,
+                    reward_metric='accuracy',
+                    optimize_direction=None,
+                    task=None,
+                    scorer=None,
+                    **kwargs):
+    assert train_data is not None, 'train data is required.'
+
+    kwargs = kwargs.copy()
+    dask_enable = dex.exist_dask_object(train_data, test_data, eval_data) or dex.dask_enabled()
+
+    def find_target(df):
+        columns = df.columns.to_list()
+        for col in columns:
+            if col.lower() in DEFAULT_TARGET_SET:
+                return col
+        raise ValueError(f'Not found one of {DEFAULT_TARGET_SET} from your data, implicit target must be specified.')
+
+    def metric_to_scoring(metric):
+        mapping = {
+            'auc': 'roc_auc_ovo',
+            'accuracy': 'accuracy',
+            'recall': 'recall',
+            'precision': 'precision',
+            'f1': 'f1',
+            'mse': 'neg_mean_squared_error',
+            'mae': 'neg_mean_absolute_error',
+            'msle': 'neg_mean_squared_log_error',
+            'rmse': 'neg_root_mean_squared_error',
+            'rootmeansquarederror': 'neg_root_mean_squared_error',
+            'r2': 'r2',
+            'logloss': 'neg_log_loss',
+        }
+        if metric not in mapping.keys():
+            raise ValueError(f'Not found matching scorer for {metric}, implicit scorer must be specified.')
+
+        return mapping[metric]
+
+    def default_search_space():
+        if dask_enable:
+            from hypergbm.dask.search_space import search_space_general as dask_search_space
+            return dask_search_space
+        else:
+            from hypergbm.search_space import search_space_general as sk_search_space
+            return sk_search_space
+
+    def default_searcher(search_space_fn):
+        from hypernets.searchers import EvolutionSearcher
+
+        if search_space_fn is None:
+            search_space_fn = default_search_space()
+
+        op = optimize_direction if optimize_direction is not None \
+            else 'max' if scorer._sign > 0 else 'min'
+
+        s = EvolutionSearcher(search_space_fn, optimize_direction=op,
+                              population_size=30, sample_size=10, candidates_size=10,
+                              regularized=True, use_meta_learner=True)
+        return s
+
+    def default_search_callbacks():
+        from hypernets.core.callbacks import SummaryCallback
+        callbacks = [SummaryCallback()]
+        return callbacks
+
+    X_train = load_data(train_data)
+    if target is None:
+        target = find_target(X_train)
+    y_train = X_train.pop(target)
+
+    X_eval = load_data(eval_data) if eval_data is not None else None
+    y_eval = X_eval.pop(target) if X_eval is not None else None
+
+    X_test = load_data(test_data) if test_data is not None else None
+
+    if task is None:
+        task, _ = infer_task_type(y_train)
+
+    if scorer is None:
+        scorer = metric_to_scoring(reward_metric)
+    if isinstance(scorer, str):
+        scorer = get_scorer(scorer)
+
+    if searcher is None:
+        searcher = default_searcher(search_space)
+
+    if search_callbacks is None:
+        search_callbacks = default_search_callbacks()
+
+    from hypergbm.hyper_gbm import HyperGBM
+    hm = HyperGBM(searcher, reward_metric=reward_metric, callbacks=search_callbacks,
+                  cache_dir=kwargs.pop('cache_dir', 'hypergbm_cache'),
+                  clear_cache=kwargs.pop('clear_cache', True))
+
+    experiment = CompeteExperiment(hm, X_train, y_train, X_eval=X_eval, y_eval=y_eval, X_test=X_test,
+                                   task=task, scorer=scorer, **kwargs)
+    return experiment
