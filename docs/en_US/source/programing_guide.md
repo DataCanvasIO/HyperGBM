@@ -18,19 +18,54 @@ It is the core interface of the HyperGBM project. By calling the `search` method
 
 ![](images/hypergbm-search-space.png)
 
+    The code example of Numeric Pipeline is as follows：
+```python
+import numpy as np
+from hypergbm.pipeline import Pipeline
+from hypergbm.sklearn.transformers import SimpleImputer, StandardScaler, MinMaxScaler, MaxAbsScaler, RobustScaler, LogStandardScaler
+from hypernets.core.ops import ModuleChoice, Optional, Choice
+from tabular_toolbox.column_selector import  column_number_exclude_timedelta
 
+
+def numeric_pipeline_complex(impute_strategy=None, seq_no=0):
+    if impute_strategy is None:
+        impute_strategy = Choice(['mean', 'median', 'constant', 'most_frequent'])
+    elif isinstance(impute_strategy, list):
+        impute_strategy = Choice(impute_strategy)
+
+    imputer = SimpleImputer(missing_values=np.nan, strategy=impute_strategy, name=f'numeric_imputer_{seq_no}',
+                            force_output_as_float=True)
+    scaler_options = ModuleChoice(
+        [
+            LogStandardScaler(name=f'numeric_log_standard_scaler_{seq_no}'),
+            StandardScaler(name=f'numeric_standard_scaler_{seq_no}'),
+            MinMaxScaler(name=f'numeric_minmax_scaler_{seq_no}'),
+            MaxAbsScaler(name=f'numeric_maxabs_scaler_{seq_no}'),
+            RobustScaler(name=f'numeric_robust_scaler_{seq_no}')
+        ], name=f'numeric_or_scaler_{seq_no}'
+    )
+    scaler_optional = Optional(scaler_options, keep_link=True, name=f'numeric_scaler_optional_{seq_no}')
+    pipeline = Pipeline([imputer, scaler_optional],
+                        name=f'numeric_pipeline_complex_{seq_no}',
+                        columns=column_number_exclude_timedelta)
+    return pipeline
+```
 * Searcher
 
     Searcher is an algorithm used to explore a search space.It encompasses the classical exploration-exploitation trade-off since, on the one hand, it is desirable to find well-performing model quickly, while on the other hand, premature convergence to a region of suboptimal solutions should be avoided.
-
+    Three algorithms are provided in HyperGBM: MCTSSearcher (Monte-Carlo tree search), EvolutionarySearcher and RandomSearcher.
+    
 * HyperGBMEstimator
 
     HyperGBMEstimator is an object built from a sample in the search space, including the full preprocessing pipeline and a GBM model. It can be used to `fit` on training data, `evaluate` on evaluation data, and `predict` on new data.
 
 * CompeteExperiment
 
-### Quick Start
+    `CompeteExperiment` is a powerful tool provided in HyperGBM. It not only performs pipeline search, but also contains some advanced features to further improve the model performance such as data drift handling, pseudo-labeling, ensemble, etc.
 
+### Use cases
+
+* Use case of HyperGBM
 ```python
 # import HyperGBM, Search Space and Searcher
 from hypergbm import HyperGBM
@@ -44,7 +79,7 @@ searcher = RandomSearcher(search_space_general, optimize_direction='max')
 hypergbm = HyperGBM(searcher, task='binary', reward_metric='accuracy')
 
 # load data into Pandas DataFrame
-df = pd.read_csv('/data_file_path/')
+df = pd.read_csv('[train_data_file]')
 y = df.pop('target')
 
 # split data into train set and eval set
@@ -62,6 +97,26 @@ estimator = hypergbm.load_estimator(best_trial.model_file)
 pred = estimator.predict(X_real)
 ```
 
+* Use case of Experiment
+```python
+from hypergbm import make_experiment
+import pandas as pd
+
+# load data into Pandas DataFrame
+df = pd.read_csv('[train_data_file]')
+target = 'target'
+
+#create an experiment
+experiment = make_experiment(df, target=target)
+
+#run experiment
+estimator = experiment.run()
+
+# predict on real data
+pred = estimator.predict(X_real)
+```
+
+
 ### HyperGBM
 
 **Required Parameters**
@@ -73,7 +128,7 @@ pred = estimator.predict(X_real)
 
 **Optinal Parameters**
 
-- *dispatcher*: hypernets.core.Dispatcher, Dispatcher is used to provide different execution modes for search trials, such as stand-alone mode (`InProcessDispatcher`), distributed parallel mode (`DaskDispatcher`), etc. `InProcessDispatcher` is used by default.
+- *dispatcher*: hypernets.core.Dispatcher, Dispatcher is used to provide different execution modes for search trials, such as in-process mode (`InProcessDispatcher`), distributed parallel mode (`DaskDispatcher`), etc. `InProcessDispatcher` is used by default.
 - *callbacks*: list of callback functions or None, optional (default=None), List of callback functions that are applied at each trial. See `hypernets.callbacks` for more information.
 - *reward_metric*: str or None, optinal(default=accuracy), Set corresponding metric  according to task type to guide search direction of searcher.
 - *task*: str or None, optinal(default=None), Task type(*binary*,*multiclass* or *regression*). If None, inference the type of task automatically
