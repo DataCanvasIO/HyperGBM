@@ -250,10 +250,6 @@ searcher = RandomSearcher(lambda: search_space_general(n_estimators=300, early_s
 ![](images/hypergbm-competeexperiment.png)
 
 
-**Code example**
-```
-```
-
 
 **必选参数**
 - *hyper_model*: hypergbm.HyperGBM, 一个`HyperGBM` 实例。
@@ -286,6 +282,41 @@ searcher = RandomSearcher(lambda: search_space_general(n_estimators=300, early_s
 - *retrain_on_wholedata*: bool, (default=False), 在搜索完成后是否把训练集和评估集数据合并后用全量数据重新训练模型。
 - *log_level*: int or None, (default=None), 搜索过程中的日志输出级别, possible values:[logging.CRITICAL, logging.FATAL, logging.ERROR, logging.WARNING, logging.WARN, logging.INFO, logging.DEBUG, logging.NOTSET]
 
+
+**Code example**
+```python
+from hypergbm import make_experiment
+from hypergbm.search_space import search_space_general
+import pandas as pd
+import logging
+
+# load data into Pandas DataFrame
+df = pd.read_csv('[train_data_file]')
+target = 'target'
+
+#create an experiment
+experiment = make_experiment(df, target=target, 
+                 search_space=lambda: search_space_general(class_balancing='SMOTE',n_estimators=300, early_stopping_rounds=10, verbose=0),
+                 drop_feature_with_collinearity=False,
+                 drift_detection=True,
+                 two_stage_importance_selection=False,
+                 n_est_feature_importance=10,
+                 importance_threshold=1e-5,
+                 ensemble_size=20,
+                 pseudo_labeling=False,
+                 pseudo_labeling_proba_threshold=0.8,
+                 pseudo_labeling_resplit=False,
+                 retrain_on_wholedata=False,
+                 log_level=logging.ERROR,)
+
+#run experiment
+estimator = experiment.run()
+
+# predict on real data
+pred = estimator.predict(X_real)
+```
+
+
 #### Imbalance data handling
 Imbalanced data typically refers to a classification problem where the number of samples per class is not equally distributed; often you'll have a large amount of samples for one class (referred to as the majority class), and much fewer samples for one or more other classes (referred to as the minority classes). 
 We have provided several approaches to deal with imbalanced data: *Class Weight*, *Oversampling* and *Undersampling*.
@@ -300,18 +331,81 @@ We have provided several approaches to deal with imbalanced data: *Class Weight*
 
 **Undersampling**
 - RandomUnderSampling
-- Near miss
-- Tomeks links
+- NearMiss
+- TomeksLinks
+
+**Code example**
+```
+experiment = make_experiment(df, target=target, search_space=lambda: search_space_general(class_balancing='SMOTE'))
+#run experiment
+estimator = experiment.run()
+```
+
 
 #### Pseudo labeling 
 Pseudo labeling is a semi-supervised learning technique, instead of manually labeling the unlabelled data, we give approximate labels on the basis of the labelled data. Pseudo-labeling can sometimes improve the generalization capabilities of the model. Let’s make it simpler by breaking into steps as shown in the figure below.
 
 ![](images/pseudo-labeling.png)
 
+**Code example**
+```
+experiment = make_experiment(df, target=target, pseudo_labeling=True)
+#run experiment
+estimator = experiment.run()
+```
 
 #### Concept drift handling
 Concept drift in the input data is one of the main challenges. Over time, it will worsen the performance of model on new data. We introduce an adversarial validation approach to concept drift problems in HyperGBM. This approach will detect concept drift and identify the drifted features and process them automatically.
 
+**Code example**
+```
+experiment = make_experiment(df, target=target, drift_detection=True)
+#run experiment
+estimator = experiment.run()
+```
 
 #### Ensemble
 During the AutoML process, a lot of models will be generated with different preprocessing pipelines, different models, and different hyperparameters. Usually selecting some of the models that perform well to ensemble can obtain better generalization ability than just selecting the single best model.
+
+**Code example**
+```
+experiment = make_experiment(df, target=target, ensemble_size=20)
+#run experiment
+estimator = experiment.run()
+```
+
+#### Early Stopping
+在自动建模的Pipeline搜索过程中由于搜索空间巨大通常是个天文数字，我们无法遍历整个搜索空间，因此必须要设置一个最大搜索次数（max_trails）。max_trails通常会设置一个较大的数值以确保搜索算法能够完成对全局最优空间的发现。但如果只按照最大搜索次数完成所有的搜索会耗费大量的时间和算力，而且经常会出现在搜索次数未达到max_trails之前，已经基本逼近全局最优空间，很难继续提升模型效果的情况。
+我们可以设置合理的提前停止策略来避免大量时间成本和算力的浪费。另外，提前停止策略也可以有效的防止模型过拟合问题。HyperGBM可以支持多种提前停止策略，并且几种策略可以组合应用，其中包括：
+* max_no_improvement_trials (n次搜索都不再提升，提前停止)
+* time_limit (最大用时提前停止)
+* expected_reward (到达预期指标提前停止)
+
+* Use experiment
+```python
+from hypernets.core import EarlyStoppingCallback
+from hypergbm.experiment import make_experiment
+
+es = EarlyStoppingCallback(max_no_improvement_trials=0, mode='max', min_delta=0, time_limit=3600, expected_reward=0.95)
+
+experiment = make_experiment(df, target=target, ensemble_size=20, search_callbacks=[es])
+#run experiment
+estimator = experiment.run()
+```
+
+* Use HyperGBM
+```python
+from hypergbm import HyperGBM
+from hypergbm.search_space import search_space_general
+from hypernets.searchers import EvolutionSearcher
+from hypernets.core import EarlyStoppingCallback,SummaryCallback
+
+# instantiate related objects
+searcher = EvolutionSearcher(search_space_general,optimize_direction='max', population_size=30, sample_size=10)
+hypergbm = HyperGBM(searcher, task='binary', reward_metric='accuracy')
+
+es = EarlyStoppingCallback(max_no_improvement_trials=0, mode='max', min_delta=0, time_limit=3600, expected_reward=0.95)
+hk = HyperGBM(searcher, reward_metric='AUC', callbacks=[es, SummaryCallback()])
+hk.search(...)
+
+```

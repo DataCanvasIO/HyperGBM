@@ -252,9 +252,37 @@ There are still many challenges in the machine learning modeling process for tab
 
 
 **Code example**
-```
-```
+```python
+from hypergbm import make_experiment
+from hypergbm.search_space import search_space_general
+import pandas as pd
+import logging
 
+# load data into Pandas DataFrame
+df = pd.read_csv('[train_data_file]')
+target = 'target'
+
+#create an experiment
+experiment = make_experiment(df, target=target, 
+                 search_space=lambda: search_space_general(class_balancing='SMOTE',n_estimators=300, early_stopping_rounds=10, verbose=0),
+                 drop_feature_with_collinearity=False,
+                 drift_detection=True,
+                 two_stage_importance_selection=False,
+                 n_est_feature_importance=10,
+                 importance_threshold=1e-5,
+                 ensemble_size=20,
+                 pseudo_labeling=False,
+                 pseudo_labeling_proba_threshold=0.8,
+                 pseudo_labeling_resplit=False,
+                 retrain_on_wholedata=False,
+                 log_level=logging.ERROR,)
+
+#run experiment
+estimator = experiment.run()
+
+# predict on real data
+pred = estimator.predict(X_real)
+```
 
 **Required Parameters**
 - *hyper_model*: hypergbm.HyperGBM, A `HyperGBM` instance
@@ -287,6 +315,8 @@ There are still many challenges in the machine learning modeling process for tab
 - *retrain_on_wholedata*: bool, (default=False), Whether to retrain the model with whole data after the search is completed.
 - *log_level*: int or None, (default=None), Level of logging, possible values:[logging.CRITICAL, logging.FATAL, logging.ERROR, logging.WARNING, logging.WARN, logging.INFO, logging.DEBUG, logging.NOTSET]
 
+
+
 #### Imbalance data handling
 Imbalanced data typically refers to a classification problem where the number of samples per class is not equally distributed; often you'll have a large amount of samples for one class (referred to as the majority class), and much fewer samples for one or more other classes (referred to as the minority classes). 
 We have provided several approaches to deal with imbalanced data: *Class Weight*, *Oversampling* and *Undersampling*.
@@ -301,18 +331,79 @@ We have provided several approaches to deal with imbalanced data: *Class Weight*
 
 **Undersampling**
 - RandomUnderSampling
-- Near miss
-- Tomeks links
+- NearMiss
+- TomeksLinks
+
+**Code example**
+```
+experiment = make_experiment(df, target=target, search_space=lambda: search_space_general(class_balancing='SMOTE'))
+#run experiment
+estimator = experiment.run()
+```
+
 
 #### Pseudo labeling 
 Pseudo labeling is a semi-supervised learning technique, instead of manually labeling the unlabelled data, we give approximate labels on the basis of the labelled data. Pseudo-labeling can sometimes improve the generalization capabilities of the model. Let’s make it simpler by breaking into steps as shown in the figure below.
 
 ![](images/pseudo-labeling.png)
 
+**Code example**
+```
+experiment = make_experiment(df, target=target, pseudo_labeling=True)
+#run experiment
+estimator = experiment.run()
+```
 
 #### Concept drift handling
 Concept drift in the input data is one of the main challenges. Over time, it will worsen the performance of model on new data. We introduce an adversarial validation approach to concept drift problems in HyperGBM. This approach will detect concept drift and identify the drifted features and process them automatically.
 
+**Code example**
+```
+experiment = make_experiment(df, target=target, drift_detection=True)
+#run experiment
+estimator = experiment.run()
+```
 
 #### Ensemble
 During the AutoML process, a lot of models will be generated with different preprocessing pipelines, different models, and different hyperparameters. Usually selecting some of the models that perform well to ensemble can obtain better generalization ability than just selecting the single best model.
+
+**Code example**
+```
+experiment = make_experiment(df, target=target, ensemble_size=20)
+#run experiment
+estimator = experiment.run()
+```
+
+#### Early Stopping
+
+* max_no_improvement_trials 
+* time_limit 
+* expected_reward 
+
+* Use experiment
+```python
+from hypernets.core import EarlyStoppingCallback
+from hypergbm.experiment import make_experiment
+
+es = EarlyStoppingCallback(max_no_improvement_trials=0, mode='max', min_delta=0, time_limit=3600, expected_reward=0.95)
+experiment = make_experiment(df, target=target, ensemble_size=20, search_callbacks=[es])
+#run experiment
+estimator = experiment.run()
+```
+
+* Use HyperGBM
+```python
+from hypergbm import HyperGBM
+from hypergbm.search_space import search_space_general
+from hypernets.searchers import EvolutionSearcher
+from hypernets.core import EarlyStoppingCallback,SummaryCallback
+
+# instantiate related objects
+searcher = EvolutionSearcher(search_space_general,optimize_direction='max', population_size=30, sample_size=10)
+hypergbm = HyperGBM(searcher, task='binary', reward_metric='accuracy')
+
+es = EarlyStoppingCallback(max_no_improvement_trials=0, mode='max', min_delta=0, time_limit=3600, expected_reward=0.95)
+hk = HyperGBM(searcher, reward_metric='AUC', callbacks=[es, SummaryCallback()])
+hk.search(...)
+
+```
