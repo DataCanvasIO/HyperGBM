@@ -409,3 +409,37 @@ hk = HyperGBM(searcher, reward_metric='AUC', callbacks=[es, SummaryCallback()])
 hk.search(...)
 
 ```
+
+
+### 大规模数据支持
+
+HyperGBM支持使用 [Dask](https://docs.dask.org/en/latest/) 集群进行数据处理和模型训练, 突破单服务器计算能力的限制。
+
+Dask通过scheduler在进行任务调度， 有两种模式
+* Single machine scheduler：单机模式，基于本地线程池或进程池实现。
+* Distributed scheduler: 分布式模式， 利用多台服务器进行任务调度，支持公有云、Kubernets集群、Hadoop集群、HPC环境等多种部署方式。
+
+关于部署Dask集群的详细信息请参考 [Dask 官方网站](https://docs.dask.org/en/latest/setup.html) .
+
+为了在HyperGBM启用Dask支持，您需要：
+
+* 配置 Dask scheduler 并初始化 Dask Client 对象
+* 通过 Dask 加载数据训练数据和测试数据 (Dask DataFrame)
+* 用 Dask DataFrame 创建 HyperGBM 实验
+
+**Code example**
+
+```python
+import dask.dataframe as dd
+from dask.distributed import LocalCluster, Client
+from hypergbm import make_experiment
+
+cluster = LocalCluster(processes=True)
+client = Client(cluster)
+ddf_train = dd.read_parquet(...)
+target = 'TARGET'
+experiment = make_experiment(ddf_train,target=target)
+estimator = experiment.run()
+
+```
+
