@@ -154,7 +154,7 @@ pred = estimator.predict(X_real)
 
 ### Searchers
 
-#### Monte-Carlo Tree Search
+#### MCTSSearcher: Monte-Carlo Tree Search
     
 Monte-Carlo Tree Search (MCTS) extends the celebrated Multi-armed Bandit algorithm to tree-structured search spaces. The MCTS algorithm iterates over four phases: selection, expansion, playout and backpropagation.
     
@@ -185,7 +185,7 @@ searcher = MCTSSearcher(search_space_fn, use_meta_learner=False, max_node_space=
 - *optimize_direction*: 'min' or 'max', (default='min'), Whether the search process is approaching the maximum or minimum reward value.
 - *space_sample_validation_fn*: callable or None, (default=None), Used to verify the validity of samples from the search space, and can be used to add specific constraint rules to the search space to reduce the size of the space.
 
-#### Evolutionary Algorithm
+#### EvolutionSearcher: Evolutionary Algorithm
 
 Evolutionary algorithm (EA) is a subset of evolutionary computation, a generic population-based metaheuristic optimization algorithm. An EA uses mechanisms inspired by biological evolution, such as reproduction, mutation, recombination, and selection. Candidate solutions to the optimization problem play the role of individuals in a population, and the fitness function determines the quality of the solutions (see also loss function). Evolution of the population then takes place after the repeated application of the above operators.
 
