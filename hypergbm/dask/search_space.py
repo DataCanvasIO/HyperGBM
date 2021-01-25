@@ -25,6 +25,7 @@ def search_space_general(dataframe_mapper_default=False,
                          catboost_fit_kwargs=None,
                          class_balancing=None,
                          n_esitimators=200,
+                         early_stopping_rounds=None,
                          enable_persist=True,
                          **kwargs):
     assert dex.dask_enabled(), 'Dask client must be initialized.'
@@ -129,12 +130,13 @@ def search_space_general(dataframe_mapper_default=False,
         }
 
         if dex.is_local_dask():
-            estimators = [
-                LightGBMEstimator(fit_kwargs=lightgbm_fit_kwargs, **lightgbm_init_kwargs),
-                XGBoostEstimator(fit_kwargs=xgb_fit_kwargs, **xgb_init_kwargs),
-                # CatBoostEstimator(fit_kwargs=catboost_fit_kwargs, **catboost_init_kwargs),
-            ]
-            estimators = [adapt_local_estimator(est) for est in estimators]
+            xgb_est = XGBoostDaskEstimator(fit_kwargs=xgb_fit_kwargs, **xgb_init_kwargs)
+            lgb_est = adapt_local_estimator(
+                LightGBMEstimator(fit_kwargs=lightgbm_fit_kwargs, **lightgbm_init_kwargs))
+            # cgb_est = adapt_local_estimator(
+            #     CatBoostEstimator(fit_kwargs=catboost_fit_kwargs, **catboost_init_kwargs))
+
+            estimators = [xgb_est, lgb_est]
         else:
             xgb_est = XGBoostDaskEstimator(fit_kwargs=xgb_fit_kwargs, **xgb_init_kwargs)
             estimators = [xgb_est]

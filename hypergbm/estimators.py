@@ -324,7 +324,7 @@ class XGBDaskClassifierWrapper(dask_xgboost.XGBClassifier):
     def fit(self, X, y=None, classes=None, eval_set=None,
             sample_weight=None, sample_weight_eval_set=None,
             eval_metric=None, early_stopping_rounds=None, **kwargs):
-        if sample_weight.npartitions > 1:
+        if sample_weight is not None and sample_weight.npartitions > 1:
             sample_weight = None  # fixme, dask_xgboost bug
         return super(XGBDaskClassifierWrapper, self) \
             .fit(X, y, classes=classes, eval_set=eval_set,

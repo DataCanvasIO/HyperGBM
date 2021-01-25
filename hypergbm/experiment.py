@@ -677,6 +677,10 @@ class SteppedExperiment(Experiment):
                                f' have different columns before {step.name}, try fix it.')
                 X_eval = X_eval[X_train.columns]
 
+            X_train, y_train, X_test, X_eval, y_eval = \
+                [v.persist() if dex.is_dask_object(v) else v for v in (X_train, y_train, X_test, X_eval, y_eval)]
+
+            logger.info(f'fit_transform {step.name}')
             hyper_model, X_train, y_train, X_test, X_eval, y_eval = \
                 step.fit_transform(hyper_model, X_train, y_train, X_test=X_test, X_eval=X_eval, y_eval=y_eval, **kwargs)
 
@@ -825,7 +829,7 @@ class CompeteExperiment(SteppedExperiment):
         enable_dask = dex.exist_dask_object(X_train, y_train, X_test, X_eval, y_eval)
 
         if enable_dask:
-            search_cls, ensemble_cls, pseudo_cls = DaskSpaceSearchStep, DaskEnsembleStep, DaskPseudoLabelStep
+            search_cls, ensemble_cls, pseudo_cls = SpaceSearchStep, DaskEnsembleStep, DaskPseudoLabelStep
         else:
             search_cls, ensemble_cls, pseudo_cls = SpaceSearchStep, EnsembleStep, PseudoLabelStep
 
@@ -939,6 +943,9 @@ def make_experiment(train_data,
                     searcher=None,
                     search_space=None,
                     search_callbacks=None,
+                    early_stopping_rounds=10,
+                    early_stopping_time_limit=3600,
+                    early_stopping_reward=None,
                     reward_metric='accuracy',
                     optimize_direction=None,
                     task=None,
@@ -977,12 +984,24 @@ def make_experiment(train_data,
         return mapping[metric]
 
     def default_search_space():
+        args = {}
+        if early_stopping_rounds is not None:
+            args['early_stopping_rounds'] = early_stopping_rounds
+
+        for key in ('n_esitimators', 'class_balancing'):
+            if key in kwargs.keys():
+                args[key] = kwargs.pop(key)
+
+        for key in ('verbose',):
+            if key in kwargs.keys():
+                args[key] = kwargs.get(key)
+
         if dask_enable:
             from hypergbm.dask.search_space import search_space_general as dask_search_space
-            return dask_search_space
+            return lambda: dask_search_space(**args)
         else:
             from hypergbm.search_space import search_space_general as sk_search_space
-            return sk_search_space
+            return lambda: sk_search_space(**args)
 
     def default_searcher(search_space_fn):
         from hypernets.searchers import EvolutionSearcher
@@ -1003,15 +1022,34 @@ def make_experiment(train_data,
         callbacks = [SummaryCallback()]
         return callbacks
 
-    X_train = load_data(train_data)
+    def append_early_stopping_callbacks(callbacks):
+        from hypernets.core.callbacks import EarlyStoppingCallback
+
+        assert isinstance(callbacks, (tuple, list))
+        if any([isinstance(cb, EarlyStoppingCallback) for cb in callbacks]):
+            return callbacks
+
+        op = optimize_direction if optimize_direction is not None \
+            else 'max' if scorer._sign > 0 else 'min'
+        es = EarlyStoppingCallback(early_stopping_rounds, op,
+                                   time_limit=early_stopping_time_limit,
+                                   expected_reward=early_stopping_reward)
+
+        return [es] + callbacks
+
+    X_train, X_eval, X_test = [load_data(data) if data is not None else None
+                               for data in (train_data, eval_data, test_data)]
+
+    X_train, X_eval, X_test = [dex.reset_index(x) if dex.is_dask_dataframe(x) else x
+                               for x in (X_train, X_eval, X_test)]
+
+    print('-' * 20, 'X_train shape:', dex.compute(X_train.shape))
+
     if target is None:
         target = find_target(X_train)
+
     y_train = X_train.pop(target)
-
-    X_eval = load_data(eval_data) if eval_data is not None else None
     y_eval = X_eval.pop(target) if X_eval is not None else None
-
-    X_test = load_data(test_data) if test_data is not None else None
 
     if task is None:
         task, _ = infer_task_type(y_train)
@@ -1026,6 +1064,7 @@ def make_experiment(train_data,
 
     if search_callbacks is None:
         search_callbacks = default_search_callbacks()
+    search_callbacks = append_early_stopping_callbacks(search_callbacks)
 
     from hypergbm.hyper_gbm import HyperGBM
     hm = HyperGBM(searcher, reward_metric=reward_metric, callbacks=search_callbacks,
