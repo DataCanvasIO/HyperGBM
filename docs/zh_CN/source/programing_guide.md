@@ -416,12 +416,15 @@ hk.search(...)
 HyperGBM支持使用 [Dask](https://docs.dask.org/en/latest/) 集群进行数据处理和模型训练, 突破单服务器计算能力的限制。
 
 Dask通过scheduler在进行任务调度， 有两种模式
+
 * Single machine scheduler：单机模式，基于本地线程池或进程池实现。
 * Distributed scheduler: 分布式模式， 利用多台服务器进行任务调度，支持公有云、Kubernets集群、Hadoop集群、HPC环境等多种部署方式。
 
 关于部署Dask集群的详细信息请参考 [Dask 官方网站](https://docs.dask.org/en/latest/setup.html) .
 
-为了在HyperGBM启用Dask支持，您需要：
+#### 在实验中启用Dask支持
+
+为了在实验中启用Dask支持，您需要：
 
 * 配置 Dask scheduler 并初始化 Dask Client 对象
 * 通过 Dask 加载数据训练数据和测试数据 (Dask DataFrame)
@@ -438,8 +441,75 @@ cluster = LocalCluster(processes=True)
 client = Client(cluster)
 ddf_train = dd.read_parquet(...)
 target = 'TARGET'
-experiment = make_experiment(ddf_train,target=target)
+experiment = make_experiment(ddf_train, target=target)
 estimator = experiment.run()
 
 ```
 
+#### 自定义 Search Space
+
+启用Dask时，要求Search Space中所使用的Transformer、Estimator都能够处理Dask数据集，HyperGBM内置的支持Dask的Trnsformer包括：
+
+* SimpleImputer
+* StandardScaler
+* MinMaxScaler
+* MaxAbsScaler
+* RobustScaler
+* SafeOneHotEncoder
+* MultiLabelEncoder
+* OrdinalEncoder
+* SafeOrdinalEncoder
+* TruncatedSVD
+
+支持Dask的Estimator包括：
+
+* XGBoostDaskEstimator
+* LightGBMEstimator（LocalCluster only）
+* CatBoostEstimator（LocalCluster only）
+
+HyperGBM实验中默认的支持Dask的Search Space是`hypergbm.dask.search_space.search_space_general`, 用到了上述Transformer和Estimator。
+HynperGBM允许您定义自己的Search Space，并在`make_experiment`时使用，如：
+
+```python
+from foo_package import bar_search_space
+
+...
+
+experiment = make_experiment(..., search_space=bar_search_space)
+
+```
+
+#### 在HyperGBM(HyperModel)中启用Dask支持
+
+
+如果您希望直接使用HyperGBM(HyperModel)进行模型训练并中启用Dask支持，您需要：
+
+* 配置 Dask scheduler 并初始化 Dask Client 对象
+* 使用支持Dask的Search Space的创建HyperGBM(HyperModel)实例
+* 通过 Dask 加载数据训练数据和测试数据 (Dask DataFrame)
+* 用 Dask DataFrame 进行`search`
+
+**Code example**
+
+```python
+import dask.dataframe as dd
+from dask.distributed import LocalCluster, Client
+from dask_ml.model_selection import train_test_split
+from hypergbm import HyperGBM
+from hypergbm.dask.search_space import search_space_general
+
+cluster = LocalCluster(processes=True)
+client = Client(cluster)
+
+ddf = dd.read_parquet(...)
+target = 'TARGET'
+
+X_train, X_eval = train_test_split(ddf, test_size=0.3, random_state=9527, shuffle=True)
+y_train = X_train.pop(target)
+y_eval = X_eval.pop(target)
+X_train, X_test, y_train, y_test = client.persist([X_train, X_eval, y_train, y_eval])
+
+hm = HyperGBM(search_space_general, task='binary', reward_metric='accuracy',callbacks=[])
+hm.search(X_train, y_train, X_eval, y_eval, max_trials=200, use_cache=False, verbose=0)
+
+```
