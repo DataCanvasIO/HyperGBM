@@ -318,9 +318,8 @@ pred = estimator.predict(X_real)
 
 
 #### Imbalance data handling
-Imbalanced data typically refers to a classification problem where the number of samples per class is not equally distributed; often you'll have a large amount of samples for one class (referred to as the majority class), and much fewer samples for one or more other classes (referred to as the minority classes). 
-We have provided several approaches to deal with imbalanced data: *Class Weight*, *Oversampling* and *Undersampling*.
 
+不均衡数据通常出现在分类任务中，出现不同类的样本分布极度不均匀的情况，我们提供了几种处理类别不均衡问题的方法，包括：
 **Class Weight**
 - ClassWeight
 
@@ -343,8 +342,7 @@ estimator = experiment.run()
 
 
 #### Pseudo labeling 
-Pseudo labeling is a semi-supervised learning technique, instead of manually labeling the unlabelled data, we give approximate labels on the basis of the labelled data. Pseudo-labeling can sometimes improve the generalization capabilities of the model. Let’s make it simpler by breaking into steps as shown in the figure below.
-
+伪标签是一种半监督学习技术，将测试集中未观测标签列的特征数据通过一阶段训练的模型预测标签后，将置信度高于一定阈值的样本添加到训练数据中重新训练模型，有时候可以进一步提升模型在新数据上的拟合效果。
 ![](images/pseudo-labeling.png)
 
 **Code example**
@@ -355,7 +353,7 @@ estimator = experiment.run()
 ```
 
 #### Concept drift handling
-Concept drift in the input data is one of the main challenges. Over time, it will worsen the performance of model on new data. We introduce an adversarial validation approach to concept drift problems in HyperGBM. This approach will detect concept drift and identify the drifted features and process them automatically.
+数据漂移是建模过程中的一个主要挑战。当数据的分布随着时间在不断的发现变化时，模型的表现会越来越差，我们在HyperGBM中引入了对抗验证的方法专门处理数据漂移问题。这个方法会自动的检测是否发生漂移，并且找出发生漂移的特征并删除他们，以保证模型在真实数据上保持良好的状态。
 
 **Code example**
 ```
@@ -365,7 +363,8 @@ estimator = experiment.run()
 ```
 
 #### Ensemble
-During the AutoML process, a lot of models will be generated with different preprocessing pipelines, different models, and different hyperparameters. Usually selecting some of the models that perform well to ensemble can obtain better generalization ability than just selecting the single best model.
+在模型搜索的过程中会产生很多模型，它们使用不同的预处理管道、不同的算法模型、不同的超参数，通常选择其中一些模型做ensemble会比只选择表现最好的单一模型获得更好的模型表现。
+
 
 **Code example**
 ```
@@ -381,7 +380,7 @@ estimator = experiment.run()
 * time_limit (最大用时提前停止)
 * expected_reward (到达预期指标提前停止)
 
-* Use experiment
+**Use experiment**
 ```python
 from hypernets.core import EarlyStoppingCallback
 from hypergbm.experiment import make_experiment
@@ -393,7 +392,7 @@ experiment = make_experiment(df, target=target, ensemble_size=20, search_callbac
 estimator = experiment.run()
 ```
 
-* Use HyperGBM
+**Use HyperGBM**
 ```python
 from hypergbm import HyperGBM
 from hypergbm.search_space import search_space_general

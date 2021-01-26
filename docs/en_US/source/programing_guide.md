@@ -380,7 +380,7 @@ estimator = experiment.run()
 * time_limit 
 * expected_reward 
 
-* Use experiment
+**Use experiment**
 ```python
 from hypernets.core import EarlyStoppingCallback
 from hypergbm.experiment import make_experiment
@@ -391,7 +391,7 @@ experiment = make_experiment(df, target=target, ensemble_size=20, search_callbac
 estimator = experiment.run()
 ```
 
-* Use HyperGBM
+**Use HyperGBM**
 ```python
 from hypergbm import HyperGBM
 from hypergbm.search_space import search_space_general
