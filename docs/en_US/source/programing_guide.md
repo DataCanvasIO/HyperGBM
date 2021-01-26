@@ -380,7 +380,7 @@ estimator = experiment.run()
 * time_limit 
 * expected_reward 
 
-* Use experiment
+**Use experiment**
 ```python
 from hypernets.core import EarlyStoppingCallback
 from hypergbm.experiment import make_experiment
@@ -391,7 +391,7 @@ experiment = make_experiment(df, target=target, ensemble_size=20, search_callbac
 estimator = experiment.run()
 ```
 
-* Use HyperGBM
+**Use HyperGBM**
 ```python
 from hypergbm import HyperGBM
 from hypergbm.search_space import search_space_general
@@ -407,3 +407,36 @@ hk = HyperGBM(searcher, reward_metric='AUC', callbacks=[es, SummaryCallback()])
 hk.search(...)
 
 ```
+
+
+### Large scale data training
+
+HyperGBM support training model with large scale data by [Dask](https://docs.dask.org/en/latest/), which has two families of task schedulers:
+
+* Single machine scheduler: This scheduler provides basic features on a local process or thread pool. This scheduler was made first and is the default. It is simple and cheap to use. It can only be used on a single machine and does not scale.
+* Distributed scheduler: This scheduler is more sophisticated. It offers more features, but also requires a bit more effort to set up. It can run locally or distributed across a cluster.
+
+Reference [Dask setup pages](https://docs.dask.org/en/latest/setup.html) for more information, pls.
+
+To enable Dask in HyperGBM, you need:
+
+* Setup Dask scheduler and initialize the default dask client instance
+* Load data with Dask
+* Make experiment with Dask DataFrame
+
+**Code example**
+
+```python
+import dask.dataframe as dd
+from dask.distributed import LocalCluster, Client
+from hypergbm import make_experiment
+
+cluster = LocalCluster(processes=True)
+client = Client(cluster)
+ddf_train = dd.read_parquet(...)
+target = 'TARGET'
+experiment = make_experiment(ddf_train,target=target)
+estimator = experiment.run()
+
+```
+

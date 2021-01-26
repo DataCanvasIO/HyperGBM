@@ -318,9 +318,8 @@ pred = estimator.predict(X_real)
 
 
 #### Imbalance data handling
-Imbalanced data typically refers to a classification problem where the number of samples per class is not equally distributed; often you'll have a large amount of samples for one class (referred to as the majority class), and much fewer samples for one or more other classes (referred to as the minority classes). 
-We have provided several approaches to deal with imbalanced data: *Class Weight*, *Oversampling* and *Undersampling*.
 
+不均衡数据通常出现在分类任务中，出现不同类的样本分布极度不均匀的情况，我们提供了几种处理类别不均衡问题的方法，包括：
 **Class Weight**
 - ClassWeight
 
@@ -343,8 +342,7 @@ estimator = experiment.run()
 
 
 #### Pseudo labeling 
-Pseudo labeling is a semi-supervised learning technique, instead of manually labeling the unlabelled data, we give approximate labels on the basis of the labelled data. Pseudo-labeling can sometimes improve the generalization capabilities of the model. Let’s make it simpler by breaking into steps as shown in the figure below.
-
+伪标签是一种半监督学习技术，将测试集中未观测标签列的特征数据通过一阶段训练的模型预测标签后，将置信度高于一定阈值的样本添加到训练数据中重新训练模型，有时候可以进一步提升模型在新数据上的拟合效果。
 ![](images/pseudo-labeling.png)
 
 **Code example**
@@ -355,7 +353,7 @@ estimator = experiment.run()
 ```
 
 #### Concept drift handling
-Concept drift in the input data is one of the main challenges. Over time, it will worsen the performance of model on new data. We introduce an adversarial validation approach to concept drift problems in HyperGBM. This approach will detect concept drift and identify the drifted features and process them automatically.
+数据漂移是建模过程中的一个主要挑战。当数据的分布随着时间在不断的发现变化时，模型的表现会越来越差，我们在HyperGBM中引入了对抗验证的方法专门处理数据漂移问题。这个方法会自动的检测是否发生漂移，并且找出发生漂移的特征并删除他们，以保证模型在真实数据上保持良好的状态。
 
 **Code example**
 ```
@@ -365,7 +363,8 @@ estimator = experiment.run()
 ```
 
 #### Ensemble
-During the AutoML process, a lot of models will be generated with different preprocessing pipelines, different models, and different hyperparameters. Usually selecting some of the models that perform well to ensemble can obtain better generalization ability than just selecting the single best model.
+在模型搜索的过程中会产生很多模型，它们使用不同的预处理管道、不同的算法模型、不同的超参数，通常选择其中一些模型做ensemble会比只选择表现最好的单一模型获得更好的模型表现。
+
 
 **Code example**
 ```
@@ -381,7 +380,7 @@ estimator = experiment.run()
 * time_limit (最大用时提前停止)
 * expected_reward (到达预期指标提前停止)
 
-* Use experiment
+**Use experiment**
 ```python
 from hypernets.core import EarlyStoppingCallback
 from hypergbm.experiment import make_experiment
@@ -393,7 +392,7 @@ experiment = make_experiment(df, target=target, ensemble_size=20, search_callbac
 estimator = experiment.run()
 ```
 
-* Use HyperGBM
+**Use HyperGBM**
 ```python
 from hypergbm import HyperGBM
 from hypergbm.search_space import search_space_general
@@ -407,5 +406,109 @@ hypergbm = HyperGBM(searcher, task='binary', reward_metric='accuracy')
 es = EarlyStoppingCallback(max_no_improvement_trials=0, mode='max', min_delta=0, time_limit=3600, expected_reward=0.95)
 hk = HyperGBM(searcher, reward_metric='AUC', callbacks=[es, SummaryCallback()])
 hk.search(...)
+
+```
+
+
+### 大规模数据支持
+
+HyperGBM支持使用 [Dask](https://docs.dask.org/en/latest/) 集群进行数据处理和模型训练, 突破单服务器计算能力的限制。
+
+Dask通过scheduler在进行任务调度， 有两种模式
+
+* Single machine scheduler：单机模式，基于本地线程池或进程池实现。
+* Distributed scheduler: 分布式模式， 利用多台服务器进行任务调度，支持公有云、Kubernets集群、Hadoop集群、HPC环境等多种部署方式。
+
+关于部署Dask集群的详细信息请参考 [Dask 官方网站](https://docs.dask.org/en/latest/setup.html) .
+
+#### 在实验中启用Dask支持
+
+为了在实验中启用Dask支持，您需要：
+
+* 配置 Dask scheduler 并初始化 Dask Client 对象
+* 通过 Dask 加载数据训练数据和测试数据 (Dask DataFrame)
+* 用 Dask DataFrame 创建 HyperGBM 实验
+
+**Code example**
+
+```python
+import dask.dataframe as dd
+from dask.distributed import LocalCluster, Client
+from hypergbm import make_experiment
+
+cluster = LocalCluster(processes=True)
+client = Client(cluster)
+ddf_train = dd.read_parquet(...)
+target = 'TARGET'
+experiment = make_experiment(ddf_train, target=target)
+estimator = experiment.run()
+
+```
+
+#### 自定义 Search Space
+
+启用Dask时，要求Search Space中所使用的Transformer、Estimator都能够处理Dask数据集，HyperGBM内置的支持Dask的Trnsformer包括：
+
+* SimpleImputer
+* StandardScaler
+* MinMaxScaler
+* MaxAbsScaler
+* RobustScaler
+* SafeOneHotEncoder
+* MultiLabelEncoder
+* OrdinalEncoder
+* SafeOrdinalEncoder
+* TruncatedSVD
+
+支持Dask的Estimator包括：
+
+* XGBoostDaskEstimator
+* LightGBMEstimator（LocalCluster only）
+* CatBoostEstimator（LocalCluster only）
+
+HyperGBM实验中默认的支持Dask的Search Space是`hypergbm.dask.search_space.search_space_general`, 用到了上述Transformer和Estimator。
+HynperGBM允许您定义自己的Search Space，并在`make_experiment`时使用，如：
+
+```python
+from foo_package import bar_search_space
+
+...
+
+experiment = make_experiment(..., search_space=bar_search_space)
+
+```
+
+#### 在HyperGBM(HyperModel)中启用Dask支持
+
+
+如果您希望直接使用HyperGBM(HyperModel)进行模型训练并中启用Dask支持，您需要：
+
+* 配置 Dask scheduler 并初始化 Dask Client 对象
+* 使用支持Dask的Search Space的创建HyperGBM(HyperModel)实例
+* 通过 Dask 加载数据训练数据和测试数据 (Dask DataFrame)
+* 用 Dask DataFrame 进行`search`
+
+**Code example**
+
+```python
+import dask.dataframe as dd
+from dask.distributed import LocalCluster, Client
+from dask_ml.model_selection import train_test_split
+from hypergbm import HyperGBM
+from hypergbm.dask.search_space import search_space_general
+
+cluster = LocalCluster(processes=True)
+client = Client(cluster)
+
+ddf = dd.read_parquet(...)
+target = 'TARGET'
+
+X_train, X_eval = train_test_split(ddf, test_size=0.3, random_state=9527, shuffle=True)
+y_train = X_train.pop(target)
+y_eval = X_eval.pop(target)
+X_train, X_test, y_train, y_test = client.persist([X_train, X_eval, y_train, y_eval])
+
+hm = HyperGBM(search_space_general, task='binary', reward_metric='accuracy',callbacks=[])
+hm.search(X_train, y_train, X_eval, y_eval, max_trials=200, use_cache=False, verbose=0)
 
 ```
