@@ -3,17 +3,17 @@
 
 """
 
-import numpy as np
-from hypernets.core.search_space import ModuleSpace
-from sklearn.experimental import enable_hist_gradient_boosting
-from sklearn.ensemble import HistGradientBoostingRegressor, HistGradientBoostingClassifier
-from tabular_toolbox.column_selector import column_object_category_bool, column_zero_or_positive_int32
-from tabular_toolbox import dask_ex as dex
-
-import lightgbm
-import xgboost
 import catboost
 import dask_xgboost
+import lightgbm
+import numpy as np
+import xgboost
+from sklearn.experimental import enable_hist_gradient_boosting
+from sklearn.ensemble import HistGradientBoostingRegressor, HistGradientBoostingClassifier
+
+from hypernets.core.search_space import ModuleSpace
+from tabular_toolbox import dask_ex as dex
+from tabular_toolbox.column_selector import column_object_category_bool, column_zero_or_positive_int32
 
 
 def get_categorical_features(X):
@@ -181,18 +181,34 @@ class LightGBMEstimator(HyperEstimator):
         return lgbm
 
 
+class LGBMClassifierDaskWrapper(LGBMClassifierWrapper):
+    def fit(self, *args, **kwargs):
+        return dex.compute_and_call(super().fit, *args, **kwargs)
+
+    def predict(self, *args, **kwargs):
+        return dex.compute_and_call(super().predict, *args, **kwargs)
+
+    def predict_proba(self, *args, **kwargs):
+        return dex.compute_and_call(super().predict_proba, *args, **kwargs)
+
+
+class LGBMRegressorDaskWrapper(LGBMRegressorWrapper):
+    def fit(self, *args, **kwargs):
+        return dex.compute_and_call(super().fit, *args, **kwargs)
+
+    def predict(self, *args, **kwargs):
+        return dex.compute_and_call(super().predict, *args, **kwargs)
+
+    def predict_proba(self, *args, **kwargs):
+        return dex.compute_and_call(super().predict_proba, *args, **kwargs)
+
+
 class LightGBMDaskEstimator(LightGBMEstimator):
     def _build_estimator(self, task, kwargs):
-        # import lightgbm
-        import dask_lightgbm as lightgbm
-
-        if 'task' in kwargs:
-            kwargs.pop('task')
-
         if task == 'regression':
-            lgbm = lightgbm.LGBMRegressor(**kwargs)
+            lgbm = LGBMRegressorDaskWrapper(**kwargs)
         else:
-            lgbm = lightgbm.LGBMClassifier(**kwargs)
+            lgbm = LGBMClassifierDaskWrapper(**kwargs)
         return lgbm
 
 
@@ -320,13 +336,13 @@ class XGBoostEstimator(HyperEstimator):
         return xgb
 
 
-class XGBDaskClassifierWrapper(dask_xgboost.XGBClassifier):
+class XGBClassifierDaskWrapper(dask_xgboost.XGBClassifier):
     def fit(self, X, y=None, classes=None, eval_set=None,
             sample_weight=None, sample_weight_eval_set=None,
             eval_metric=None, early_stopping_rounds=None, **kwargs):
         if sample_weight is not None and sample_weight.npartitions > 1:
             sample_weight = None  # fixme, dask_xgboost bug
-        return super(XGBDaskClassifierWrapper, self) \
+        return super(XGBClassifierDaskWrapper, self) \
             .fit(X, y, classes=classes, eval_set=eval_set,
                  sample_weight=sample_weight, sample_weight_eval_set=sample_weight_eval_set,
                  eval_metric=eval_metric, early_stopping_rounds=early_stopping_rounds)
@@ -341,7 +357,7 @@ class XGBDaskClassifierWrapper(dask_xgboost.XGBClassifier):
 
     def predict_proba(self, data, ntree_limit=None, **kwargs):
         data = data[self.get_booster().feature_names]
-        proba = super(XGBDaskClassifierWrapper, self).predict_proba(data, ntree_limit=ntree_limit)
+        proba = super(XGBClassifierDaskWrapper, self).predict_proba(data, ntree_limit=ntree_limit)
 
         if self.n_classes_ == 2:
             proba = dex.fix_binary_predict_proba_result(proba)
@@ -350,14 +366,14 @@ class XGBDaskClassifierWrapper(dask_xgboost.XGBClassifier):
 
     def predict(self, data, **kwargs):
         data = data[self.get_booster().feature_names]
-        return super(XGBDaskClassifierWrapper, self).predict(data)
+        return super(XGBClassifierDaskWrapper, self).predict(data)
 
 
-class XGBDaskRegressorWrapper(dask_xgboost.XGBRegressor):
+class XGBRegressorDaskWrapper(dask_xgboost.XGBRegressor):
     def fit(self, X, y=None, eval_set=None,
             sample_weight=None, sample_weight_eval_set=None,
             eval_metric=None, early_stopping_rounds=None, **kwargs):
-        return super(XGBDaskRegressorWrapper, self) \
+        return super(XGBRegressorDaskWrapper, self) \
             .fit(X, y, eval_set=eval_set,
                  sample_weight=sample_weight, sample_weight_eval_set=sample_weight_eval_set,
                  eval_metric=eval_metric, early_stopping_rounds=early_stopping_rounds)
@@ -372,7 +388,7 @@ class XGBDaskRegressorWrapper(dask_xgboost.XGBRegressor):
 
     def predict(self, data, **kwargs):
         data = data[self.get_booster().feature_names]
-        return super(XGBDaskRegressorWrapper, self).predict(data)
+        return super(XGBRegressorDaskWrapper, self).predict(data)
 
 
 class XGBoostDaskEstimator(XGBoostEstimator):
@@ -381,9 +397,9 @@ class XGBoostDaskEstimator(XGBoostEstimator):
             kwargs.pop('task')
 
         if task == 'regression':
-            xgb = XGBDaskRegressorWrapper(**kwargs)
+            xgb = XGBRegressorDaskWrapper(**kwargs)
         else:
-            xgb = XGBDaskClassifierWrapper(**kwargs)
+            xgb = XGBClassifierDaskWrapper(**kwargs)
         return xgb
 
 
@@ -448,4 +464,36 @@ class CatBoostEstimator(HyperEstimator):
             cat = CatBoostRegressionWrapper(**kwargs)
         else:
             cat = CatBoostClassifierWrapper(**kwargs)
+        return cat
+
+
+class CatBoostClassifierDaskWrapper(CatBoostClassifierWrapper):
+
+    def fit(self, *args, **kwargs):
+        return dex.compute_and_call(super().fit, *args, **kwargs)
+
+    def predict(self, *args, **kwargs):
+        return dex.compute_and_call(super().predict, *args, **kwargs)
+
+    def predict_proba(self, *args, **kwargs):
+        return dex.compute_and_call(super().predict_proba, *args, **kwargs)
+
+
+class CatBoostRegressionDaskWrapper(CatBoostRegressionWrapper):
+    def fit(self, *args, **kwargs):
+        return dex.compute_and_call(super().fit, *args, **kwargs)
+
+    def predict(self, *args, **kwargs):
+        return dex.compute_and_call(super().predict, *args, **kwargs)
+
+    def predict_proba(self, *args, **kwargs):
+        return dex.compute_and_call(super().predict_proba, *args, **kwargs)
+
+
+class CatBoostDaskEstimator(CatBoostEstimator):
+    def _build_estimator(self, task, kwargs):
+        if task == 'regression':
+            cat = CatBoostRegressionDaskWrapper(**kwargs)
+        else:
+            cat = CatBoostClassifierDaskWrapper(**kwargs)
         return cat

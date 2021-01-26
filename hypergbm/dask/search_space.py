@@ -5,7 +5,7 @@
 from functools import partial
 
 from hypergbm.dask import dask_transformers as tf, dask_ops as ops
-from hypergbm.estimators import LightGBMEstimator, XGBoostEstimator, CatBoostEstimator, XGBoostDaskEstimator
+from hypergbm.estimators import LightGBMDaskEstimator, CatBoostDaskEstimator, XGBoostDaskEstimator
 from hypergbm.pipeline import Pipeline, DataFrameMapper
 from hypernets.core.ops import ModuleChoice, HyperInput
 from hypernets.core.search_space import Choice, HyperSpace, Int
@@ -129,36 +129,32 @@ def search_space_general(dataframe_mapper_default=False,
             **catboost_init_kwargs
         }
 
-        if dex.is_local_dask():
-            xgb_est = XGBoostDaskEstimator(fit_kwargs=xgb_fit_kwargs, **xgb_init_kwargs)
-            lgb_est = adapt_local_estimator(
-                LightGBMEstimator(fit_kwargs=lightgbm_fit_kwargs, **lightgbm_init_kwargs))
-            # cgb_est = adapt_local_estimator(
-            #     CatBoostEstimator(fit_kwargs=catboost_fit_kwargs, **catboost_init_kwargs))
+        xgb_est = XGBoostDaskEstimator(fit_kwargs=xgb_fit_kwargs, **xgb_init_kwargs)
+        estimators = [xgb_est]
 
-            estimators = [xgb_est, lgb_est]
-        else:
-            xgb_est = XGBoostDaskEstimator(fit_kwargs=xgb_fit_kwargs, **xgb_init_kwargs)
-            estimators = [xgb_est]
+        if dex.is_local_dask():
+            lgb_est = LightGBMDaskEstimator(fit_kwargs=lightgbm_fit_kwargs, **lightgbm_init_kwargs)
+            cgb_est = CatBoostDaskEstimator(fit_kwargs=catboost_fit_kwargs, **catboost_init_kwargs)
+            estimators += [lgb_est, cgb_est]
 
         or_est = ModuleChoice(estimators, name='estimator_options')(union_pipeline)
 
         space.set_inputs(input)
     return space
 
-
-def _build_estimator_dapater(fn_call, *args, **kwargs):
-    r = fn_call(*args, **kwargs)
-    r = dex.wrap_local_estimator(r)
-    return r
-
-
-def adapt_local_estimator(estimator):
-    fn_name = '_build_estimator'
-    fn_name_original = f'{fn_name}_adapted'
-    assert hasattr(estimator, fn_name) and not hasattr(estimator, fn_name_original)
-
-    fn = getattr(estimator, fn_name)
-    setattr(estimator, fn_name_original, fn)
-    setattr(estimator, fn_name, partial(_build_estimator_dapater, fn))
-    return estimator
+#
+# def _build_estimator_dapater(fn_call, *args, **kwargs):
+#     r = fn_call(*args, **kwargs)
+#     r = dex.wrap_local_estimator(r)
+#     return r
+#
+#
+# def adapt_local_estimator(estimator):
+#     fn_name = '_build_estimator'
+#     fn_name_original = f'{fn_name}_adapted'
+#     assert hasattr(estimator, fn_name) and not hasattr(estimator, fn_name_original)
+#
+#     fn = getattr(estimator, fn_name)
+#     setattr(estimator, fn_name_original, fn)
+#     setattr(estimator, fn_name, partial(_build_estimator_dapater, fn))
+#     return estimator
