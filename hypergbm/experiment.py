@@ -956,6 +956,9 @@ def make_experiment(train_data,
     kwargs = kwargs.copy()
     dask_enable = dex.exist_dask_object(train_data, test_data, eval_data) or dex.dask_enabled()
 
+    if kwargs.get('log_level') is not None:
+        _set_log_level(kwargs.pop('log_level'))
+
     def find_target(df):
         columns = df.columns.to_list()
         for col in columns:
@@ -1019,7 +1022,10 @@ def make_experiment(train_data,
 
     def default_search_callbacks():
         from hypernets.core.callbacks import SummaryCallback
-        callbacks = [SummaryCallback()]
+        if logging.get_level() < logging.WARN:
+            callbacks = [SummaryCallback()]
+        else:
+            callbacks = []
         return callbacks
 
     def append_early_stopping_callbacks(callbacks):
@@ -1042,8 +1048,6 @@ def make_experiment(train_data,
 
     X_train, X_eval, X_test = [dex.reset_index(x) if dex.is_dask_dataframe(x) else x
                                for x in (X_train, X_eval, X_test)]
-
-    print('-' * 20, 'X_train shape:', dex.compute(X_train.shape))
 
     if target is None:
         target = find_target(X_train)
@@ -1073,4 +1077,14 @@ def make_experiment(train_data,
 
     experiment = CompeteExperiment(hm, X_train, y_train, X_eval=X_eval, y_eval=y_eval, X_test=X_test,
                                    task=task, scorer=scorer, **kwargs)
+
+    if logger.is_info_enabled():
+        train_shape, test_shape, eval_shape = \
+            dex.compute(X_train.shape,
+                        X_eval.shape if X_eval is not None else None,
+                        X_test.shape if X_test is not None else None,
+                        traverse=True)
+        logger.info(f'make_experiment with train date:{train_shape}, '
+                    f'test data:{test_shape}, eval data:{eval_shape}, target:{target}')
+
     return experiment
