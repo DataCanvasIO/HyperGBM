@@ -193,21 +193,3 @@ class Test_HyperGBM():
 
     def test_binary_adversarial_validation(self):
         self.run_binary(train_test_split_strategy='adversarial_validation')
-
-
-    def test_iris(self):
-        from sklearn.datasets import load_iris
-        from hypernets.searchers.evolution_searcher import EvolutionSearcher
-
-        X, y = load_iris(return_X_y=True, as_frame=True)
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-
-        rs = EvolutionSearcher(search_space_general, 200, 100, optimize_direction='max')
-        hk = HyperGBM(rs, task='multiclass', reward_metric='accuracy', callbacks=[])
-        experiment = CompeteExperiment(hk, X_train, y_train, X_test=X_test, callbacks=[], scorer=get_scorer('accuracy'),
-                                       pseudo_labeling=True,
-                                       pseudo_labeling_proba_threshold=0.9)
-
-        pipeline = experiment.run(use_cache=True, max_trials=10)
-        y_pred = pipeline.predict(X_test).astype(np.float64)
-        assert y_pred

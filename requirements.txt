@@ -4,7 +4,7 @@ tables>=3.6.1
 fsspec>=0.8.0
 lightgbm
 xgboost
-catboost
+catboost>=0.21
 featuretools
 dask
 dask-ml
