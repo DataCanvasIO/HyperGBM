@@ -1,12 +1,12 @@
 ## 快速开始
 
-本章介绍hypergbm主要功能，假设您已经知道机器学习的基本知识（加载数据、模型训练、预测、评估等），如果您还没安装请参照[安装文档](installation.md)来安装HyperGBM。
-您可以使用python api和命令行工具来使用HyperGBM。
+本章介绍HyperGBM主要功能，假设您已经知道机器学习的基本知识（加载数据、模型训练、预测、评估等），如果您还没安装请参照[安装文档](installation.md)来安装HyperGBM。
+您可以通过Python API和命令行工具来使用HyperGBM。
 
-### 通过api训练模型
+### 通过API训练模型
 本节将使用数据[Bank Marketing](http://archive.ics.uci.edu/ml/datasets/Bank+Marketing) 演示如何使用HyperGBM训练一个二分类模型。
 
-可以使用`tabular_toolbox`提供的工具类来读取Bank Marketing 数据集： 
+使用`tabular_toolbox`提供的工具类来读取Bank Marketing数据集： 
 ```pydocstring
 >>> from tabular_toolbox.datasets import dsutils
 >>> df = dsutils.load_bank()
@@ -17,14 +17,14 @@
 2   2   35  management   single   tertiary      no     1350     yes   no  cellular   16   apr       185         1    330         1  failure  no
 ```
 
-接着我们将数据拆分为训练集和测试集，分别用来训练模型和验证最终模型的效果：
+接着将数据拆分为训练集和测试集，分别用来训练模型和验证最终模型的效果：
 ```pydocstring
 >>> from sklearn.model_selection import train_test_split
 >>> y = df.pop('y')  # target col is "y"
 >>> X_train, X_test, y_train, y_test = train_test_split(df, y, test_size=0.3, random_state=9527)
 ```
 
-HyperGBM提供了多种搜索策略，这里定义使用随机搜索方法在内置的搜索空间里训练：
+HyperGBM提供了多种搜索策略，这里使用随机搜索策略在内置的搜索空间里训练：
 ```pydocstring
 >>> from hypernets.searchers import RandomSearcher
 >>> from hypernets.core import OptimizeDirection
@@ -34,9 +34,9 @@ HyperGBM提供了多种搜索策略，这里定义使用随机搜索方法在内
 >>> rs
 <hypernets.searchers.random_searcher.RandomSearcher object at 0x10e5b9850>
 ```
-参数`space_fn`用来指定搜索空间，`search_space_general` 是hypergbm提供的默认搜索空间；
-参数`optimize_direction` 用来指定优化的方向，训练模型时，对于二分类任务使用`auc`指标，这里设置为`OptimizeDirection.Maximize`表示该指标的值越大越好。
 
+参数`space_fn`用来指定搜索空间，`search_space_general` 是内置的搜索空间；
+参数`optimize_direction` 用来指定优化的方向，训练模型时，对于二分类任务使用`auc`指标，这里设置为`OptimizeDirection.Maximize`表示该指标的值越大越好。
 接着使用Experiment接口来训练模型：
 ```
 >>> from hypergbm import HyperGBM, CompeteExperiment
@@ -70,7 +70,7 @@ Pipeline(steps=[('data_clean',
 
 ### 通过命令行训练模型
 
-HyperGBM 也提供了命令行工具来训练模型和预测数据，查看命令行帮助：
+HyperGBM也提供了命令行工具来训练模型和预测数据，查看命令行帮助：
 ```
 hypergm -h
 

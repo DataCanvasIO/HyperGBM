@@ -38,7 +38,7 @@ e_hypernets_ft_index
 - percentile    
 - absolute
 
-还能从日期列中提取出年、月、日等信息：
+还能从日期特征中提取出年、月、日等信息：
 ```pydocstring
 >>> import pandas as pd
 >>> from datetime import datetime
@@ -64,7 +64,6 @@ e_hypernets_ft_index
 ```
 
 在搜索空间中使用特征衍生：
-
 ```pydocstring
 >>> from sklearn.datasets import load_iris
 >>> from sklearn.model_selection import train_test_split
@@ -107,13 +106,13 @@ e_hypernets_ft_index
 
 ### 使用GBM算法
 
-hypergbm支持的的GBM的算法(对应封装类)有：
+hypergbm支持的的GBM的算法(封装类)有：
 - XGBoost (hypergbm.estimators.XGBoostEstimator)
 - HistGB (hypergbm.estimators.HistGBEstimator)
 - LightGBM (hypergbm.estimators.LightGBMEstimator)
 - CatBoost (hypergbm.estimators.CatBoostEstimator)
 
-将算法的超参数定义到搜索空间内以在训练时候使用该算法，以使用XGBoost训练iris为例：
+将算法的超参数定义到搜索空间来训练模型，以使用XGBoost训练iris为例：
 ```pydocstring
 # Load dataset
 >>> from sklearn.model_selection import train_test_split
@@ -169,15 +168,15 @@ Name: target, dtype: int64
 1          2     1.0  0.069099          [1]
 ```
 
-### 自动任务类型推断
+### 任务类型推断
 
-HyperGBM支持自动任务类型推断，如果您不指定任务类型，它会对标签列的分布按照下规则进行推断：
+HyperGBM支持任务类型推断，如果您不指定任务类型，它会对目标列的分布按照下规则进行推断：
 
-- 如果该列只有两个不同值推断成二分类
-- 如果目标的不同值多余2个且类型为float则推断为回归
+- 如果目标列只有两个不同值则推断成二分类
+- 如果目标列的不同值多余2个且类型为float则推断为回归
 - 以上两条都不符合，则推断为多分类，超过1000个类别不支持
 
-使用时设置`task=None` 或者不指定`task`即可自动推断：
+使用时设置`task=None`或者不指定`task`即可：
 
 ```pydocstring
 ...
@@ -206,16 +205,16 @@ hk = HyperGBM(rs, task=None, reward_metric='accuracy', callbacks=[])
 
 ### 使用交叉验证
 
-HyperGBM支持使用交叉验证对模型进行评估，在使用search方法时指定cv的折数：
+HyperGBM支持使用交叉验证对模型进行评估，在调用search方法时启用cv并设置折数：
 
 ```python
 ...
 hk = HyperGBM(rs, task='multiclass', reward_metric='accuracy', callbacks=[])
-hk.search(X_train, y_train, X_eval=None, y_eval=None, cv=3)  # 3 fold
+hk.search(X_train, y_train, X_eval=None, y_eval=None, cv=True, num_folds=3)  # 3 folds
 ...
 ```
 
-其中评估数据将从`X_train`, `y_train`中产生, 评估数据参数指定为`None`即可，以使用交叉验证评估方式训练数据集iris为例：
+评估数据是`X_train`, `y_train`中的一折, 评估数据参数指定为`None`即可，以使用交叉验证评估方式训练数据集iris为例：
 ```pydocstring
 >>> from sklearn.datasets import load_iris
 >>> from sklearn.model_selection import train_test_split
@@ -229,7 +228,7 @@ hk.search(X_train, y_train, X_eval=None, y_eval=None, cv=3)  # 3 fold
 >>> 
 >>> rs = MCTSSearcher(search_space_general, max_node_space=10, optimize_direction='max')
 >>> hk = HyperGBM(rs, task='multiclass', reward_metric='accuracy', callbacks=[])
->>> hk.search(X_train, y_train, X_eval=None, y_eval=None, cv=3)  # using Cross Validation
+>>> hk.search(X_train, y_train, X_eval=None, y_eval=None, cv=True, num_folds=3)  # using Cross Validation
    Trial No.    Reward   Elapsed                       Space Vector
 0          4  0.941667  0.331012   [1, 3, 1, 1, 370, 3, 2, 3, 4, 0]
 1          7  0.933333  0.290077  [0, 0, 1, 0, 3, 1, 1, 2, 1, 2, 3]
@@ -248,15 +247,14 @@ hk.search(X_train, y_train, X_eval=None, y_eval=None, cv=3)  # 3 fold
                       reg_lambda=1)]
 ```
 
-## 切换搜索算法
+## 搜索算法
 
-HyperGBM提供以下搜索算法（对应实现类）：
+HyperGBM提供以下搜索算法（实现类）：
   - 进化算法（hypernets.searchers.evolution_searcher.EvolutionSearcher）
   - 蒙特卡洛树算法（hypernets.searchers.mcts_searcher.MCTSSearcher）
   - 随机搜索算法（hypernets.searchers.random_searcher.RandomSearcher）
 
 以使用进化算法训练iris数据集为例：
-
 ```pydocstring
 >>> from sklearn.datasets import load_iris
 >>> from sklearn.model_selection import train_test_split
@@ -291,9 +289,7 @@ HyperGBM提供以下搜索算法（对应实现类）：
 * time_limit (最大用时提前停止)
 * expected_reward (到达预期指标提前停止)
 
-当设置多个条件时，先达到任意一个条件时就停止。
-提前停止策略通过`hypernets.core.callbacks.EarlyStoppingCallback`实现，以训练数据集iris当reward达到0.95以上就停止搜索为例：
-
+当设置多个条件时，先达到任意一个条件时就停止，提前停止策略通过`hypernets.core.callbacks.EarlyStoppingCallback`实现，以训练数据集iris当reward达到0.95以上就停止搜索为例：
 ```pydocstring
 >>> from sklearn.datasets import load_iris
 >>> from sklearn.model_selection import train_test_split
@@ -312,12 +308,11 @@ HyperGBM提供以下搜索算法（对应实现类）：
 Early stopping on trial : 1, best reward: None, best_trial: None
    Trial No.  Reward   Elapsed                       Space Vector
 0          1     1.0  0.189758  [0, 1, 1, 3, 2, 1, 1, 2, 3, 0, 0]
-
 ```
 
 ### 处理不平衡数据
 
-hypergbm支持对不平衡数据进行采样，支持的策略有：
+HyperGBM支持对不平衡数据进行采样，支持的策略有：
 
 **类别权重**
 - ClassWeight
@@ -339,7 +334,7 @@ xgb_est = XGBoostEstimator(fit_kwargs={}, class_balancing='ClassWeight')  # Use 
 ...
 ```
 
-以训练iris数据集为例，使用`ClassWeight` 采样策略：
+以训练iris数据集使用`ClassWeight` 采样策略为例：
 ```pydocstring
 >>> from sklearn.datasets import load_iris
 >>> from sklearn.model_selection import train_test_split 
@@ -391,7 +386,6 @@ experiment = CompeteExperiment(hk, X_train, y_train, X_test=X_test, callbacks=[]
 ```
 
 以使用伪标签训练iris数据集为例：
-
 ```pydocstring
 >>> from sklearn.datasets import load_iris
 >>> from sklearn.model_selection import train_test_split
@@ -440,9 +434,8 @@ Pipeline(steps=[('data_clean',
 
 ### 特征选择
 
-HyperGBM可以逐个将特征变成噪音进行训练评估，观察模型性能下降的程度；模型性能下降的越多说明变成噪音的特征越重要，以此来评估特征的重要性，根据
+HyperGBM可以逐个将特征变成噪音进行训练评估，模型性能下降的越多说明变成噪音的特征越重要，以此来评估特征的重要性；根据
 特征重要性选取一部分特征重新训练模型来节省训练资源和时间，例子：
-
 ```pydocstring
 >>> from sklearn.datasets import load_iris
 >>> from sklearn.model_selection import train_test_split
@@ -490,9 +483,7 @@ HyperGBM可以逐个将特征变成噪音进行训练评估，观察模型性能
 1.0
 ```
 
-
 ### 概念漂移处理
-
 ```pydocstring
 >>> from sklearn.datasets import load_iris
 >>> from sklearn.model_selection import train_test_split
@@ -527,7 +518,6 @@ HyperGBM可以逐个将特征变成噪音进行训练评估，观察模型性能
 ### 模型融合
 
 HyperGBM支持将在搜索过程中产生的的较好的模型组合在一起形成一个泛化能力更好的模型，例子：
-
 ```pydocstring
 >>> from sklearn.datasets import load_iris
 >>> from sklearn.model_selection import train_test_split
