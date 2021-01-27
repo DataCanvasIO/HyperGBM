@@ -433,7 +433,9 @@ class EnsembleStep(EstimatorBuilderStep):
 class DaskEnsembleStep(EnsembleStep):
     def get_ensemble(self, estimators, X_train, y_train):
         if dex.exist_dask_object(X_train, y_train):
-            return DaskGreedyEnsemble(self.task, estimators, scoring=self.scorer, ensemble_size=self.ensemble_size)
+            return DaskGreedyEnsemble(self.task, estimators, scoring=self.scorer,
+                                      ensemble_size=self.ensemble_size,
+                                      predict_kwargs={'use_cache': False})
 
         return super().get_ensemble(estimators, X_train, y_train)
 
@@ -940,6 +942,7 @@ def make_experiment(train_data,
                     target=None,
                     eval_data=None,
                     test_data=None,
+                    task=None,
                     searcher=None,
                     search_space=None,
                     search_callbacks=None,
@@ -948,16 +951,117 @@ def make_experiment(train_data,
                     early_stopping_reward=None,
                     reward_metric='accuracy',
                     optimize_direction=None,
-                    task=None,
-                    scorer=None,
+                    use_cache=None,
+                    log_level=None,
                     **kwargs):
+    """
+
+    Parameters
+    ----------
+    train_data : str, Pandas or Dask DataFrame
+        Feature data for training with target column.
+        For str, it's should be the data path in file system,
+        we'll detect data format from this path (only .csv and .parquet are supported now) and read it.
+    target : str, optional
+        Target feature name for training, which must be one of the drain_data columns, default is 'y'.
+    eval_data : str, Pandas or Dask DataFrame, optional
+        Feature data for evaluation with target column.
+        For str, it's should be the data path in file system,
+        we'll detect data format from this path (only .csv and .parquet are supported now) and read it.
+    test_data : str, Pandas or Dask DataFrame, optional
+        Feature data for testing without target column.
+        For str, it's should be the data path in file system,
+        we'll detect data format from this path (only .csv and .parquet are supported now) and read it.
+    task : str or None, (default=None)
+        Task type(*binary*, *multiclass* or *regression*).
+        If None, inference the type of task automatically
+    searcher : str, searcher class, search object, optional
+        The hypernets Searcher instance to explore search space, default is EvolutionSearcher instance.
+        For str, should be one of 'evolution', 'mcts', 'random'.
+        For class, should be one of EvolutionSearcher, MCTSSearcher, RandomSearcher, or subclass of hypernets Searcher.
+        For other, should be instance of hypernets Searcher.
+    search_space : callable, optional
+        Used to initialize searcher instance (if searcher is None, str or class),
+        default is hypergbm.search_space.search_space_general (if Dask isn't enabled)
+        or hypergbm.dask.search_space.search_space_general (if Dask is enabled) .
+    search_callbacks
+        Hypernets search callbacks, used to initialize searcher instance (if searcher is None, str or class).
+        If log_level >= WARNNING, default is EarlyStoppingCallback only.
+        If log_level < WARNNING, defalult is EarlyStoppingCallback plus SummaryCallback.
+    early_stopping_rounds :　int, optional
+        Setting of EarlyStoppingCallback, is used if EarlyStoppingCallback instance not found from search_callbacks.
+        Set zero or None to disable it, default is 10.
+    early_stopping_time_limit : int, optional
+        Setting of EarlyStoppingCallback, is used if EarlyStoppingCallback instance not found from search_callbacks.
+        Set zero or None to disable it, default is 3600 seconds.
+    early_stopping_reward : float, optional
+        Setting of EarlyStoppingCallback, is used if EarlyStoppingCallback instance not found from search_callbacks.
+        Set zero or None to disable it, default is None.
+    reward_metric : str, callable, optional
+        Hypernets search reward metric name or callable, default is 'accuracy'. Possible values:
+            - accuracy
+            - auc
+            - f1
+            - logloss
+            - mse
+            - mae
+            - msle
+            - precision
+            - rmse
+            - r2
+            - recall
+    optimize_direction : str, optional
+        Hypernets search reward metric direction, default is detected from reward_metric.
+    use_cache : bool, optional
+    log_level :i nt or None, (default=None),
+        Level of logging, possible values:
+            -logging.CRITICAL
+            -logging.FATAL
+            -logging.ERROR
+            -logging.WARNING
+            -logging.WARN
+            -logging.INFO
+            -logging.DEBUG
+            -logging.NOTSET
+    kwargs:
+        Parameters to initialize experiment instance.
+    Returns
+    -------
+    Runnable experiment object
+
+    Notes:
+    -------
+    Initlialize Dask default client to enable dask in experiment.
+
+    Examples:
+    -------
+    Create experiment with csv data file '/opt/data01/test.csv', and run it
+    >>> experiment = make_experiment('/opt/data01/test.csv', target='y')
+    >>> estimator = experiment.run()
+
+    Create experiment with csv data file '/opt/data01/test.csv' with INFO logging, and run it
+    >>> from hypernets.utils import logging
+    >>>
+    >>> experiment = make_experiment('/opt/data01/test.csv', target='y', log_level=logging.INFO)
+    >>> estimator = experiment.run()
+
+    Create experiment with parquet data files '/opt/data02/*.parquet', and run it with Dask
+    >>> from dask.distributed import Client
+    >>>
+    >>> client = Client()
+    >>> experiment = make_experiment('/opt/data02/*.parquet', target='y')
+    >>> estimator = experiment.run()
+
+    """
+
     assert train_data is not None, 'train data is required.'
 
     kwargs = kwargs.copy()
     dask_enable = dex.exist_dask_object(train_data, test_data, eval_data) or dex.dask_enabled()
 
-    if kwargs.get('log_level') is not None:
-        _set_log_level(kwargs.pop('log_level'))
+    if log_level is None:
+        log_level = logging.WARN
+    _set_log_level(log_level)
 
     def find_target(df):
         columns = df.columns.to_list()
@@ -1006,19 +1110,47 @@ def make_experiment(train_data,
             from hypergbm.search_space import search_space_general as sk_search_space
             return lambda: sk_search_space(**args)
 
-    def default_searcher(search_space_fn):
-        from hypernets.searchers import EvolutionSearcher
+    def default_searcher(cls):
+        from hypernets.searchers import EvolutionSearcher, RandomSearcher, MCTSSearcher
 
-        if search_space_fn is None:
-            search_space_fn = default_search_space()
-
+        search_space_fn = search_space if search_space is not None \
+            else default_search_space()
         op = optimize_direction if optimize_direction is not None \
             else 'max' if scorer._sign > 0 else 'min'
 
-        s = EvolutionSearcher(search_space_fn, optimize_direction=op,
-                              population_size=30, sample_size=10, candidates_size=10,
-                              regularized=True, use_meta_learner=True)
+        if cls == EvolutionSearcher:
+            s = cls(search_space_fn, optimize_direction=op,
+                    population_size=30, sample_size=10, candidates_size=10,
+                    regularized=True, use_meta_learner=True)
+        elif cls == MCTSSearcher:
+            s = MCTSSearcher(search_space_fn, optimize_direction=op, max_node_space=10)
+        elif cls == RandomSearcher:
+            s = cls(search_space_fn, optimize_direction=op)
+        else:
+            s = cls(search_space_fn, optimize_direction=op)
+
         return s
+
+    def to_search_object(sch):
+        from hypernets.core.searcher import Searcher as SearcherSpec
+        from hypernets.searchers import EvolutionSearcher, RandomSearcher, MCTSSearcher
+
+        if sch is None:
+            sch = default_searcher(EvolutionSearcher)
+        elif isinstance(sch, type):
+            sch = default_searcher(sch)
+        elif isinstance(sch, str):
+            name2cls = {'evolution': EvolutionSearcher,
+                        'mcts': MCTSSearcher,
+                        'random': RandomSearcher
+                        }
+            if sch.lower() not in name2cls.keys():
+                raise ValueError(f'Unrecognized searcher "{sch}".')
+            sch = default_searcher(name2cls[sch.lower()])
+        elif not isinstance(sch, SearcherSpec):
+            logger.warning(f'Unrecognized searcher "{sch}".')
+
+        return sch
 
     def default_search_callbacks():
         from hypernets.core.callbacks import SummaryCallback
@@ -1058,13 +1190,11 @@ def make_experiment(train_data,
     if task is None:
         task, _ = infer_task_type(y_train)
 
-    if scorer is None:
-        scorer = metric_to_scoring(reward_metric)
+    scorer = metric_to_scoring(reward_metric) if kwargs.get('scorer') is None else kwargs.get('scorer')
     if isinstance(scorer, str):
         scorer = get_scorer(scorer)
 
-    if searcher is None:
-        searcher = default_searcher(search_space)
+    searcher = to_search_object(searcher)
 
     if search_callbacks is None:
         search_callbacks = default_search_callbacks()
@@ -1075,8 +1205,11 @@ def make_experiment(train_data,
                   cache_dir=kwargs.pop('cache_dir', 'hypergbm_cache'),
                   clear_cache=kwargs.pop('clear_cache', True))
 
+    use_cache = not dex.exist_dask_object(X_train, X_test, X_eval) if use_cache is None else bool(use_cache)
+
     experiment = CompeteExperiment(hm, X_train, y_train, X_eval=X_eval, y_eval=y_eval, X_test=X_test,
-                                   task=task, scorer=scorer, **kwargs)
+                                   task=task, scorer=scorer, use_cache=use_cache,
+                                   **kwargs)
 
     if logger.is_info_enabled():
         train_shape, test_shape, eval_shape = \
