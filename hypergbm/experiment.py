@@ -987,16 +987,16 @@ def make_experiment(train_data,
     search_callbacks
         Hypernets search callbacks, used to initialize searcher instance (if searcher is None, str or class).
         If log_level >= WARNNING, default is EarlyStoppingCallback only.
-        If log_level<WARNNING, defalult is EarlyStoppingCallback plus SummaryCallback.
+        If log_level < WARNNING, defalult is EarlyStoppingCallback plus SummaryCallback.
     early_stopping_rounds :　int, optional
         Setting of EarlyStoppingCallback, is used if EarlyStoppingCallback instance not found from search_callbacks.
-        Set to zero or None to disable it, default is 10.
+        Set zero or None to disable it, default is 10.
     early_stopping_time_limit : int, optional
         Setting of EarlyStoppingCallback, is used if EarlyStoppingCallback instance not found from search_callbacks.
-        Set to zero or None to disable it, default is 3600 seconds.
+        Set zero or None to disable it, default is 3600 seconds.
     early_stopping_reward : float, optional
         Setting of EarlyStoppingCallback, is used if EarlyStoppingCallback instance not found from search_callbacks.
-        Set to zero or None to disable it, default is None.
+        Set zero or None to disable it, default is None.
     reward_metric : str, callable, optional
         Hypernets search reward metric name or callable, default is 'accuracy'. Possible values:
             - accuracy
@@ -1013,7 +1013,16 @@ def make_experiment(train_data,
     optimize_direction : str, optional
         Hypernets search reward metric direction, default is detected from reward_metric.
     use_cache : bool, optional
-    log_level :
+    log_level :i nt or None, (default=None),
+        Level of logging, possible values:
+            -logging.CRITICAL
+            -logging.FATAL
+            -logging.ERROR
+            -logging.WARNING
+            -logging.WARN
+            -logging.INFO
+            -logging.DEBUG
+            -logging.NOTSET
     kwargs:
         Parameters to initialize experiment instance.
     Returns
