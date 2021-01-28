@@ -30,14 +30,17 @@ DataCanvas
 HyperGBM is an open source project created by `DataCanvas <https://www.datacanvas.com>`_ .
 
 
+
 .. toctree::
    :maxdepth: 2
    :caption: Home:
+
+   概览<overview.md>
    安装教程<installation.md>
    快速开始<quick_start.md>
-   新特性<release_note.md>
-   编程手册<programing_guide.md>
-   样例<example.md>
+   样例<example.rst>
+   How-To<how_to.md>
+   Release Note<release_note.rst>
 
 
 Indices and tables

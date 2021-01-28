@@ -34,11 +34,12 @@ HyperGBM is an open source project created by `DataCanvas <https://www.datacanva
    :maxdepth: 2
    :caption: Home:
 
-   Quick-Start<quick_start.md>
-   Release Note<release_note.rst>
+   Overview<overview.md>
    Installation<installation.md>
-   Programing Guide<programing_guide.md>
-   Example<example.md>
+   Quick-Start<quick_start.md>
+   Examples<example.rst>
+   How-To <how_to.md>
+   Release Note<release_note.rst>
 
 
 Indices and tables
