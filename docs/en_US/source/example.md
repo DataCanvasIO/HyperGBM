@@ -248,7 +248,7 @@ Here a an example :
                       reg_lambda=1)]
 ```
 
-## Search strategies
+### Search strategies
 
 HyperGBM provides following search strategies(implementation class)：
   - Evolution search（hypernets.searchers.evolution_searcher.EvolutionSearcher）
@@ -315,7 +315,7 @@ Early stopping on trial : 1, best reward: None, best_trial: None
 
 ```
 
-### Imbalance data 
+### Class balancing 
 
 HyperGBM supports several strategies for unbalanced data sampling:
 
@@ -436,7 +436,6 @@ Pipeline(steps=[('data_clean',
 1.0
 ```
 
-
 ### Features selection
 
 HyperGBM turn features into noise one by one for training, the more the model performance degradation, the more important the features become noise, so as to evaluate the importance of features.
@@ -488,7 +487,6 @@ Accord to features importance select part of the features and retraining model t
 >>> accuracy_score(y_pred, y_test)
 1.0
 ```
-
 
 ### Concept drift
 
