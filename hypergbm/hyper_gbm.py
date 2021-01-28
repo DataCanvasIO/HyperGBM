@@ -404,9 +404,6 @@ class HyperGBMEstimator(Estimator):
         starttime = time.time()
         if verbose is None:
             verbose = 0
-        X = self.transform_data(X, use_cache=use_cache, verbose=verbose)
-        if verbose > 0:
-            logger.info('estimator is predicting the data')
 
         if self.cv_gbm_models_ is not None:
             if self.task == 'regression':
@@ -422,6 +419,9 @@ class HyperGBMEstimator(Estimator):
                 preds = self.proba2predict(proba)
                 preds = np.array(self.classes_).take(preds, axis=0)
         else:
+            X = self.transform_data(X, use_cache=use_cache, verbose=verbose)
+            if verbose > 0:
+                logger.info('estimator is predicting the data')
             preds = self.gbm_model.predict(X, **kwargs)
 
         if verbose > 0:
