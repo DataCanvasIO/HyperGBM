@@ -333,12 +333,26 @@ We have provided several approaches to deal with imbalanced data: *Class Weight*
 - RandomUnderSampling
 - NearMiss
 - TomeksLinks
+- EditedNearestNeighbours
 
 **Code example**
-```
+```python
+from tabular_toolbox.datasets import dsutils
+from sklearn.model_selection import train_test_split
+from hypergbm.search_space import search_space_general
+from hypergbm import make_experiment
+# load data into Pandas DataFrame
+df = dsutils.load_bank().head(1000)
+target = 'y'
+train, test = train_test_split(df, test_size=0.3)
+#create an experiment
+#possible values of class_balancing: None, 'ClassWeight','RandomOverSampling','SMOTE','ADASYN','RandomUnderSampling','NearMiss','TomeksLinks'
 experiment = make_experiment(df, target=target, search_space=lambda: search_space_general(class_balancing='SMOTE'))
 #run experiment
 estimator = experiment.run()
+# predict on test data without target values
+test.pop(target)
+pred = estimator.predict(test)
 ```
 
 
