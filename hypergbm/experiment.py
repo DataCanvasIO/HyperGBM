@@ -175,13 +175,17 @@ class DataCleanStep(ExperimentStep):
 
         display_markdown('### Data Cleaner', raw=True)
 
-        display(self.data_cleaner, display_id='output_cleaner_info1')
+        display(data_cleaner, display_id='output_cleaner_info1')
         display_markdown('### Train set & Eval set', raw=True)
-        display(pd.DataFrame([(X_train.shape,
-                               y_train.shape,
-                               X_eval.shape if X_eval is not None else None,
-                               y_eval.shape if y_eval is not None else None,
-                               X_test.shape if X_test is not None else None)],
+
+        display_data = (X_train.shape,
+                        y_train.shape,
+                        X_eval.shape if X_eval is not None else None,
+                        y_eval.shape if y_eval is not None else None,
+                        X_test.shape if X_test is not None else None)
+        if dex.exist_dask_object(X_train, y_train, X_eval, y_eval, X_test):
+            display_data = dex.compute(*display_data)
+        display(pd.DataFrame([display_data],
                              columns=['X_train.shape',
                                       'y_train.shape',
                                       'X_eval.shape',
@@ -511,8 +515,8 @@ class PseudoLabelStep(ExperimentStep):
                 X_pseudo, y_pseudo = self.extract_pseudo_label(X_test, proba, proba_threshold, estimator.classes_)
 
                 display_markdown('### Pseudo label set', raw=True)
-                display(pd.DataFrame([(X_pseudo.shape,
-                                       y_pseudo.shape,
+                display(pd.DataFrame([(dex.compute(X_pseudo.shape)[0],
+                                       dex.compute(y_pseudo.shape)[0],
                                        # len(positive),
                                        # len(negative),
                                        proba_threshold)],
@@ -903,12 +907,24 @@ class CompeteExperiment(SteppedExperiment):
     def train(self, hyper_model, X_train, y_train, X_test, X_eval=None, y_eval=None, **kwargs):
 
         display_markdown('### Input Data', raw=True)
-        display(pd.DataFrame([(X_train.shape,
-                               y_train.shape,
-                               X_eval.shape if X_eval is not None else None,
-                               y_eval.shape if y_eval is not None else None,
-                               X_test.shape if X_test is not None else None,
-                               self.task if self.task == 'regression' else f'{self.task}({y_train.nunique()})')],
+
+        if dex.exist_dask_object(X_train, y_train, X_test, X_eval, y_eval):
+            display_data = (dex.compute(X_train.shape)[0],
+                            dex.compute(y_train.shape)[0],
+                            dex.compute(X_eval.shape)[0] if X_eval is not None else None,
+                            dex.compute(y_eval.shape)[0] if y_eval is not None else None,
+                            dex.compute(X_test.shape)[0] if X_test is not None else None,
+                            self.task if self.task == 'regression'
+                            else f'{self.task}({dex.compute(y_train.nunique())[0]})')
+        else:
+            display_data = (X_train.shape,
+                            y_train.shape,
+                            X_eval.shape if X_eval is not None else None,
+                            y_eval.shape if y_eval is not None else None,
+                            X_test.shape if X_test is not None else None,
+                            self.task if self.task == 'regression'
+                            else f'{self.task}({y_train.nunique()})')
+        display(pd.DataFrame([display_data],
                              columns=['X_train.shape',
                                       'y_train.shape',
                                       'X_eval.shape',
@@ -1013,7 +1029,7 @@ def make_experiment(train_data,
     optimize_direction : str, optional
         Hypernets search reward metric direction, default is detected from reward_metric.
     use_cache : bool, optional
-    log_level :i nt or None, (default=None),
+    log_level : int or None, (default=None),
         Level of logging, possible values:
             -logging.CRITICAL
             -logging.FATAL
@@ -1024,7 +1040,7 @@ def make_experiment(train_data,
             -logging.DEBUG
             -logging.NOTSET
     kwargs:
-        Parameters to initialize experiment instance.
+        Parameters to initialize experiment instance, refrence CompeteExperiment for more details.
     Returns
     -------
     Runnable experiment object
