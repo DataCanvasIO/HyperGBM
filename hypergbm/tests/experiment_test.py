@@ -62,7 +62,7 @@ class Test_HyperGBM():
         self.run_regression(train_test_split_strategy='adversarial_validation')
 
     def run_regression(self, train_test_split_strategy=None, cv=False, mode='one-stage', pseudo_labeling=False,
-                       drop_feature_with_collinearity=False, drift_detection=True, max_trials=3):
+                       collinearity_detection=False, drift_detection=True, max_trials=3):
         df = dsutils.load_Bike_Sharing()
         y = df.pop('count')
 
@@ -78,10 +78,10 @@ class Test_HyperGBM():
                                        cv=cv, num_folds=3,
                                        pseudo_labeling=pseudo_labeling,
                                        scorer=get_scorer('roc_auc_ovr'),
-                                       drop_feature_with_collinearity=drop_feature_with_collinearity,
+                                       collinearity_detection=collinearity_detection,
                                        drift_detection=drift_detection,
-                                       n_est_feature_importance=5,
-                                       importance_threshold=1e-5,
+                                       feature_reselection_estimator_size=5,
+                                       feature_reselection_threshold=1e-5,
                                        ensemble_size=10
                                        )
         pipeline = experiment.run(use_cache=True, max_trials=20)
@@ -99,7 +99,7 @@ class Test_HyperGBM():
         self.run_multiclass(train_test_split_strategy='adversarial_validation')
 
     def run_multiclass(self, train_test_split_strategy=None, cv=False, mode='one-stage', pseudo_labeling=False,
-                       drop_feature_with_collinearity=False, drift_detection=True, max_trials=3):
+                       collinearity_detection=False, drift_detection=True, max_trials=3):
         df = dsutils.load_glass_uci()
         df.columns = [f'x_{c}' for c in df.columns.to_list()]
         df.pop('x_0')
@@ -118,10 +118,10 @@ class Test_HyperGBM():
                                        cv=cv, num_folds=3,
                                        pseudo_labeling=pseudo_labeling,
                                        scorer=get_scorer('roc_auc_ovr'),
-                                       drop_feature_with_collinearity=drop_feature_with_collinearity,
+                                       collinearity_detection=collinearity_detection,
                                        drift_detection=drift_detection,
-                                       n_est_feature_importance=5,
-                                       importance_threshold=1e-5,
+                                       feature_reselection_estimator_size=5,
+                                       feature_reselection_threshold=1e-5,
                                        ensemble_size=10
                                        )
         pipeline = experiment.run(use_cache=True, max_trials=max_trials)
@@ -155,8 +155,8 @@ class Test_HyperGBM():
                                      'experiment end']
 
     def run_binary(self, train_test_split_strategy=None, cv=False, pseudo_labeling=False,
-                   two_stage_importance_selection=False,
-                   drop_feature_with_collinearity=False, drift_detection=True, max_trials=3, scoring='roc_auc_ovr'):
+                   feature_reselection=False,
+                   collinearity_detection=False, drift_detection=True, max_trials=3, scoring='roc_auc_ovr'):
         rs = RandomSearcher(lambda: search_space_general(early_stopping_rounds=20, verbose=0),
                             optimize_direction=OptimizeDirection.Maximize)
         hk = HyperGBM(rs, reward_metric='auc', cache_dir=f'hypergbm_cache', callbacks=[])
@@ -170,13 +170,13 @@ class Test_HyperGBM():
                                        train_test_split_strategy=train_test_split_strategy,
                                        callbacks=[log_callback],
                                        scorer=get_scorer(scoring),
-                                       drop_feature_with_collinearity=drop_feature_with_collinearity,
+                                       collinearity_detection=collinearity_detection,
                                        drift_detection=drift_detection,
                                        cv=cv,
                                        pseudo_labeling=pseudo_labeling,
-                                       two_stage_importance_selection=two_stage_importance_selection,
-                                       n_est_feature_importance=5,
-                                       importance_threshold=1e-5,
+                                       feature_reselection=feature_reselection,
+                                       feature_reselection_estimator_size=5,
+                                       feature_reselection_threshold=1e-5,
                                        ensemble_size=5
                                        )
         pipeline = experiment.run(use_cache=True, max_trials=max_trials)
@@ -194,7 +194,7 @@ class Test_HyperGBM():
         self.run_binary(pseudo_labeling=True)
 
     def test_binary_importance_selection(self):
-        self.run_binary(two_stage_importance_selection=True, cv=True, scoring='accuracy')
+        self.run_binary(feature_reselection=True, cv=True, scoring='accuracy')
 
     def test_binary_adversarial_validation(self):
         self.run_binary(train_test_split_strategy='adversarial_validation')

@@ -207,7 +207,7 @@ class DataCleanStep(ExperimentStep):
         return self.data_cleaner.transform(X, y, **kwargs)
 
 
-class SelectByMulticollinearityStep(FeatureSelectStep):
+class MulticollinearityDetectStep(FeatureSelectStep):
 
     def __init__(self, experiment, name, drop_feature_with_collinearity=True):
         super().__init__(experiment, name)
@@ -287,11 +287,11 @@ class DriftDetectStep(FeatureSelectStep):
 
 class PermutationImportanceSelectionStep(FeatureSelectStep):
 
-    def __init__(self, experiment, name, scorer, n_est_feature_importance, importance_threshold):
+    def __init__(self, experiment, name, scorer, estimator_size, importance_threshold):
         super().__init__(experiment, name)
 
         self.scorer = scorer
-        self.n_est_feature_importance = n_est_feature_importance
+        self.estimator_size = estimator_size
         self.importance_threshold = importance_threshold
 
         # fixed
@@ -304,7 +304,7 @@ class PermutationImportanceSelectionStep(FeatureSelectStep):
 
         self.step_start('evaluate feature importance')
 
-        best_trials = hyper_model.get_top_trials(self.n_est_feature_importance)
+        best_trials = hyper_model.get_top_trials(self.estimator_size)
         estimators = [hyper_model.load_estimator(trial.model_file) for trial in best_trials]
         self.step_progress('load estimators')
 
@@ -757,17 +757,17 @@ class CompeteExperiment(SteppedExperiment):
     def __init__(self, hyper_model, X_train, y_train, X_eval=None, y_eval=None, X_test=None,
                  eval_size=DEFAULT_EVAL_SIZE,
                  train_test_split_strategy=None,
-                 cv=False, num_folds=3,
+                 cv=True, num_folds=3,
                  task=None,
                  callbacks=None,
                  random_state=9527,
                  scorer=None,
                  data_cleaner_args=None,
-                 drop_feature_with_collinearity=False,
+                 collinearity_detection=False,
                  drift_detection=True,
-                 two_stage_importance_selection=False,
-                 n_est_feature_importance=10,
-                 importance_threshold=1e-5,
+                 feature_reselection=False,
+                 feature_reselection_estimator_size=10,
+                 feature_reselection_threshold=1e-5,
                  ensemble_size=20,
                  pseudo_labeling=False,
                  pseudo_labeling_proba_threshold=0.8,
@@ -796,7 +796,7 @@ class CompeteExperiment(SteppedExperiment):
         :param train_test_split_strategy: *'adversarial_validation'* or None, (default=None)
             Only valid when ``X_eval`` or ``y_eval`` is None. If None, use eval_size to split the dataset,
             otherwise use adversarial validation approach.
-        :param cv: bool, (default=False)
+        :param cv: bool, (default=True)
             If True, use cross-validation instead of evaluation set reward to guide the search process
         :param num_folds: int, (default=3)
             Number of cross-validated folds, only valid when cv is true
@@ -816,19 +816,19 @@ class CompeteExperiment(SteppedExperiment):
         :param data_cleaner_args: dict, (default=None)
             dictionary of parameters to initialize the `DataCleaner` instance. If None, `DataCleaner` will initialized with
             default values.
-        :param drop_feature_with_collinearity:  bool, (default=False)
+        :param collinearity_detection:  bool, (default=False)
             Whether to clear multicollinearity features
         :param drift_detection: bool,(default=True)
             Whether to enable data drift detection and processing. Only valid when *X_test* is provided. Concept drift in
             the input data is one of the main challenges. Over time, it will worsen the performance of model on new data.
             We introduce an adversarial validation approach to concept drift problems in HyperGBM. This approach will detect
             concept drift and identify the drifted features and process them automatically.
-        :param two_stage_importance_selection: bool, (default=True)
+        :param feature_reselection: bool, (default=True)
             Whether to enable two stage feature selection and searching
-        :param n_est_feature_importance: int, (default=10)
-            The number of estimator to evaluate feature importance. Only valid when *two_stage_importance_selection* is True.
-        :param importance_threshold: float, (default=1e-5)
-            The threshold for feature selection. Features with importance below the threshold will be dropped.  Only valid when *two_stage_importance_selection* is True.
+        :param feature_reselection_estimator_size: int, (default=10)
+            The number of estimator to evaluate feature importance. Only valid when *feature_reselection* is True.
+        :param feature_reselection_threshold: float, (default=1e-5)
+            The threshold for feature selection. Features with importance below the threshold will be dropped.  Only valid when *feature_reselection* is True.
         :param ensemble_size: int, (default=20)
             The number of estimator to ensemble. During the AutoML process, a lot of models will be generated with different
             preprocessing pipelines, different models, and different hyperparameters. Usually selecting some of the models
@@ -838,10 +838,10 @@ class CompeteExperiment(SteppedExperiment):
             labeling the unlabelled data, we give approximate labels on the basis of the labelled data. Pseudo-labeling can
             sometimes improve the generalization capabilities of the model.
         :param pseudo_labeling_proba_threshold: float, (default=0.8)
-            Confidence threshold of pseudo-label samples. Only valid when *two_stage_importance_selection* is True.
+            Confidence threshold of pseudo-label samples. Only valid when *pseudo_labeling* is True.
         :param pseudo_labeling_resplit: bool, (default=False)
             Whether to re-split the training set and evaluation set after adding pseudo-labeled data. If False, the
-            pseudo-labeled data is only appended to the training set. Only valid when *two_stage_importance_selection* is True.
+            pseudo-labeled data is only appended to the training set. Only valid when *pseudo_labeling* is True.
         :param retrain_on_wholedata: bool, (default=False)
             Whether to retrain the model with whole data after the search is completed.
         :param log_level: int, str, or None (default=None),
@@ -873,9 +873,9 @@ class CompeteExperiment(SteppedExperiment):
                                    random_state=random_state))
 
         # select by collinearity
-        if drop_feature_with_collinearity:
-            steps.append(SelectByMulticollinearityStep(self, 'drop_feature_with_collinearity',
-                                                       drop_feature_with_collinearity=drop_feature_with_collinearity))
+        if collinearity_detection:
+            steps.append(MulticollinearityDetectStep(self, 'collinearity_detection',
+                                                     drop_feature_with_collinearity=collinearity_detection))
         # drift detection
         if drift_detection:
             steps.append(DriftDetectStep(self, 'drift_detection', drift_detection=drift_detection))
@@ -898,11 +898,11 @@ class CompeteExperiment(SteppedExperiment):
             two_stage = True
 
         # importance selection
-        if two_stage_importance_selection:
-            step = PermutationImportanceSelectionStep(self, 'two_stage_pi_select',
+        if feature_reselection:
+            step = PermutationImportanceSelectionStep(self, 'feature_reselection',
                                                       scorer=scorer,
-                                                      n_est_feature_importance=n_est_feature_importance,
-                                                      importance_threshold=importance_threshold)
+                                                      n_est_feature_importance=feature_reselection_estimator_size,
+                                                      importance_threshold=feature_reselection_threshold)
             steps.append(step)
             two_stage = True
 
