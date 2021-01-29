@@ -13,6 +13,63 @@ As the name implies, the ML algorithms used in HyperGBM are all GBM models, and 
 The underlying search space representation and search algorithm in HyperGBM are powered by the  `Hypernets <https://github.com/DataCanvasIO/Hypernets>`_ project a general AutoML framework.
 
 
+
+Feature matrix
+---------------------
+There are 3 training modes：
+
+- Standalone
+- Distributed on single machine
+- Distributed on multiple machines
+
+Here is feature matrix of training modes:
+
++----------------------------+------------------------------------------------------+------------+-------------------------------+----------------------------------+
+|   #                        | Feature                                              | Standalone | Distributed on single machine | Distributed on multiple machines |
++============================+======================================================+============+===============================+==================================+
+| Feature engineering        | | Feature generation                                 | | √        | |                             | |                                |
+|                            | | Feature dimension reduction                        | | √        | | √                           | | √                              |
++----------------------------+------------------------------------------------------+------------+-------------------------------+----------------------------------+
+| Data clean                 | | Correct data type                                  | | √        | | √                           | | √                              |
+|                            | | Special empty value handing                        | | √        | | √                           | | √                              |
+|                            | | Id-ness features cleanup                           | | √        | | √                           | | √                              |
+|                            | | Duplicate features cleanup                         | | √        | | √                           | | √                              |
+|                            | | Empty label rows cleanup                           | | √        | | √                           | | √                              |
+|                            | | Illegal values replacement                         | | √        | | √                           | | √                              |
+|                            | | Constant features cleanup                          | | √        | | √                           | | √                              |
+|                            | | Collinearity features cleanup                      | | √        | | √                           | | √                              |
++----------------------------+------------------------------------------------------+------------+-------------------------------+----------------------------------+
+|Data set split              | Adversarial validation                               | | √        | |                             | |                                |
++----------------------------+------------------------------------------------------+------------+-------------------------------+----------------------------------+
+|Modeling algorithms         | | XGBoost                                            | | √        | | √                           | | √                              |
+|                            | | Catboost                                           | | √        | | √                           | |                                |
+|                            | | LightGBM                                           | | √        | | √                           | |                                |
+|                            | | HistGridientBoosting                               | | √        | |                             | |                                |
++----------------------------+------------------------------------------------------+------------+-------------------------------+----------------------------------+
+|Training                    | | Task inference                                     | | √        | | √                           | | √                              |
+|                            | | Command-line tools                                 | | √        | |                             | |                                |
++----------------------------+------------------------------------------------------+------------+-------------------------------+----------------------------------+
+|Evaluation strategies       | | Cross-validation                                   | | √        | | √                           | | √                              |
+|                            | | Train-Validation-Holdout                           | | √        | | √                           | | √                              |
++----------------------------+------------------------------------------------------+------------+-------------------------------+----------------------------------+
+|Search strategies           | | Monte Carlo Tree Search                            | | √        | | √                           | | √                              |
+|                            | | Evolution                                          | | √        | | √                           | | √                              |
+|                            | | Random search                                      | | √        | | √                           | | √                              |
++----------------------------+------------------------------------------------------+------------+-------------------------------+----------------------------------+
+|Class balancing             | | Class Weight                                       | | √        | | √                           | |                                |
+|                            | | Under-Samping(Near miss,Tomeks links,Random)       | | √        | |                             | |                                |
+|                            | | Over-Samping(SMOTE,ADASYN,Random)                  | | √        | |                             | |                                |
++----------------------------+------------------------------------------------------+------------+-------------------------------+----------------------------------+
+|Early stopping strategies   | | max_no_improvement_trials                          | | √        | | √                           | | √                              |
+|                            | | time_limit                                         | | √        | | √                           | | √                              |
+|                            | | expected_reward                                    | | √        | | √                           | | √                              |
++----------------------------+------------------------------------------------------+------------+-------------------------------+----------------------------------+
+|Advance features            | | Two stage search(Pseudo label,Feature selection)   | | √        | | √                           | | √                              |
+|                            | | Concept drift handling                             | | √        | | √                           | | √                              |
+|                            | | Ensemble                                           | | √        | | √                           | | √                              |
++----------------------------+------------------------------------------------------+------------+-------------------------------+----------------------------------+
+
+
 Hypernets related projects
 --------------------------
 
@@ -38,8 +95,9 @@ HyperGBM is an open source project created by `DataCanvas <https://www.datacanva
    Installation<installation.md>
    Quick-Start<quick_start.md>
    Examples<example.rst>
-   How-To <how_to.md>
+   How-To <how_to.rst>
    Release Note<release_note.rst>
+
 
 
 Indices and tables
