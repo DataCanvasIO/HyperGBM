@@ -160,7 +160,9 @@ class DataCleanStep(ExperimentStep):
                                                                                 random_state=self.random_state,
                                                                                 stratify=y_train)
                 if self.task != 'regression':
-                    assert set(y_train) == set(y_eval), \
+                    y_train_uniques = set(y_train.unique()) if hasattr(y_train, 'unique') else set(y_train)
+                    y_eval_uniques = set(y_eval.unique()) if hasattr(y_eval, 'unique') else set(y_eval)
+                    assert y_train_uniques == y_eval_uniques, \
                         'The classes of `y_train` and `y_eval` must be equal. Try to increase eval_size.'
                 self.step_progress('split into train set and eval set')
             else:
@@ -184,7 +186,7 @@ class DataCleanStep(ExperimentStep):
                         y_eval.shape if y_eval is not None else None,
                         X_test.shape if X_test is not None else None)
         if dex.exist_dask_object(X_train, y_train, X_eval, y_eval, X_test):
-            display_data = dex.compute(*display_data)
+            display_data = [dex.compute(shape)[0] for shape in display_data]
         display(pd.DataFrame([display_data],
                              columns=['X_train.shape',
                                       'y_train.shape',
