@@ -1,5 +1,5 @@
 DataCanvas
------------
+==================
 HyperGBM is an open source project created by `DataCanvas <https://www.datacanvas.com>`_ .
 
 
