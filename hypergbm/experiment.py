@@ -844,7 +844,7 @@ class CompeteExperiment(SteppedExperiment):
             pseudo-labeled data is only appended to the training set. Only valid when *two_stage_importance_selection* is True.
         :param retrain_on_wholedata: bool, (default=False)
             Whether to retrain the model with whole data after the search is completed.
-        :param log_level: int or None, (default=None),
+        :param log_level: int, str, or None (default=None),
             Level of logging, possible values:
                 -logging.CRITICAL
                 -logging.FATAL
@@ -1055,7 +1055,7 @@ def make_experiment(train_data,
     optimize_direction : str, optional
         Hypernets search reward metric direction, default is detected from reward_metric.
     use_cache : bool, optional
-    log_level : int or None, (default=None),
+    log_level : int, str, or None, (default=None),
         Level of logging, possible values:
             -logging.CRITICAL
             -logging.FATAL
