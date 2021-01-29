@@ -1259,7 +1259,7 @@ def make_experiment(train_data,
                         X_eval.shape if X_eval is not None else None,
                         X_test.shape if X_test is not None else None,
                         traverse=True)
-        logger.info(f'make_experiment with train date:{train_shape}, '
+        logger.info(f'make_experiment with train data:{train_shape}, '
                     f'test data:{test_shape}, eval data:{eval_shape}, target:{target}')
 
     return experiment
