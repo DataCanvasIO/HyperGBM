@@ -12,7 +12,7 @@ hk.search(X_train, y_train, X_eval=None, y_eval=None, cv=True, num_folds=3)  # 3
 ```
 
 Evaluation data should be a fold of  `X_train` and `y_train`, so set `X_eval=None` and `y_eval=None`.
-Here a an example :
+Here is an example :
 ```pydocstring
 >>> from sklearn.datasets import load_iris
 >>> from sklearn.model_selection import train_test_split

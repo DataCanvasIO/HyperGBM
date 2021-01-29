@@ -458,41 +458,6 @@ Name: target, dtype: int64
 1          2     1.0  0.069099          [1]
 ```
 
-#### 任务类型推断
-
-HyperGBM支持任务类型推断，如果您不指定任务类型，它会对目标列的分布按照下规则进行推断：
-
-- 如果目标列只有两个不同值则推断成二分类
-- 如果目标列的不同值多余2个且类型为float则推断为回归
-- 以上两条都不符合，则推断为多分类，超过1000个类别不支持
-
-使用时设置`task=None`或者不指定`task`即可：
-
-```pydocstring
-...
-hk = HyperGBM(rs, task=None, reward_metric='accuracy', callbacks=[])
-...
-```
-
-例子：
-```pydocstring
->>> from sklearn.datasets import load_iris
->>> from sklearn.model_selection import train_test_split
->>> from hypergbm.search_space import search_space_general
->>> 
->>> X, y = load_iris(return_X_y=True, as_frame=True)
->>> X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
->>> 
->>> from hypergbm import HyperGBM
->>> from hypernets.searchers.evolution_searcher import EvolutionSearcher
->>> 
->>> rs = EvolutionSearcher(search_space_general,  200, 100, optimize_direction='max')
->>> hk = HyperGBM(rs, reward_metric='accuracy', callbacks=[])  # do not set `task` param will using automatic task infer
->>> hk.search(X_train, y_train, X_eval=X_test, y_eval=y_test)
-
-16:34:21 I hypernets.m.hyper_model.py 249 - 3 class detected, inferred as a [multiclass classification] task
-```
-
 #### 处理不平衡数据
 
 HyperGBM支持对不平衡数据进行采样，支持的策略有：
