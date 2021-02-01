@@ -1,6 +1,6 @@
 ## Installation
 
-You can use docker or pip to install HyperGBM.
+You can use pip or docker to install HyperGBM.
 
 ### Using pip
 
