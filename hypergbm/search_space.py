@@ -104,7 +104,7 @@ def search_space_general(dataframe_mapper_default=False,
 
         xgb_init_kwargs = {
             'booster': Choice(['gbtree', 'dart']),
-            'max_depth': Choice([3, 5, 7, 9, 15]),
+            'max_depth': Choice([3, 5, 7, 10]),
             'n_estimators': n_esitimators,  # Choice([10, 30, 50, 100, 200, 300]),
             'learning_rate': Choice([0.001, 0.01, 0.5, 0.1]),
             'min_child_weight': Choice([1, 5, 10]),
