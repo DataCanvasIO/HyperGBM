@@ -776,75 +776,76 @@ class CompeteExperiment(SteppedExperiment):
                  log_level=None,
                  **kwargs):
         """
-
-        :param hyper_model: hypergbm.HyperGBM
+        Parameters
+        ----------
+        hyper_model : hypergbm.HyperGBM
             A `HyperGBM` instance
-        :param X_train: Pandas or Dask DataFrame
+        X_train : Pandas or Dask DataFrame
             Feature data for training
-        :param y_train: Pandas or Dask Series
+        y_train : Pandas or Dask Series
             Target values for training
-        :param X_eval: (Pandas or Dask DataFrame) or None
+        X_eval : (Pandas or Dask DataFrame) or None
             (default=None), Feature data for evaluation
-        :param y_eval: (Pandas or Dask Series) or None, (default=None)
+        y_eval : (Pandas or Dask Series) or None, (default=None)
             Target values for evaluation
-        :param X_test: (Pandas or Dask Series) or None, (default=None)
+        X_test : (Pandas or Dask Series) or None, (default=None)
             Unseen data without target values for semi-supervised learning
-        :param eval_size: float or int, (default=None)
+        eval_size : float or int, (default=None)
             Only valid when ``X_eval`` or ``y_eval`` is None. If float, should be between 0.0 and 1.0 and represent
             the proportion of the dataset to include in the eval split. If int, represents the absolute number of
             test samples. If None, the value is set to the complement of the train size.
-        :param train_test_split_strategy: *'adversarial_validation'* or None, (default=None)
+        train_test_split_strategy : *'adversarial_validation'* or None, (default=None)
             Only valid when ``X_eval`` or ``y_eval`` is None. If None, use eval_size to split the dataset,
             otherwise use adversarial validation approach.
-        :param cv: bool, (default=True)
+        cv : bool, (default=True)
             If True, use cross-validation instead of evaluation set reward to guide the search process
-        :param num_folds: int, (default=3)
+        num_folds : int, (default=3)
             Number of cross-validated folds, only valid when cv is true
-        :param task: str or None, (default=None)
+        task : str or None, (default=None)
             Task type(*binary*, *multiclass* or *regression*).
             If None, inference the type of task automatically
-        :param callbacks: list of callback functions or None, (default=None)
+        callbacks : list of callback functions or None, (default=None)
             List of callback functions that are applied at each experiment step. See `hypernets.experiment.ExperimentCallback`
             for more information.
-        :param random_state: int or RandomState instance, (default=9527)
+        random_state : int or RandomState instance, (default=9527)
             Controls the shuffling applied to the data before applying the split
-        :param scorer: str, callable or None, (default=None)
+        scorer : str, callable or None, (default=None)
             Scorer to used for feature importance evaluation and ensemble. It can be a single string
             (see [get_scorer](https://scikit-learn.org/stable/modules/generated/sklearn.metrics.get_scorer.html))
             or a callable (see [make_scorer](https://scikit-learn.org/stable/modules/generated/sklearn.metrics.make_scorer.html)).
             If None, exception will occur.
-        :param data_cleaner_args: dict, (default=None)
+        data_cleaner_args : dict, (default=None)
             dictionary of parameters to initialize the `DataCleaner` instance. If None, `DataCleaner` will initialized with
             default values.
-        :param collinearity_detection:  bool, (default=False)
+        collinearity_detection :  bool, (default=False)
             Whether to clear multicollinearity features
-        :param drift_detection: bool,(default=True)
+        drift_detection : bool,(default=True)
             Whether to enable data drift detection and processing. Only valid when *X_test* is provided. Concept drift in
             the input data is one of the main challenges. Over time, it will worsen the performance of model on new data.
             We introduce an adversarial validation approach to concept drift problems in HyperGBM. This approach will detect
             concept drift and identify the drifted features and process them automatically.
-        :param feature_reselection: bool, (default=True)
+        feature_reselection : bool, (default=True)
             Whether to enable two stage feature selection and searching
-        :param feature_reselection_estimator_size: int, (default=10)
+        feature_reselection_estimator_size : int, (default=10)
             The number of estimator to evaluate feature importance. Only valid when *feature_reselection* is True.
-        :param feature_reselection_threshold: float, (default=1e-5)
+        feature_reselection_threshold : float, (default=1e-5)
             The threshold for feature selection. Features with importance below the threshold will be dropped.  Only valid when *feature_reselection* is True.
-        :param ensemble_size: int, (default=20)
+        ensemble_size : int, (default=20)
             The number of estimator to ensemble. During the AutoML process, a lot of models will be generated with different
             preprocessing pipelines, different models, and different hyperparameters. Usually selecting some of the models
             that perform well to ensemble can obtain better generalization ability than just selecting the single best model.
-        :param pseudo_labeling: bool, (default=False)
+        pseudo_labeling : bool, (default=False)
             Whether to enable pseudo labeling. Pseudo labeling is a semi-supervised learning technique, instead of manually
             labeling the unlabelled data, we give approximate labels on the basis of the labelled data. Pseudo-labeling can
             sometimes improve the generalization capabilities of the model.
-        :param pseudo_labeling_proba_threshold: float, (default=0.8)
+        pseudo_labeling_proba_threshold : float, (default=0.8)
             Confidence threshold of pseudo-label samples. Only valid when *pseudo_labeling* is True.
-        :param pseudo_labeling_resplit: bool, (default=False)
+        pseudo_labeling_resplit : bool, (default=False)
             Whether to re-split the training set and evaluation set after adding pseudo-labeled data. If False, the
             pseudo-labeled data is only appended to the training set. Only valid when *pseudo_labeling* is True.
-        :param retrain_on_wholedata: bool, (default=False)
+        retrain_on_wholedata : bool, (default=False)
             Whether to retrain the model with whole data after the search is completed.
-        :param log_level: int, str, or None (default=None),
+        log_level : int, str, or None (default=None),
             Level of logging, possible values:
                 -logging.CRITICAL
                 -logging.FATAL
@@ -854,7 +855,7 @@ class CompeteExperiment(SteppedExperiment):
                 -logging.INFO
                 -logging.DEBUG
                 -logging.NOTSET
-        :param kwargs:
+        kwargs :
 
         """
         steps = []

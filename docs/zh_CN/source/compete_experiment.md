@@ -29,11 +29,11 @@
 - *random_state*: int or RandomState instance, (default=9527), 数据分割时使用的随机状态。
 - *scorer*: str, callable or None, (default=None), 用于特征重要性评估和ensemble的评分器，可以是scorer的名称(see [get_scorer](https://scikit-learn.org/stable/modules/generated/sklearn.metrics.get_scorer.html))，也可以是一个可以调用的函数(see [make_scorer](https://scikit-learn.org/stable/modules/generated/sklearn.metrics.make_scorer.html))。如果为None会发生异常。
 - *data_cleaner_args*: dict, (default=None), 用来初始化`DataCleaner`对象的参数字典. 如果为None将使用默认值初始化。
-- *drop_feature_with_collinearity*: bool, (default=False), 是否删除发生共线性的特征。
+- *collinearity_detection*: bool, (default=False), 是否删除发生共线性的特征。
 - *drift_detection*: bool,(default=True), 是否开启自动数据漂移检测和处理，只有提供了*X_test*时才生效。 数据漂移是建模过程中的一个主要挑战。当数据的分布随着时间在不断的发现变化时，模型的表现会越来越差，我们在HyperGBM中引入了对抗验证的方法专门处理数据漂移问题。这个方法会自动的检测是否发生漂移，并且找出发生漂移的特征并删除他们，以保证模型在真实数据上保持良好的状态。
-- *two_stage_importance_selection*: bool, (default=True), 是否开始二阶段特征筛选和模型搜索。
-- *n_est_feature_importance*: int, (default=10), 用于评估特征重要性的estimator数量（在一阶段搜索中表现最好的n个模型。 仅在*two_stage_importance_selection*为True是有效。
-- *importance_threshold*: float, (default=1e-5), 二阶搜索是特征选择重要性阈值，重要性低于该阈值的特征会被删除。仅在*two_stage_importance_selection*为True是有效。
+- *feature_reselection*: bool, (default=True), 是否开始二阶段特征筛选和模型搜索。
+- *feature_reselection_estimator_size*: int, (default=10), 用于评估特征重要性的estimator数量（在一阶段搜索中表现最好的n个模型。 仅在*two_stage_importance_selection*为True是有效。
+- *feature_reselection_threshold*: float, (default=1e-5), 二阶搜索是特征选择重要性阈值，重要性低于该阈值的特征会被删除。仅在*two_stage_importance_selection*为True是有效。
 - *ensemble_size*: int or None, (default=20), 用于ensemble的模型数量。ensemble_size为None或者小于1时会跳过ensemble step。 在模型搜索的过程中会产生很多模型，它们使用不同的预处理管道、不同的算法模型、不同的超参数，通常选择其中一些模型做ensemble会比只选择表现最好的单一模型获得更好的模型表现。
 - *pseudo_labeling*: bool, (default=False), 是否开启伪标签学习。伪标签是一种半监督学习技术，将测试集中未观测标签列的特征数据通过一阶段训练的模型预测标签后，将置信度高于一定阈值的样本添加到训练数据中重新训练模型，有时候可以进一步提升模型在新数据上的拟合效果。
 - *pseudo_labeling_proba_threshold*: float, (default=0.8), 伪标签的置信度阈值。 仅在 *two_stage_importance_selection* 为 True时有效。
