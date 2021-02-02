@@ -199,8 +199,8 @@ class LGBMRegressorDaskWrapper(LGBMRegressorWrapper):
     def predict(self, *args, **kwargs):
         return dex.compute_and_call(super().predict, *args, **kwargs)
 
-    def predict_proba(self, *args, **kwargs):
-        return dex.compute_and_call(super().predict_proba, *args, **kwargs)
+    # def predict_proba(self, *args, **kwargs):
+    #     return dex.compute_and_call(super().predict_proba, *args, **kwargs)
 
 
 class LightGBMDaskEstimator(LightGBMEstimator):
@@ -340,6 +340,16 @@ class XGBClassifierDaskWrapper(dask_xgboost.XGBClassifier):
     def fit(self, X, y=None, classes=None, eval_set=None,
             sample_weight=None, sample_weight_eval_set=None,
             eval_metric=None, early_stopping_rounds=None, **kwargs):
+
+        if y is not None and y.dtype == np.object:
+            from dask_ml.preprocessing import LabelEncoder as DaskLabelEncoder
+            le = DaskLabelEncoder()
+            y = le.fit_transform(y)
+
+            if dex.is_dask_object(le.classes_):
+                le.classes_ = le.classes_.compute()
+            self.y_encoder_ = le
+
         if sample_weight is not None and sample_weight.npartitions > 1:
             sample_weight = None  # fixme, dask_xgboost bug
         return super(XGBClassifierDaskWrapper, self) \
@@ -366,7 +376,22 @@ class XGBClassifierDaskWrapper(dask_xgboost.XGBClassifier):
 
     def predict(self, data, **kwargs):
         data = data[self.get_booster().feature_names]
-        return super(XGBClassifierDaskWrapper, self).predict(data)
+        pred = super(XGBClassifierDaskWrapper, self).predict(data)
+
+        if hasattr(self, 'y_encoder_'):
+            encoder = getattr(self, 'y_encoder_')
+            pred = encoder.inverse_transform(pred)
+
+        return pred
+
+    def __getattribute__(self, name):
+        if name == 'classes_' and hasattr(self, 'y_encoder_'):
+            encoder = getattr(self, 'y_encoder_')
+            attr = encoder.classes_
+        else:
+            attr = super().__getattribute__(name)
+
+        return attr
 
 
 class XGBRegressorDaskWrapper(dask_xgboost.XGBRegressor):
@@ -486,8 +511,8 @@ class CatBoostRegressionDaskWrapper(CatBoostRegressionWrapper):
     def predict(self, *args, **kwargs):
         return dex.compute_and_call(super().predict, *args, **kwargs)
 
-    def predict_proba(self, *args, **kwargs):
-        return dex.compute_and_call(super().predict_proba, *args, **kwargs)
+    # def predict_proba(self, *args, **kwargs):
+    #     return dex.compute_and_call(super().predict_proba, *args, **kwargs)
 
 
 class CatBoostDaskEstimator(CatBoostEstimator):

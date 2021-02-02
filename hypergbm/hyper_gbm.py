@@ -411,13 +411,19 @@ class HyperGBMEstimator(Estimator):
                 for est in self.cv_gbm_models_:
                     pred = est.predict(X)
                     if pred_sum is None:
-                        pred_sum = np.zeros_like(pred)
+                        if dex.is_dask_object(X):
+                            pred_sum = da.zeros_like(pred)
+                        else:
+                            pred_sum = np.zeros_like(pred)
                     pred_sum += pred
                 preds = pred_sum / len(self.cv_gbm_models_)
             else:
                 proba = self.predict_proba(X)
                 preds = self.proba2predict(proba)
-                preds = np.array(self.classes_).take(preds, axis=0)
+                if dex.is_dask_object(preds):
+                    preds = da.take(np.array(self.classes_), preds, axis=0)
+                else:
+                    preds = np.array(self.classes_).take(preds, axis=0)
         else:
             X = self.transform_data(X, use_cache=use_cache, verbose=verbose)
             if verbose > 0:
@@ -446,7 +452,10 @@ class HyperGBMEstimator(Estimator):
             for est in self.cv_gbm_models_:
                 proba = getattr(est, method)(X)
                 if proba_sum is None:
-                    proba_sum = np.zeros_like(proba)
+                    if dex.exist_dask_object(X):
+                        proba_sum = da.zeros_like(proba)
+                    else:
+                        proba_sum = np.zeros_like(proba)
                 proba_sum += proba
             proba = proba_sum / len(self.cv_gbm_models_)
         else:
