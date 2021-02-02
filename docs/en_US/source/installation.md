@@ -17,7 +17,7 @@ HyperGBM provides model interpretation based on [shap](https://github.com/slundb
 
 
 ### Using Docker
-You can also use HypergGBM through our built-in jupyter docker image with command:
+You can also use HyperGBM through our built-in jupyter docker image with command:
 ```shell script
 docker run -ti -e NotebookToken="your-token" -p 8888:8888 datacanvas/hypergbm:0.2.0
 ```
