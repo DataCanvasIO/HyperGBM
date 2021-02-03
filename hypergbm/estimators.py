@@ -348,6 +348,10 @@ class XGBClassifierDaskWrapper(dask_xgboost.XGBClassifier):
 
             if dex.is_dask_object(le.classes_):
                 le.classes_ = le.classes_.compute()
+
+            if eval_set is not None:
+                eval_set = [(ex, le.transform(ey)) for ex, ey in eval_set]
+
             self.y_encoder_ = le
 
         if sample_weight is not None and sample_weight.npartitions > 1:

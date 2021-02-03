@@ -39,6 +39,8 @@ except:
 
 logger = logging.get_logger(__name__)
 
+DEFAULT_EVAL_SIZE_LIMIT = 10000
+
 
 def get_sampler(sampler):
     samplers = {'RandomOverSampler': RandomOverSampler,
@@ -216,7 +218,7 @@ class HyperGBMEstimator(Estimator):
         y = np.array(y)
 
         kwargs = self.fit_kwargs
-        if kwargs.get('verbose') is None and str(type(self.gbm_model)).find('dask') < 0:
+        if kwargs.get('verbose') is None:
             kwargs['verbose'] = verbose
 
         oof_ = None
@@ -236,7 +238,8 @@ class HyperGBMEstimator(Estimator):
             kwargs['sample_weight'] = sample_weight
 
             fold_est = copy.deepcopy(self.gbm_model)
-            fold_est.fit(x_train_fold, y_train_fold, **kwargs)
+            fit_kwargs = {**kwargs, 'verbose': 0}
+            fold_est.fit(x_train_fold, y_train_fold, **fit_kwargs)
             # print(f'fold {n_fold}, est:{fold_est.__class__},  best_n_estimators:{fold_est.best_n_estimators}')
             if self.classes_ is None and hasattr(fold_est, 'classes_'):
                 self.classes_ = fold_est.classes_
@@ -275,6 +278,8 @@ class HyperGBMEstimator(Estimator):
         if verbose > 0:
             logger.info('estimator is transforming the train set')
 
+        eval_size_limit = kwargs.get('eval_size_limit', DEFAULT_EVAL_SIZE_LIMIT)
+
         X = self.transform_data(X, y, fit=True, use_cache=use_cache, verbose=verbose)
 
         iterators = dm_sel.KFold(n_splits=num_folds, shuffle=shuffle, random_state=random_state)
@@ -300,10 +305,25 @@ class HyperGBMEstimator(Estimator):
                     sample_weight = self._get_sample_weight(y_train_fold)
                 else:
                     x_train_fold, y_train_fold = sampler.fit_sample(x_train_fold, y_train_fold)
-            kwargs['sample_weight'] = sample_weight
-            # kwargs['eval_set'] = [(x_val_fold, y_val_fold)]
+
+            if valid_idx.shape[0] > eval_size_limit:
+                eval_idx = valid_idx[0:eval_size_limit]
+                x_eval, y_eval = X_values[eval_idx], y_values[eval_idx]
+                x_eval = dex.array_to_df(x_eval, meta=X)
+            else:
+                x_eval, y_eval = x_val_fold, y_val_fold
+
+            if self.task != 'regression' and \
+                    len(da.unique(y_eval).compute()) != len(da.unique(y_train_fold).compute()):
+                eval_set = None
+            else:
+                eval_set = [dex.compute(x_eval, y_eval)]
+
             fold_est = copy.deepcopy(self.gbm_model)
-            fold_est.fit(x_train_fold, y_train_fold, **kwargs)
+            fit_kwargs = {**kwargs, 'sample_weight': sample_weight, 'eval_set': eval_set, 'verbose': 0,
+                          'early_stopping_rounds': kwargs.get('early_stopping_rounds')
+                          if eval_set is not None else None}
+            fold_est.fit(x_train_fold, y_train_fold, **fit_kwargs)
 
             # print(f'fold {n_fold}, est:{fold_est.__class__},  best_n_estimators:{fold_est.best_n_estimators}')
             if self.classes_ is None and hasattr(fold_est, 'classes_'):
@@ -383,8 +403,8 @@ class HyperGBMEstimator(Estimator):
 
         if verbose > 0:
             logger.info('estimator is fitting the data')
-
-        self.gbm_model.fit(X, y, **kwargs)
+        fit_kwargs = {**kwargs, 'verbose': 0}
+        self.gbm_model.fit(X, y, **fit_kwargs)
 
         if self.classes_ is None and hasattr(self.gbm_model, 'classes_'):
             self.classes_ = self.gbm_model.classes_
