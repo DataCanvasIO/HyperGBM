@@ -102,7 +102,7 @@ Here is feature matrix of training modes:
 |                            | | Constant features cleanup                          | | √        | | √                           | | √                              |
 |                            | | Collinearity features cleanup                      | | √        | | √                           | | √                              |
 +----------------------------+------------------------------------------------------+------------+-------------------------------+----------------------------------+
-|Data set split              | Adversarial validation                               | | √        | |                             | |                                |
+|Data set split              | Adversarial validation                               | | √        | | √                           | | √                              |
 +----------------------------+------------------------------------------------------+------------+-------------------------------+----------------------------------+
 |Modeling algorithms         | | XGBoost                                            | | √        | | √                           | | √                              |
 |                            | | Catboost                                           | | √        | | √                           | |                                |
