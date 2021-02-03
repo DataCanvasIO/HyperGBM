@@ -301,7 +301,7 @@ class HyperGBMEstimator(Estimator):
                 else:
                     x_train_fold, y_train_fold = sampler.fit_sample(x_train_fold, y_train_fold)
             kwargs['sample_weight'] = sample_weight
-
+            # kwargs['eval_set'] = [(x_val_fold, y_val_fold)]
             fold_est = copy.deepcopy(self.gbm_model)
             fold_est.fit(x_train_fold, y_train_fold, **kwargs)
 

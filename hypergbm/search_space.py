@@ -13,7 +13,10 @@ from hypergbm.sklearn.transformers import FeatureGenerationTransformer
 from hypernets.core.ops import ModuleChoice, HyperInput
 from hypernets.core.search_space import Choice, Real, Int
 from hypernets.core.search_space import HyperSpace
+from hypernets.utils import logging
 from tabular_toolbox.column_selector import column_object, column_exclude_datetime
+
+logger = logging.get_logger(__name__)
 
 
 def _merge_dict(*args):
@@ -89,10 +92,24 @@ class BaseSearchSpaceGenerator(SearchSpaceGenerator):
                                            fit_kwargs=_merge_dict(pairs[2], kwargs.pop(f'{k}_fit_kwargs', None)))
                     for k, pairs in self.estimators.items()]
 
-        for c in creators:
-            for k, v in kwargs.items():
+        unused = {}
+        for k, v in kwargs.items():
+            used = False
+            for c in creators:
                 if k in c.estimator_init_kwargs.keys():
                     c.estimator_init_kwargs[k] = v
+                    used = True
+                if k in c.estimator_fit_kwargs.keys():
+                    c.estimator_fit_kwargs[k] = v
+                    used = True
+            if not used:
+                # logger.warn(f'Unused parameter: {k} = {v}')
+                unused[k] = v
+
+        # set unused kwargs as fit_kwargs of all estimators
+        if unused:
+            for c in creators:
+                c.estimator_fit_kwargs.update(unused)
 
         estimators = [c() for c in creators]
         return ModuleChoice(estimators, name='estimator_options')(hyper_input)

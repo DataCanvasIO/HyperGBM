@@ -352,10 +352,11 @@ class XGBClassifierDaskWrapper(dask_xgboost.XGBClassifier):
 
         if sample_weight is not None and sample_weight.npartitions > 1:
             sample_weight = None  # fixme, dask_xgboost bug
+
         return super(XGBClassifierDaskWrapper, self) \
-            .fit(X, y, classes=classes, eval_set=eval_set,
+            .fit(X, y, classes=classes, eval_set=eval_set, eval_metric=eval_metric,
                  sample_weight=sample_weight, sample_weight_eval_set=sample_weight_eval_set,
-                 eval_metric=eval_metric, early_stopping_rounds=early_stopping_rounds)
+                 early_stopping_rounds=early_stopping_rounds if eval_set is not None else None)
 
     @property
     def best_n_estimators(self):
@@ -398,10 +399,14 @@ class XGBRegressorDaskWrapper(dask_xgboost.XGBRegressor):
     def fit(self, X, y=None, eval_set=None,
             sample_weight=None, sample_weight_eval_set=None,
             eval_metric=None, early_stopping_rounds=None, **kwargs):
+
+        if sample_weight is not None and sample_weight.npartitions > 1:
+            sample_weight = None  # fixme, dask_xgboost bug
+
         return super(XGBRegressorDaskWrapper, self) \
-            .fit(X, y, eval_set=eval_set,
+            .fit(X, y, eval_set=eval_set, eval_metric=eval_metric,
                  sample_weight=sample_weight, sample_weight_eval_set=sample_weight_eval_set,
-                 eval_metric=eval_metric, early_stopping_rounds=early_stopping_rounds)
+                 early_stopping_rounds=early_stopping_rounds if eval_set is not None else None)
 
     @property
     def best_n_estimators(self):
