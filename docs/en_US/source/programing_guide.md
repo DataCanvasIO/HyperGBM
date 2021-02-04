@@ -265,11 +265,11 @@ target = 'target'
 #create an experiment
 experiment = make_experiment(df, target=target, 
                  search_space=lambda: search_space_general(class_balancing='SMOTE',n_estimators=300, early_stopping_rounds=10, verbose=0),
-                 drop_feature_with_collinearity=False,
+                 collinearity_detection=False,
                  drift_detection=True,
-                 two_stage_importance_selection=False,
-                 n_est_feature_importance=10,
-                 importance_threshold=1e-5,
+                 feature_reselection=False,
+                 feature_reselection_estimator_size=10,
+                 feature_reselection_threshold=1e-5,
                  ensemble_size=20,
                  pseudo_labeling=False,
                  pseudo_labeling_proba_threshold=0.8,
@@ -303,15 +303,15 @@ pred = estimator.predict(X_real)
 - *random_state*: int or RandomState instance, (default=9527), Controls the shuffling applied to the data before applying the split.
 - *scorer*: str, callable or None, (default=None), Scorer to used for feature importance evaluation and ensemble. It can be a single string (see [get_scorer](https://scikit-learn.org/stable/modules/generated/sklearn.metrics.get_scorer.html)) or a callable (see [make_scorer](https://scikit-learn.org/stable/modules/generated/sklearn.metrics.make_scorer.html)). If None, exception will occur.
 - *data_cleaner_args*: dict, (default=None),  dictionary of parameters to initialize the `DataCleaner` instance. If None, `DataCleaner` will initialized with default values.
-- *drop_feature_with_collinearity*: bool, (default=False), Whether to clear multicollinearity features
+- *collinearity_detection*: bool, (default=False), Whether to clear multicollinearity features
 - *drift_detection*: bool,(default=True), Whether to enable data drift detection and processing. Only valid when *X_test* is provided. Concept drift in the input data is one of the main challenges. Over time, it will worsen the performance of model on new data. We introduce an adversarial validation approach to concept drift problems in HyperGBM. This approach will detect concept drift and identify the drifted features and process them automatically.
-- *two_stage_importance_selection*: bool, (default=True), Whether to enable two stage feature selection and searching
-- *n_est_feature_importance*: int, (default=10), The number of estimator to evaluate feature importance. Only valid when *two_stage_importance_selection* is True.
-- *importance_threshold*: float, (default=1e-5), The threshold for feature selection. Features with importance below the threshold will be dropped.  Only valid when *two_stage_importance_selection* is True.
+- *feature_reselection*: bool, (default=True), Whether to enable two stage feature selection and searching
+- *feature_reselection_estimator_size*: int, (default=10), The number of estimator to evaluate feature importance. Only valid when *feature_reselection* is True.
+- *feature_reselection_threshold*: float, (default=1e-5), The threshold for feature selection. Features with importance below the threshold will be dropped.  Only valid when *feature_reselection* is True.
 - *ensemble_size*: int, (default=20), The number of estimator to ensemble. During the AutoML process, a lot of models will be generated with different preprocessing pipelines, different models, and different hyperparameters. Usually selecting some of the models that perform well to ensemble can obtain better generalization ability than just selecting the single best model.
 - *pseudo_labeling*: bool, (default=False), Whether to enable pseudo labeling. Pseudo labeling is a semi-supervised learning technique, instead of manually labeling the unlabelled data, we give approximate labels on the basis of the labelled data. Pseudo-labeling can sometimes improve the generalization capabilities of the model.
-- *pseudo_labeling_proba_threshold*: float, (default=0.8), Confidence threshold of pseudo-label samples. Only valid when *two_stage_importance_selection* is True.
-- *pseudo_labeling_resplit*: bool, (default=False), Whether to re-split the training set and evaluation set after adding pseudo-labeled data. If False, the pseudo-labeled data is only appended to the training set. Only valid when *two_stage_importance_selection* is True.
+- *pseudo_labeling_proba_threshold*: float, (default=0.8), Confidence threshold of pseudo-label samples. Only valid when *pseudo_labeling* is True.
+- *pseudo_labeling_resplit*: bool, (default=False), Whether to re-split the training set and evaluation set after adding pseudo-labeled data. If False, the pseudo-labeled data is only appended to the training set. Only valid when *pseudo_labeling* is True.
 - *retrain_on_wholedata*: bool, (default=False), Whether to retrain the model with whole data after the search is completed.
 - *log_level*: int or None, (default=None), Level of logging, possible values:[logging.CRITICAL, logging.FATAL, logging.ERROR, logging.WARNING, logging.WARN, logging.INFO, logging.DEBUG, logging.NOTSET]
 

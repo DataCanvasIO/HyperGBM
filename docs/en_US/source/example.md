@@ -456,9 +456,9 @@ Accord to features importance select part of the features and retraining model t
 >>> hk = HyperGBM(rs, task='multiclass', reward_metric='accuracy', callbacks=[])
 >>> 
 >>> experiment = CompeteExperiment(hk, X_train, y_train, X_test, y_test, callbacks=[], scorer=get_scorer('accuracy'),
-...                                two_stage_importance_selection=True,  # enable feature importance selection
-...                                n_est_feature_importance=3,  # use 3 estimators to evaluate feature importance
-...                                importance_threshold=0.01)  # importance less than the threshold will not be selected
+...                                feature_reselection=True,  # enable feature importance selection
+...                                feature_reselection_estimator_size=3,  # use 3 estimators to evaluate feature importance
+...                                feature_reselection_threshold=0.01)  # importance less than the threshold will not be selected
 >>> pipeline = experiment.run(use_cache=True, max_trials=10)
    Trial No.  Reward   Elapsed                      Space Vector
 0          2     1.0  0.373262                [2, 3, 0, 2, 2, 1]
