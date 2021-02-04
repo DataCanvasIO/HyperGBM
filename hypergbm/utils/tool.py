@@ -91,6 +91,10 @@ def main():
         s2g = a.add_argument_group('Two stage searching')
         s2g.add_argument('--feature-reselection', '-feature-reselection', type=to_bool, default=False)
         s2g.add_argument('--pseudo-labeling', '-pseudo-labeling', '-pl', type=to_bool, default=False)
+        s2g.add_argument('--pseudo-labeling-proba-threshold', '-pseudo-labeling-proba-threshold', '-pl-threshold',
+                         type=float, default=0.8)
+        s2g.add_argument('--pseudo-labeling-resplit', '-pseudo-labeling-resplit', '-pl-resplit',
+                         type=to_bool, default=False)
 
         # others
         og = a.add_argument_group('Others')
@@ -198,6 +202,8 @@ def train(args):
                                  drift_detection=args.drift_detection,
                                  collinearity_detection=args.collinearity_detection,
                                  pseudo_labeling=args.pseudo_labeling,
+                                 pseudo_labeling_proba_threshold=args.pseudo_labeling_proba_threshold,
+                                 pseudo_labeling_resplit=args.pseudo_labeling_resplit,
                                  feature_reselection=args.feature_reselection,
                                  use_cache=args.use_cache,
                                  log_level=args.log_level,
