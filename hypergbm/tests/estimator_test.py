@@ -15,7 +15,8 @@ from hypergbm.sklearn.sklearn_ops import categorical_pipeline_simple, numeric_pi
     categorical_pipeline_complex, numeric_pipeline_complex
 from hypernets.core.ops import HyperInput, Choice, ModuleChoice
 from hypernets.core.search_space import HyperSpace, Real
-from tabular_toolbox.column_selector import column_object, column_exclude_datetime
+from tabular_toolbox.column_selector import column_object, column_exclude_datetime, column_number_exclude_timedelta, \
+    column_object_category_bool
 from tabular_toolbox.datasets import dsutils
 from tabular_toolbox.drift_detection import general_preprocessor
 from hypergbm.tests import test_output_dir
@@ -132,8 +133,6 @@ class Test_Estimator():
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, stratify=y, random_state=9527)
         import lightgbm as lgbm
         clf = lgbm.LGBMClassifier(n_estimators=1000)
-
-        clf.n_estimators
         clf.fit(X_train, y_train, eval_set=[(X_test, y_test)], early_stopping_rounds=5)
 
         assert clf.best_iteration_ == 11
@@ -162,6 +161,8 @@ class Test_Estimator():
         space.random_sample()
         estimator = HyperGBMEstimator('binary', space, cache_dir=f'{test_output_dir}/hypergbm_cache')
         X, y = get_df()
+        num_cols = column_number_exclude_timedelta(X)
+        cat_cols = column_object_category_bool(X)
         df_1 = estimator.data_pipeline.fit_transform(X, y)
         assert list(df_1.columns) == ['a', 'e', 'f', 'b', 'c', 'd', 'l']
         assert df_1.shape == (3, 7)
