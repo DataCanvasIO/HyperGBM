@@ -71,7 +71,7 @@ class BaseSearchSpaceGenerator(SearchSpaceGenerator):
 
     def create_preprocessor(self, hyper_input, **kwargs):
         cat_pipeline_mode = kwargs.pop('cat_pipeline_mode', 'simple')
-        dataframe_mapper_default = kwargs.pop('dataframe_mapper_default', None)
+        dataframe_mapper_default = kwargs.pop('dataframe_mapper_default', False)
 
         num_pipeline = numeric_pipeline_complex()(hyper_input)
         if cat_pipeline_mode == 'simple':
@@ -324,6 +324,7 @@ def search_space_general_removed(dataframe_mapper_default=False,
         xgb_est = XGBoostEstimator(fit_kwargs=xgb_fit_kwargs, **xgb_init_kwargs)
         catboost_est = CatBoostEstimator(fit_kwargs=catboost_fit_kwargs, **catboost_init_kwargs)
         # histgb_est = HistGBEstimator(fit_kwargs=histgb_fit_kwargs, **histgb_init_kwargs)
+        # ModuleChoice([xgb_est, lightgbm_est, catboost_est], name='estimator_options')(union_pipeline)
         ModuleChoice([xgb_est, lightgbm_est, catboost_est], name='estimator_options')(union_pipeline)
         space.set_inputs(input)
     return space

@@ -902,7 +902,7 @@ class CompeteExperiment(SteppedExperiment):
         if feature_reselection:
             step = PermutationImportanceSelectionStep(self, 'feature_reselection',
                                                       scorer=scorer,
-                                                      n_est_feature_importance=feature_reselection_estimator_size,
+                                                      estimator_size=feature_reselection_estimator_size,
                                                       importance_threshold=feature_reselection_threshold)
             steps.append(step)
             two_stage = True

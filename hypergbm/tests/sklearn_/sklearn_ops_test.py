@@ -148,7 +148,7 @@ class Test_CommonOps():
         next, (name, p) = space.Module_DataFrameMapper_1.compose()
         X, y = get_df()
         df_1 = p.fit_transform(X, y)
-        assert list(df_1.columns) == ['a_a', 'a_b', 'e_False', 'e_True', 'f_c', 'f_d']
+        assert list(df_1.columns) == ['a_0_a', 'a_1_b', 'e_0_False', 'e_1_True', 'f_0_c', 'f_1_d']
         assert df_1.shape == (3, 6)
 
         space = get_space_categorical_pipeline_complex()
@@ -163,8 +163,14 @@ class Test_CommonOps():
         next, (name, p) = space.Module_DataFrameMapper_1.compose()
         X, y = get_df()
         df_1 = p.fit_transform(X, y)
-        assert list(df_1.columns) == ['a_a', 'a_b', 'a_missing_value', 'e_False', 'e_True', 'f_c', 'f_d',
-                                      'f_missing_value']
+        assert list(df_1.columns) == ['a_0_a',
+                                      'a_1_b',
+                                      'a_2_missing_value',
+                                      'e_0_False',
+                                      'e_1_True',
+                                      'f_0_c',
+                                      'f_1_d',
+                                      'f_2_missing_value']
         assert df_1.shape == (3, 8)
 
         space = get_space_categorical_pipeline_complex()
