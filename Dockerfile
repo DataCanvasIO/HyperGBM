@@ -43,6 +43,6 @@ RUN pip3 install hypergbm==0.2.1
 
 EXPOSE 8888
 
-CMD [ "bash", "-c", "/usr/local/bin/jupyter notebook --notebook-dir=/opt/datacanvas/hypergbm/hypergbm/examples  --allow-root --NotebookApp.token=$NotebookToken"]
+CMD [ "bash", "-c", "/usr/local/bin/jupyter notebook --notebook-dir=/opt/datacanvas/hypergbm/hypergbm/examples  --ip=0.0.0.0 --allow-root --NotebookApp.token=$NotebookToken"]
 
 # docker run --rm  -p 8888:8888 -e NotebookToken=your-token datacanvas/hypergbm-example
