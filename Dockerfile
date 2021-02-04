@@ -22,22 +22,22 @@ RUN  yum install epel-release  centos-release-scl -y \
 
 ENV LLVM_CONFIG /usr/bin/llvm-config-9.0-64
 
-RUN mkdir -p /root/.pip \
-    && echo -e "[global]\n\
-index-url = https://mirrors.aliyun.com/pypi/simple" > /root/.pip/pip.conf
+#RUN mkdir -p /root/.pip \
+#    && echo -e "[global]\n\
+#index-url = https://mirrors.aliyun.com/pypi/simple" > /root/.pip/pip.conf
 
 # For install shap
-RUN echo -e "[easy_install]\n\
-index_url = https://mirrors.aliyun.com/pypi/simple" > /root/.pydistutils.cfg
+#RUN echo -e "[easy_install]\n\
+#index_url = https://mirrors.aliyun.com/pypi/simple" > /root/.pydistutils.cfg
 
 RUN mkdir -p /opt/datacanvas
 
-RUN git clone https://github.com/DataCanvasIO/hypergbm.git  /opt/datacanvas/hypergbm
+RUN git clone -b 0.2.1 https://github.com/DataCanvasIO/hypergbm.git /opt/datacanvas/hypergbm
 
-RUN pip3 install jupyter # Docker Image deps
+RUN pip3 install jupyterlab Cython # Docker Image deps
 
 RUN pip3 -v install numpy==1.19.1 scikit-learn==0.23.1  # Prepare for shap
-RUN pip3 -v install shap==0.28.5 matplotlib  # Prepare for hypergbm
+RUN pip3 -v install shap==0.28.5 pyarrow==2.0.0 matplotlib  # Prepare for hypergbm
 
 RUN cd /opt/datacanvas/hypergbm && pip3 install .
 
