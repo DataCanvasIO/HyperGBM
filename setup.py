@@ -39,7 +39,9 @@ def read_extra_requirements():
     return extra
 
 
-version = '0.1.2'
+import hypergbm
+
+version = hypergbm.__version__
 
 MIN_PYTHON_VERSION = '>=3.6.*'
 
@@ -80,9 +82,9 @@ setup(
     },
     zip_safe=False,
     entry_points={
-                'console_scripts': [
-                    'hypergbm = hypergbm.utils.cli:main',
-                ]
-            },
+        'console_scripts': [
+            'hypergbm = hypergbm.utils.cli:main',
+        ]
+    },
     include_package_data=True,
 )
