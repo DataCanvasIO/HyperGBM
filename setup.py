@@ -4,10 +4,11 @@ from __future__ import absolute_import
 
 from setuptools import find_packages
 from setuptools import setup
+import os
+from os import path as P
 
 
 def read_requirements(file_path='requirements.txt'):
-    import os
 
     if not os.path.exists(file_path):
         return []
@@ -39,9 +40,20 @@ def read_extra_requirements():
     return extra
 
 
-import hypergbm
+try:
+    execfile
+except NameError:
+    def execfile(fname, globs, locs=None):
+        locs = locs or globs
+        exec(compile(open(fname).read(), fname, "exec"), globs, locs)
 
-version = hypergbm.__version__
+HERE = P.dirname((P.abspath(__file__)))
+
+version_ns = {}
+execfile(P.join(HERE, 'hypergbm', '_version.py'), version_ns)
+version = version_ns['__version__']
+
+print("__version__=" + version)
 
 MIN_PYTHON_VERSION = '>=3.6.*'
 

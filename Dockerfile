@@ -39,7 +39,7 @@ RUN pip3 install jupyterlab Cython # Docker Image deps
 RUN pip3 -v install numpy==1.19.1 scikit-learn==0.23.1  # Prepare for shap
 RUN pip3 -v install shap==0.28.5 pyarrow==2.0.0 matplotlib  # Prepare for hypergbm
 
-RUN cd /opt/datacanvas/hypergbm && pip3 install .
+RUN pip3 install hypergbm==0.2.1
 
 EXPOSE 8888
 

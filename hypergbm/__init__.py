@@ -7,4 +7,4 @@ __author__ = 'yangjian'
 from .hyper_gbm import HyperGBM, HyperGBMEstimator, HyperGBMExplainer, HyperEstimator, HyperModel
 from .experiment import CompeteExperiment, make_experiment
 
-__version__ = '0.2.1'
+from ._version import __version__
