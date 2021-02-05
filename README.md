@@ -16,11 +16,42 @@ As the name implies, the ML algorithms used in HyperGBM are all GBM models, and 
 
 The underlying search space representation and search algorithm in HyperGBM are powered by the [Hypernets](https://github.com/DataCanvasIO/Hypernets) project a general AutoML framework.
 
+## Tutorial
+* [Quick Start](https://hypergbm.readthedocs.io/en/latest/quick_start.html)
+* [Examples](https://hypergbm.readthedocs.io/en/latest/example.html)
+* [CompeteExperiment](https://hypergbm.readthedocs.io/en/latest/compete_experiment.html)
+* [HyperGBM](https://hypergbm.readthedocs.io/en/latest/hypergbm.html)
+* [Searchers](https://hypergbm.readthedocs.io/en/latest/searchers.html)
 
 ## Installation
 ```shell script
 pip install hypergbm
 ```
+
+## Examples
+
+User can create experiment instance with `make_experiment` and run it quickly。`train_data` is the only required parameter, all others are optional.   The `target` is also required if your target feature name isn't `y`。
+
+Codes:
+```python
+from hypergbm import make_experiment
+from tabular_toolbox.datasets import dsutils
+
+train_data = dsutils.load_blood()
+experiment = make_experiment(train_data, target='Class')
+estimator = experiment.run()
+print(estimator)
+```
+
+Outputs：
+```
+Pipeline(steps=[('data_clean',
+                 DataCleanStep(...),
+                ('estimator',
+                 GreedyEnsemble(...)])
+
+Process finished with exit code 0
+``` 
 
 Hypergbm also provides command line tools to train models and predict data:
 ```
@@ -38,6 +69,7 @@ For example,  train dataset [blood.csv](https://github.com/DataCanvasIO/tabular-
 ```shell script
 hypergbm --train_file=blood.csv --test_file=blood.csv --target=Class --pos_label=1 --model_output=model.pkl
 ```
+
 
 ## Hypernets related projects
 
