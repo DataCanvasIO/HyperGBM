@@ -6,10 +6,12 @@ import sys
 
 import psutil
 
-
 # from hypernets.utils import logging
 #
 # logger = logging.get_logger(__name__)
+
+
+metric_choices = ['accuracy', 'auc', 'f1', 'logloss', 'mse', 'mae', 'msle', 'precision', 'rmse', 'r2', 'recall']
 
 
 def to_bool(v):
@@ -71,9 +73,10 @@ def main():
         tg.add_argument('--task', '-task', type=str, default=None, choices=['binary', 'multiclass', 'regression'],
                         help='train task type, will be detected from target by default')
         tg.add_argument('--max-trials', '-max-trials', '-max', '-trials', '-n', type=int, default=10,
-                        help='')
-        tg.add_argument('--reward-metric', '-reward', '-metric', type=str, default='accuracy',
-                        help='search reward metric name, default %(default)s')
+                        help='search trial number limit, default %(default)s')
+        tg.add_argument('--reward-metric', '-reward', '-metric', type=str, default='accuracy', metavar='METRIC',
+                        choices=metric_choices,
+                        help='search reward metric name, one of [%(choices)s], default %(default)s')
         tg.add_argument('--cv', '-cv', type=to_bool, default=True,
                         help='enable to disable cross validation, default %(default)s')
         tg.add_argument('--ensemble-size', '-ensemble-size', '-ensemble', type=int, default=20,
@@ -88,17 +91,36 @@ def main():
                         help='default %(default)s ')
         eg.add_argument('--early-stopping-reward', '-early-stopping-reward', type=float, default=0.0)
 
+        dg = a.add_argument_group('Drift detection')
+        dg.add_argument('--drift-detection', '-dd', type=to_bool, default=True,
+                        help='Enable/disable drift detection if test data is provided, default %(default)s')
+        dg.add_argument('--drift-detection-remove-shift-variable', '-dd-remove-shift-variable',
+                        type=to_bool, default=True,
+                        help='default %(default)s')
+        dg.add_argument('--drift-detection-variable-shift-threshold', '-dd-variable-shift-threshold',
+                        type=float, default=0.7,
+                        help='default %(default)s')
+        dg.add_argument('--drift-detection-threshold', '-dd-threshold', type=float, default=0.6,
+                        help='default default %(default)s')
+        dg.add_argument('--drift-detection-remove-size', '-dd-remove-size', type=float, default=0.1,
+                        help='default %(default)s')
+        dg.add_argument('--drift-detection-min-features', '-dd-min-features', type=int, default=10,
+                        help='default %(default)s')
+        dg.add_argument('--drift-detection-num-folds', '-dd-num-folds', type=int, default=5,
+                        help='default %(default)s')
+
         s2g = a.add_argument_group('Two stage searching')
-        s2g.add_argument('--feature-reselection', '-feature-reselection', type=to_bool, default=False)
-        s2g.add_argument('--pseudo-labeling', '-pseudo-labeling', '-pl', type=to_bool, default=False)
-        s2g.add_argument('--pseudo-labeling-proba-threshold', '-pseudo-labeling-proba-threshold', '-pl-threshold',
-                         type=float, default=0.8)
-        s2g.add_argument('--pseudo-labeling-resplit', '-pseudo-labeling-resplit', '-pl-resplit',
-                         type=to_bool, default=False)
+        s2g.add_argument('--feature-reselection', '-feature-reselection', '-pi', type=to_bool, default=False,
+                         help='default %(default)s')
+        s2g.add_argument('--pseudo-labeling', '-pseudo-labeling', '-pl', type=to_bool, default=False,
+                         help='default %(default)s')
+        s2g.add_argument('--pseudo-labeling-proba-threshold', '-pl-threshold', type=float, default=0.8,
+                         help='default %(default)s')
+        s2g.add_argument('--pseudo-labeling-resplit', '-pl-resplit', type=to_bool, default=False,
+                         help='default %(default)s')
 
         # others
         og = a.add_argument_group('Others')
-        og.add_argument('--drift-detection', '-drift-detection', '-dd', type=to_bool, default=False)
         og.add_argument('--collinearity-detection', '-collinearity-detection', '-cd', type=to_bool, default=False)
         og.add_argument('--use-cache', '-use-cache', '-cache', type=to_bool, default=None)
 
@@ -108,8 +130,9 @@ def main():
                        help='the file path of evaluation data, .csv and .parquet files are supported.')
         a.add_argument('--target', '-target', type=str, default='y',
                        help='target feature name, default is %(default)s')
-        a.add_argument('--metric', '-metric', type=str, default=['accuracy'], nargs='*',
-                       help='metric name, default %(default)s')
+        a.add_argument('--metric', '-metric', type=str, default=['accuracy'], nargs='*',metavar='METRIC',
+                       choices=metric_choices,
+                       help='metric name list, one or more of [%(choices)s], default %(default)s')
         a.add_argument('--model-file', '-model-file', '-model', default='model.pkl',
                        help='the pickle file name for trained model, default %(default)s')
 
@@ -200,6 +223,12 @@ def train(args):
                                  early_stopping_reward=args.early_stopping_reward,
                                  cv=args.cv,
                                  drift_detection=args.drift_detection,
+                                 drift_detection_remove_shift_variable=args.drift_detection_remove_shift_variable,
+                                 drift_detection_variable_shift_threshold=args.drift_detection_variable_shift_threshold,
+                                 drift_detection_threshold=args.drift_detection_threshold,
+                                 drift_detection_remove_size=args.drift_detection_remove_size,
+                                 drift_detection_min_features=args.drift_detection_min_features,
+                                 drift_detection_num_folds=args.drift_detection_num_folds,
                                  collinearity_detection=args.collinearity_detection,
                                  pseudo_labeling=args.pseudo_labeling,
                                  pseudo_labeling_proba_threshold=args.pseudo_labeling_proba_threshold,

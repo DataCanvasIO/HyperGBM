@@ -249,29 +249,41 @@ class MulticollinearityDetectStep(FeatureSelectStep):
 
 class DriftDetectStep(FeatureSelectStep):
 
-    def __init__(self, experiment, name, drift_detection=True):
+    def __init__(self, experiment, name, remove_shift_variable, variable_shift_threshold,
+                 threshold, remove_size, min_features, num_folds):
         super().__init__(experiment, name)
 
-        self.drift_detection = drift_detection
+        self.remove_shift_variable = remove_shift_variable
+        self.variable_shift_threshold = variable_shift_threshold
+
+        self.threshold = threshold
+        self.remove_size = remove_size if 1.0 > remove_size > 0 else 0.1
+        self.min_features = min_features if min_features > 1 else 10
+        self.num_folds = num_folds if num_folds > 1 else 5
 
         # fitted
         self.output_drift_detection_ = None
 
     def fit_transform(self, hyper_model, X_train, y_train, X_test=None, X_eval=None, y_eval=None, **kwargs):
-        if self.drift_detection and self.experiment.X_test is not None:
+        if X_test is not None:
             if _is_notebook:
                 display_markdown('### Drift detection', raw=True)
 
             self.step_start('detect drifting')
-            features, history, scores = dd.feature_selection(X_train, X_test)
-
-            if set(X_train.columns.to_list()) - set(features):
+            features, history, scores = dd.feature_selection(X_train, X_test,
+                                                             remove_shift_variable=self.remove_shift_variable,
+                                                             variable_shift_threshold=self.variable_shift_threshold,
+                                                             auc_threshold=self.threshold,
+                                                             min_features=self.min_features,
+                                                             remove_size=self.remove_size,
+                                                             cv=self.num_folds)
+            dropped = set(X_train.columns.to_list()) - set(features)
+            if dropped:
                 self.selected_features_ = features
                 X_train = X_train[features]
+                X_test = X_test[features]
                 if X_eval is not None:
                     X_eval = X_eval[features]
-                if X_test is not None:
-                    X_test = X_test[features]
             else:
                 self.selected_features_ = None
 
@@ -281,6 +293,8 @@ class DriftDetectStep(FeatureSelectStep):
             if _is_notebook:
                 display(pd.DataFrame((('no drift features', features), ('history', history), ('drift score', scores)),
                                      columns=['key', 'value']), display_id='output_drift_detection')
+            elif logger.is_info_enabled():
+                logger.info(f'{self.name} drop {len(dropped)} columns, {len(features)} kept')
 
         return hyper_model, X_train, y_train, X_test, X_eval, y_eval
 
@@ -342,6 +356,8 @@ class PermutationImportanceSelectionStep(FeatureSelectStep):
         if _is_notebook:
             display(pd.DataFrame([('Selected', selected_features), ('Unselected', unselected_features)],
                                  columns=['key', 'value']))
+        elif logger.is_info_enabled():
+            logger.info(f'drop {len(unselected_features)} columns: {unselected_features}')
 
         self.selected_features_ = selected_features if len(unselected_features) > 0 else None
         self.unselected_features_ = unselected_features
@@ -599,6 +615,8 @@ class PseudoLabelStep(ExperimentStep):
         if classes is not None:
             y_pseudo = np.array(classes).take(y_pseudo, axis=0)
 
+        logger.info(f'extract pseudo label data: positive={len(positive)}, negative={len(negative)}')
+
         return X_pseudo, y_pseudo
 
     def merge_pseudo_label(self, X_train, y_train, X_eval, y_eval, X_pseudo, y_pseudo, **kwargs):
@@ -765,6 +783,12 @@ class CompeteExperiment(SteppedExperiment):
                  data_cleaner_args=None,
                  collinearity_detection=False,
                  drift_detection=True,
+                 drift_detection_remove_shift_variable=True,
+                 drift_detection_variable_shift_threshold=0.7,
+                 drift_detection_threshold=0.7,
+                 drift_detection_remove_size=0.1,
+                 drift_detection_min_features=10,
+                 drift_detection_num_folds=5,
                  ensemble_size=20,
                  feature_reselection=False,
                  feature_reselection_estimator_size=10,
@@ -824,6 +848,12 @@ class CompeteExperiment(SteppedExperiment):
             the input data is one of the main challenges. Over time, it will worsen the performance of model on new data.
             We introduce an adversarial validation approach to concept drift problems in HyperGBM. This approach will detect
             concept drift and identify the drifted features and process them automatically.
+        drift_detection_remove_shift_variable : bool, (default=True)
+        drift_detection_variable_shift_threshold : float, (default=0.7)
+        drift_detection_threshold : float, (default=0.7)
+        drift_detection_remove_size : float, (default=0.1)
+        drift_detection_min_features : int, (default=10)
+        drift_detection_num_folds : int, (default=5)
         feature_reselection : bool, (default=True)
             Whether to enable two stage feature selection and searching
         feature_reselection_estimator_size : int, (default=10)
@@ -879,7 +909,13 @@ class CompeteExperiment(SteppedExperiment):
                                                      drop_feature_with_collinearity=collinearity_detection))
         # drift detection
         if drift_detection:
-            steps.append(DriftDetectStep(self, 'drift_detection', drift_detection=drift_detection))
+            steps.append(DriftDetectStep(self, 'drift_detection',
+                                         remove_shift_variable=drift_detection_remove_shift_variable,
+                                         variable_shift_threshold=drift_detection_variable_shift_threshold,
+                                         threshold=drift_detection_threshold,
+                                         remove_size=drift_detection_remove_size,
+                                         min_features=drift_detection_min_features,
+                                         num_folds=drift_detection_num_folds))
 
         # first-stage search
         steps.append(search_cls(self, 'space_search', cv=cv, num_folds=num_folds))
@@ -1257,8 +1293,8 @@ def make_experiment(train_data,
     if logger.is_info_enabled():
         train_shape, test_shape, eval_shape = \
             dex.compute(X_train.shape,
-                        X_eval.shape if X_eval is not None else None,
                         X_test.shape if X_test is not None else None,
+                        X_eval.shape if X_eval is not None else None,
                         traverse=True)
         logger.info(f'make_experiment with train data:{train_shape}, '
                     f'test data:{test_shape}, eval data:{eval_shape}, target:{target}')
