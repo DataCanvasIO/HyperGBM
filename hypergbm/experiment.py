@@ -357,7 +357,7 @@ class PermutationImportanceSelectionStep(FeatureSelectStep):
             display(pd.DataFrame([('Selected', selected_features), ('Unselected', unselected_features)],
                                  columns=['key', 'value']))
         elif logger.is_info_enabled():
-            logger.info(f'drop {len(unselected_features)} columns: {unselected_features}')
+            logger.info(f'{self.name} drop {len(unselected_features)} columns, {len(selected_features)} kept')
 
         self.selected_features_ = selected_features if len(unselected_features) > 0 else None
         self.unselected_features_ = unselected_features
