@@ -448,6 +448,14 @@ class CatBoostClassifierWrapper(catboost.CatBoostClassifier):
     def best_n_estimators(self):
         return self.best_iteration_
 
+    def predict(self, data, **kwargs):
+        data = data[self.feature_names_]
+        return super(CatBoostClassifierWrapper, self).predict(data, **kwargs)
+
+    def predict_proba(self, data, **kwargs):
+        data = data[self.feature_names_]
+        return super(CatBoostClassifierWrapper, self).predict_proba(data, **kwargs)
+
 
 class CatBoostRegressionWrapper(catboost.CatBoostRegressor):
     def fit(self, X, y=None, **kwargs):
@@ -459,6 +467,10 @@ class CatBoostRegressionWrapper(catboost.CatBoostRegressor):
     @property
     def best_n_estimators(self):
         return self.best_iteration_
+
+    def predict(self, data, **kwargs):
+        data = data[self.feature_names_]
+        return super(CatBoostRegressionWrapper, self).predict(data, **kwargs)
 
 
 class CatBoostEstimator(HyperEstimator):
