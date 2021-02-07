@@ -120,6 +120,10 @@ class LGBMRegressorWrapper(lightgbm.LGBMRegressor):
         else:
             return self.best_iteration_
 
+    def predict(self, X, **kwargs):
+        pred = super(LGBMRegressorWrapper, self).predict(X, **kwargs)
+        return pred
+
 
 class LightGBMEstimator(HyperEstimator):
     def __init__(self, fit_kwargs, boosting_type='gbdt', num_leaves=31, max_depth=-1,

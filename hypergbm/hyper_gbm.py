@@ -428,6 +428,7 @@ class HyperGBMEstimator(Estimator):
         if self.cv_gbm_models_ is not None:
             if self.task == 'regression':
                 pred_sum = None
+                X = self.transform_data(X, use_cache=use_cache, verbose=verbose)
                 for est in self.cv_gbm_models_:
                     pred = est.predict(X)
                     if pred_sum is None:
