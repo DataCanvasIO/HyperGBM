@@ -209,25 +209,23 @@ class DataCleanStep(ExperimentStep):
 
 class MulticollinearityDetectStep(FeatureSelectStep):
 
-    def __init__(self, experiment, name, drop_feature_with_collinearity=True):
+    def __init__(self, experiment, name):
         super().__init__(experiment, name)
 
-        self.drop_feature_with_collinearity = drop_feature_with_collinearity
-
     def fit_transform(self, hyper_model, X_train, y_train, X_test=None, X_eval=None, y_eval=None, **kwargs):
-        if self.drop_feature_with_collinearity:
-            if _is_notebook:
-                display_markdown('### Drop features with collinearity', raw=True)
+        if _is_notebook:
+            display_markdown('### Drop features with collinearity', raw=True)
 
-            self.step_start('drop features with multicollinearity')
-            corr_linkage, remained, dropped = select_by_multicollinearity(X_train)
-            self.output_multi_collinearity_ = {
-                'corr_linkage': corr_linkage,
-                'remained': remained,
-                'dropped': dropped
-            }
-            self.step_progress('calc correlation')
+        self.step_start('drop features with multicollinearity')
+        corr_linkage, remained, dropped = select_by_multicollinearity(X_train)
+        self.output_multi_collinearity_ = {
+            'corr_linkage': corr_linkage,
+            'remained': remained,
+            'dropped': dropped
+        }
+        self.step_progress('calc correlation')
 
+        if dropped:
             self.selected_features_ = remained
 
             X_train = X_train[self.selected_features_]
@@ -237,12 +235,16 @@ class MulticollinearityDetectStep(FeatureSelectStep):
                 X_test = X_test[self.selected_features_]
             self.step_progress('drop features')
             self.step_end(output=self.output_multi_collinearity_)
+        else:
+            self.selected_features_ = None
 
-            if _is_notebook:
-                display(pd.DataFrame([(k, v)
-                                      for k, v in self.output_multi_collinearity_.items()],
-                                     columns=['key', 'value']),
-                        display_id='output_drop_feature_with_collinearity')
+        if _is_notebook:
+            display(pd.DataFrame([(k, v)
+                                  for k, v in self.output_multi_collinearity_.items()],
+                                 columns=['key', 'value']),
+                    display_id='output_drop_feature_with_collinearity')
+        elif logger.is_info_enabled():
+            logger.info(f'{self.name} drop {len(dropped)} columns, {len(remained)} kept')
 
         return hyper_model, X_train, y_train, X_test, X_eval, y_eval
 
@@ -905,8 +907,8 @@ class CompeteExperiment(SteppedExperiment):
 
         # select by collinearity
         if collinearity_detection:
-            steps.append(MulticollinearityDetectStep(self, 'collinearity_detection',
-                                                     drop_feature_with_collinearity=collinearity_detection))
+            steps.append(MulticollinearityDetectStep(self, 'collinearity_detection'))
+
         # drift detection
         if drift_detection:
             steps.append(DriftDetectStep(self, 'drift_detection',
