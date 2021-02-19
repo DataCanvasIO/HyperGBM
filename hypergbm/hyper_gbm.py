@@ -595,12 +595,17 @@ class HyperGBMEstimator(Estimator):
             state = super().__getstate__()
         except AttributeError:
             state = self.__dict__.copy()
-        # Don't pickle eval_set
+        # Don't pickle eval_set and sample_weight
         fit_kwargs = state.get('fit_kwargs')
         if fit_kwargs is not None and 'eval_set' in fit_kwargs.keys():
             fit_kwargs = fit_kwargs.copy()
             fit_kwargs.pop('eval_set')
             state['fit_kwargs'] = fit_kwargs
+        if fit_kwargs is not None and 'sample_weight' in fit_kwargs.keys():
+            fit_kwargs = fit_kwargs.copy()
+            fit_kwargs.pop('sample_weight')
+            state['fit_kwargs'] = fit_kwargs
+
         return state
 
 
