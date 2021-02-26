@@ -59,104 +59,164 @@ def setup_dask(overload):
 def main():
     def setup_train_args(a):
         tg = a.add_argument_group('Training settings')
-        tg.add_argument('--train-data', '-train-data', '--train-file', '-train-file', '-train', type=str, default=None,
+        tg.add_argument('--train-data', '--train-file', '--train', type=str, default=None,
                         help='the file path of training data, .csv and .parquet files are supported.')
-        tg.add_argument('--eval-data', '-eval-data', '--eval-file', '-eval-file', '-eval', type=str, default=None,
+        tg.add_argument('--eval-data', '--eval-file', '--eval', type=str, default=None,
                         help='the file path of evaluation data, .csv and .parquet files are supported.')
-        tg.add_argument('--test-data', '-test-data', '--test-file', '-test-file', '-test', type=str, default=None,
+        tg.add_argument('--test-data', '--test-file', '--test', type=str, default=None,
                         help='the file path of testing data, .csv and .parquet files are supported.')
-        tg.add_argument('--train-test-split-strategy', '-train-test-split-strategy', type=str, default=None,
+        tg.add_argument('--train-test-split-strategy', type=str, default=None,
                         choices=[None, 'adversarial_validation'],
                         help=None)
-        tg.add_argument('--target', '-target', type=str, default=None,
+        tg.add_argument('--target', '--y', type=str, default=None,
                         help='training target feature name, default is "y"')
-        tg.add_argument('--task', '-task', type=str, default=None, choices=['binary', 'multiclass', 'regression'],
+        tg.add_argument('--task', type=str, default=None, choices=['binary', 'multiclass', 'regression'],
                         help='train task type, will be detected from target by default')
-        tg.add_argument('--max-trials', '-max-trials', '-max', '-trials', '-n', type=int, default=10,
+        tg.add_argument('--max-trials', '--trials', '--n', type=int, default=10,
                         help='search trial number limit, default %(default)s')
-        tg.add_argument('--reward-metric', '-reward', '-metric', type=str, default='accuracy', metavar='METRIC',
+        tg.add_argument('--reward-metric', '--reward', '--metric', type=str, default='accuracy', metavar='METRIC',
                         choices=metric_choices,
                         help='search reward metric name, one of [%(choices)s], default %(default)s')
-        tg.add_argument('--cv', '-cv', type=to_bool, default=True,
+        tg.add_argument('--cv', type=to_bool, default=True,
                         help='enable to disable cross validation, default %(default)s')
-        tg.add_argument('--ensemble-size', '-ensemble-size', '-ensemble', type=int, default=20,
+        tg.add_argument('-cv', '-cv+', default='cv', action='store_true',
+                        help='alias of "--cv true"')
+        tg.add_argument('-cv-', default='cv', action='store_false',
+                        help='alias of "--cv false"')
+        tg.add_argument('--ensemble-size', '--ensemble', type=int, default=20,
                         help='how many estimators are involved, set "0" to disable ensemble, default %(default)s')
-        tg.add_argument('--model-file', '-model-file', '-model', type=str, default='model.pkl',
+        tg.add_argument('--model-file', '--model', type=str, default='model.pkl',
                         help='the output pickle file name for trained model, default %(default)s')
 
         eg = a.add_argument_group('Early stopping settings')
-        eg.add_argument('--early-stopping-time-limit', '-time-limit', type=int, default=3600,
+        eg.add_argument('--early-stopping-time-limit', '--es-time-limit', type=int, default=3600,
                         help='time limit to search and train, set 0 to disable, default %(default)s seconds')
-        eg.add_argument('--early-stopping-rounds', '-early-stopping-rounds', type=int, default=10,
+        eg.add_argument('--early-stopping-rounds', '--es-rounds', type=int, default=10,
                         help='default %(default)s ')
-        eg.add_argument('--early-stopping-reward', '-early-stopping-reward', type=float, default=0.0)
+        eg.add_argument('--early-stopping-reward', '--es-reward', type=float, default=0.0)
 
         dg = a.add_argument_group('Drift detection')
-        dg.add_argument('--drift-detection', '-dd', type=to_bool, default=True,
+        dg.add_argument('--drift-detection', type=to_bool, default=True,
                         help='Enable/disable drift detection if test data is provided, default %(default)s')
-        dg.add_argument('--drift-detection-remove-shift-variable', '-dd-remove-shift-variable',
+        dg.add_argument('-dd', '-dd+', dest='drift_detection', action='store_true',
+                        help='alias of "--drift-detection true"')
+        dg.add_argument('-dd-', dest='drift_detection', action='store_false',
+                        help='alias of "--drift-detection false"')
+        dg.add_argument('--drift-detection-remove-shift-variable', '--dd-remove-shift-variable',
                         type=to_bool, default=True,
                         help='default %(default)s')
-        dg.add_argument('--drift-detection-variable-shift-threshold', '-dd-variable-shift-threshold',
+        dg.add_argument('--drift-detection-variable-shift-threshold', '--dd-variable-shift-threshold',
                         type=float, default=0.7,
                         help='default %(default)s')
-        dg.add_argument('--drift-detection-threshold', '-dd-threshold', type=float, default=0.6,
+        dg.add_argument('--drift-detection-threshold', '--dd-threshold', type=float, default=0.6,
                         help='default default %(default)s')
-        dg.add_argument('--drift-detection-remove-size', '-dd-remove-size', type=float, default=0.1,
+        dg.add_argument('--drift-detection-remove-size', '--dd-remove-size', type=float, default=0.1,
                         help='default %(default)s')
-        dg.add_argument('--drift-detection-min-features', '-dd-min-features', type=int, default=10,
+        dg.add_argument('--drift-detection-min-features', '--dd-min-features', type=int, default=10,
                         help='default %(default)s')
-        dg.add_argument('--drift-detection-num-folds', '-dd-num-folds', type=int, default=5,
+        dg.add_argument('--drift-detection-num-folds', '--dd-num-folds', type=int, default=5,
                         help='default %(default)s')
 
+        cg = a.add_argument_group('Collinearity detection')
+        cg.add_argument('--collinearity-detection', type=to_bool, default=False)
+        cg.add_argument('-cd', '-cd+', dest='collinearity_detection', action='store_true',
+                        help='alias of "--collinearity-detection true"')
+        cg.add_argument('-cd-', dest='collinearity_detection', action='store_false',
+                        help='alias of "--collinearity-detection false"')
+
         s2g = a.add_argument_group('Two stage searching')
-        s2g.add_argument('--feature-reselection', '-feature-reselection', '-pi', type=to_bool, default=False,
+        s2g.add_argument('--feature-reselection', type=to_bool, default=False,
                          help='default %(default)s')
-        s2g.add_argument('--pseudo-labeling', '-pseudo-labeling', '-pl', type=to_bool, default=False,
+        s2g.add_argument('-re', '-re+', '-pi', '-pi+', dest='feature_reselection', action='store_true',
+                         help='alias of "--feature-reselection true"')
+        s2g.add_argument('-re-', '-pi-', dest='feature_reselection', action='store_false',
+                         help='alias of "--feature-reselection false"')
+
+        s2g.add_argument('--pseudo-labeling', type=to_bool, default=False,
                          help='default %(default)s')
-        s2g.add_argument('--pseudo-labeling-proba-threshold', '-pl-threshold', type=float, default=0.8,
+        s2g.add_argument('-pl', '-pl+', dest='pseudo_labeling', action='store_true',
+                         help='alias of "--pseudo-labeling true"')
+        s2g.add_argument('-pl-', dest='pseudo_labeling', action='store_false',
+                         help='alias of "--pseudo-labeling false"')
+        s2g.add_argument('--pseudo-labeling-proba-threshold', '--pl-threshold', type=float, default=0.8,
                          help='default %(default)s')
-        s2g.add_argument('--pseudo-labeling-resplit', '-pl-resplit', type=to_bool, default=False,
+        s2g.add_argument('--pseudo-labeling-resplit', '--pl-resplit', type=to_bool, default=False,
                          help='default %(default)s')
 
         # others
-        og = a.add_argument_group('Others')
-        og.add_argument('--collinearity-detection', '-collinearity-detection', '-cd', type=to_bool, default=False)
-        og.add_argument('--use-cache', '-use-cache', '-cache', type=to_bool, default=None)
+        og = a.add_argument_group('Other settings')
+        og.add_argument('--use-cache', type=to_bool, default=None)
+        og.add_argument('-use-cache', '-use-cache+', dest='use_cache', action='store_true',
+                        help='alias of "--use-cache true"')
+        og.add_argument('-use-cache-', dest='use_cache', action='store_false',
+                        help='alias of "--use-cache false"')
+
+        og.add_argument('--clear-cache', type=to_bool, default=None)
+        og.add_argument('-clear-cache', '-clear-cache+', dest='clear_cache', action='store_true',
+                        help='alias of "--clear-cache true"')
+        og.add_argument('-clear-cache-', dest='clear_cache', action='store_false',
+                        help='alias of "--clear-cache false"')
 
     def setup_evaluate_args(a):
-        a.add_argument('--eval-data', '-eval-data', '--eval-file', '-eval-file', '--eval', '--data', '-eval', '-data',
+        a.add_argument('--eval-data', '--eval-file', '--eval', '--data',
                        type=str, required=True,
                        help='the file path of evaluation data, .csv and .parquet files are supported.')
-        a.add_argument('--target', '-target', type=str, default='y',
+        a.add_argument('--target', '--y', type=str, default='y',
                        help='target feature name, default is %(default)s')
-        a.add_argument('--metric', '-metric', type=str, default=['accuracy'], nargs='*',metavar='METRIC',
+        a.add_argument('--metric', type=str, default=['accuracy'], nargs='*', metavar='METRIC',
                        choices=metric_choices,
                        help='metric name list, one or more of [%(choices)s], default %(default)s')
-        a.add_argument('--model-file', '-model-file', '-model', default='model.pkl',
+        a.add_argument('--model-file', '--model', default='model.pkl',
                        help='the pickle file name for trained model, default %(default)s')
 
     def setup_predict_args(a):
-        a.add_argument('--data', '-data', '-p', type=str, required=True,
+        a.add_argument('--data', '--data-file', type=str, required=True,
                        help='the data path of to predict, .csv and .parquet files are supported.')
-        a.add_argument('--model-file', '-model-file', '-model', default='model.pkl',
+        a.add_argument('--model-file', '--model', default='model.pkl',
                        help='the pickle file name for trained model, default %(default)s')
-        a.add_argument('--target', '-target', type=str, default='y',
+        a.add_argument('--target', '--y', type=str, default='y',
                        help='target feature name, default is %(default)s')
-        a.add_argument('--output', '-output', '-o', type=str, default='prediction.csv',
+        a.add_argument('--output', '--output-file', type=str, default='prediction.csv',
                        help='the output file name, default is %(default)s')
-        a.add_argument('--output-with-data', '-output-with-data', '-with-data', type=to_bool, default=False,
-                       help='the output file name, default is %(default)s')
+        a.add_argument('--output-with-data', '--with-data', type=to_bool, default=False,
+                       help='output source data ot output also')
+        a.add_argument('-output-with-data', '-with-data', dest='output_with_data', action='store_true',
+                       help='alias of "--output-with-data true"')
+
+    def setup_global_args(a):
+        # console output
+        logging_group = a.add_argument_group('Console outputs')
+
+        logging_group.add_argument('--log-level', '--log', type=str, default=None,
+                                   help='logging level, default is %(default)s')
+        logging_group.add_argument('-error', dest='log_level', action='store_const', const='error',
+                                   help='alias of "--log-level error"')
+        logging_group.add_argument('-warn', dest='log_level', action='store_const', const='warn',
+                                   help='alias of "--log-level warn"')
+        logging_group.add_argument('-info', dest='log_level', action='store_const', const='info',
+                                   help='alias of "--log-level info"')
+        logging_group.add_argument('-debug', dest='log_level', action='store_const', const='debug',
+                                   help='alias of "--log-level debug"')
+
+        logging_group.add_argument('--verbose', type=int, default=0,
+                                   help='verbose level, default is %(default)s')
+        logging_group.add_argument('-v', '-v+', dest='verbose', action='count',
+                                   help='increase verbose level')
+
+        # dask settings
+        dask_group = a.add_argument_group('Dask settings')
+        dask_group.add_argument('--enable-dask', '--dask', dest='enable_dask',
+                                type=to_bool, default=False,
+                                help='enable dask supported, default is %(default)s')
+        dask_group.add_argument('-dask', '-dask+', dest='enable_dask', action='store_true',
+                                help='alias of "--enable-dask true"')
+
+        dask_group.add_argument('--overload', '--load', type=float, default=2.0,
+                                help='memory overload of dask local cluster, '
+                                     'used only when dask is enabled and  DASK_SCHEDULER_ADDRESS is not found.')
 
     p = argparse.ArgumentParser(description='HyperGBM command line utility')
-
-    dask_group = p.add_argument_group('Dask settings')
-    dask_group.add_argument('--enable-dask', '-enable-dask', '-dask', type=to_bool, default=False)
-    dask_group.add_argument('--overload', '-overload', '-load', type=float, default=2.0)
-
-    logging_group = p.add_argument_group('Console outputs')
-    logging_group.add_argument('--log-level', '-log-level', '-log', '-l', type=str, default=None)
-    logging_group.add_argument('--verbose', '-v', type=int, default=0)
+    setup_global_args(p)
 
     sub_parsers = p.add_subparsers(dest='command',
                                    help='command to run')
@@ -235,6 +295,7 @@ def train(args):
                                  pseudo_labeling_resplit=args.pseudo_labeling_resplit,
                                  feature_reselection=args.feature_reselection,
                                  use_cache=args.use_cache,
+                                 clear_cache=args.clear_cache,
                                  log_level=args.log_level,
                                  verbose=args.verbose,
                                  )
