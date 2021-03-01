@@ -97,6 +97,7 @@ class ExperimentStep(BaseEstimator):
 
 def cache_fit(attr_names, keys=('X_train', 'X_test', 'X_eval'), transform_fn=None):
     assert isinstance(attr_names, (tuple, list, str)) and len(attr_names) > 0
+    assert callable(transform_fn) or isinstance(transform_fn, str) or (transform_fn is None)
 
     if isinstance(attr_names, str):
         attr_names = [a.strip(' ') for a in attr_names.split(',') if len(a.strip(' ')) > 0]
@@ -134,9 +135,15 @@ def cache_fit(attr_names, keys=('X_train', 'X_test', 'X_eval'), transform_fn=Non
                         v = cached_data[k]
                         setattr(step, k, v)
 
-                    if transform_fn is not None:
-                        tfn = getattr(step, transform_fn) if isinstance(transform_fn, str) else transform_fn
-                        result = tfn(hyper_model, X_train, y_train, X_test=X_test, X_eval=X_eval, y_eval=y_eval,
+                    if isinstance(transform_fn, str):
+                        tfn = getattr(step, transform_fn)
+                        result = tfn(hyper_model,
+                                     X_train, y_train, X_test=X_test, X_eval=X_eval, y_eval=y_eval,
+                                     **kwargs)
+                    elif callable(transform_fn):
+                        tfn = transform_fn
+                        result = tfn(step, hyper_model,
+                                     X_train, y_train, X_test=X_test, X_eval=X_eval, y_eval=y_eval,
                                      **kwargs)
                     else:
                         result = (X_train, y_train, X_test, X_eval, y_eval)
@@ -190,10 +197,10 @@ class FeatureSelectStep(ExperimentStep):
             if X_eval is not None:
                 X_eval = X_eval[features]
             if logger.is_info_enabled():
-                logger.info(f'{self.name}: {len(X_train.columns)} columns kept.')
+                logger.info(f'{self.name} cache_transform: {len(X_train.columns)} columns kept.')
         else:
             if logger.is_info_enabled():
-                logger.info(f'{self.name}: {len(X_train.columns)} columns kept (do nothing).')
+                logger.info(f'{self.name} cache_transform: {len(X_train.columns)} columns kept (do nothing).')
 
         return hyper_model, X_train, y_train, X_test, X_eval, y_eval
 
