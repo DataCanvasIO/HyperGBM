@@ -305,7 +305,7 @@ def train(args):
 
     estimator = experiment.run()
     with open(args.model_file, 'wb') as f:
-        pickle.dump(estimator, f)
+        pickle.dump(estimator, f, protocol=4)
 
     if args.verbose:
         print(f'>>> model saved to {args.model_file}')
