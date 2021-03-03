@@ -111,7 +111,7 @@ class Test_HyperGBM():
         df.columns = [f'x_{c}' for c in df.columns.to_list()]
         df.pop('x_0')
         y = df.pop('x_10')
-        X_train, X_test, y_train, y_test = train_test_split(df, y, test_size=0.2, random_state=1, stratify=y)
+        X_train, X_test, y_train, y_test = train_test_split(df, y, test_size=0.3, random_state=1, stratify=y)
 
         rs = RandomSearcher(lambda: search_space_general(early_stopping_rounds=20, verbose=0),
                             optimize_direction=OptimizeDirection.Maximize)

@@ -4,7 +4,6 @@ tables>=3.6.1
 fsspec>=0.8.0
 dask
 dask-ml
-dask-lightgbm
 dask-xgboost
 lightgbm
 xgboost

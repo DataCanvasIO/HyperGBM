@@ -1,0 +1,32 @@
+language: python
+
+python:
+  - "3.6"
+  - "3.7"
+
+cache: pip
+# command to install dependencies
+install:
+  - pip install git+https://github.com/DataCanvasIO/tabular-toolbox
+  - pip install git+https://github.com/DataCanvasIO/Hypernets
+  - pip install -r requirements.txt
+  - pip install -q pytest-cov==2.4.0
+  - pip install -q python-coveralls
+  - pip install -q codacy-coverage
+
+# command to run tests
+script:
+  - pytest --cov=hypergbm
+
+notifications:
+  recipients:
+    - yangjian@zetyun.com
+    - lixf@zetyun.com
+
+  on_success: change
+  on_failure: change
+
+after_success:
+  - coveralls
+  - coverage xml
+  - python-codacy-coverage -r coverage.xml
