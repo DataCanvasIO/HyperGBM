@@ -4,11 +4,9 @@ The purpose of this guide is to illustrate some of the main features that hyperg
 It assumes a basic working knowledge of machine learning practices (dataset, model fitting, predicting, cross-validation, etc.). 
 Please refer to [installation](installation.md) instructions for installing hypergbm; You can use hypergbm through the python API and command line tools
 
-### Using Python API
-
 This section will show you how to train a binary model using hypergbm.
 
-You can use util provided by `tabular_toolbox` to read [Bank Marketing](http://archive.ics.uci.edu/ml/datasets/Bank+Marketing) dataset： 
+You can use `tabular_toolbox` utility to read [Bank Marketing](http://archive.ics.uci.edu/ml/datasets/Bank+Marketing) dataset： 
 ```pydocstring
 >>> from tabular_toolbox.datasets import dsutils
 >>> df = dsutils.load_bank()
@@ -19,9 +17,48 @@ You can use util provided by `tabular_toolbox` to read [Bank Marketing](http://a
 2   2   35  management   single   tertiary      no     1350     yes   no  cellular   16   apr       185         1    330         1  failure  no
 ```
 
-Then we split the data into training set and test set to train and evaluate the model: 
+### Training with `make_experiment`
+
+Firstly,  we load and split the data into training set and test set to train and evaluate the model: 
 ```pydocstring
 >>> from sklearn.model_selection import train_test_split
+>>> from tabular_toolbox.datasets import dsutils
+>>> df = dsutils.load_bank()
+>>> train_data,test_data = train_test_split(df, test_size=0.3, random_state=9527)
+```
+
+Then, create experiment instance and run it:
+```pydocstring
+>>> from hypergbm import make_experiment
+>>> experiment=make_experiment(train_data,target='y')
+>>> pipeline=experiment.run(max_trials=10)
+>>> pipeline
+Pipeline(steps=[('data_clean',
+                 DataCleanStep(cv=True, data_cleaner_args={}, name='data_clean', random_state=9527)),
+                ('estimator',
+                 GreedyEnsemble(weight=[1. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.]))])
+```
+The `pipeline` is trained model。
+
+We can use sklearn metrics to evaluate the trained model：
+```pydocstring
+>>> from sklearn import metrics
+>>> X_test=test_data.copy()
+>>> y_test=X_test.pop('y')
+>>> y_proba = pipeline.predict_proba(X_test)
+>>> metrics.roc_auc_score(y_test, y_proba[:, 1])
+0.9659882829799505
+```
+
+
+
+### Training with CompeteExperiment
+
+Load and  split the data into training set and test set to train and evaluate the model: 
+```pydocstring
+>>> from sklearn.model_selection import train_test_split
+>>> from tabular_toolbox.datasets import dsutils
+>>> df = dsutils.load_bank()
 >>> y = df.pop('y')  # target col is "y"
 >>> X_train, X_test, y_train, y_test = train_test_split(df, y, test_size=0.3, random_state=9527)
 ```
@@ -55,25 +92,21 @@ Then use the Experiment API to train the model:
 1          2  0.983054  4.980630  [1, 2, 1, 2, 215, 3, 0, 0, 4, 3]
 >>> pipeline
 Pipeline(steps=[('data_clean',
-                 DataCleanStep(data_cleaner_args={}, name='data_clean',
-                               random_state=9527)),
-                ('drift_detected', DriftDetectStep(name='drift_detected')),
-                ('base_search_and_train',
-                 BaseSearchAndTrainStep(name='base_search_and_train',
-                                        scorer=make_scorer(log_loss, greater_is_better=False, needs_proba=True))),
-                ('estimator',
-                 <tabular_toolbox.ensemble.voting.GreedyEnsemble object at 0x1a24ca00d0>)])
+                 DataCleanStep(cv=True, data_cleaner_args={}, name='data_clean', random_state=9527)),
+                ('estimator', GreedyEnsemble(weight=[1. 0.]))])
+
 
 ```
 
 After the training experiment, let's evaluate the model：
 ```pydocstring
+>>> from sklearn import metrics
 >>> y_proba = pipeline.predict_proba(X_test)
 >>> metrics.roc_auc_score(y_test, y_proba[:, 1])
 0.9956872713648863
 ```
 
-### Using command-line tools
+### Training with command-line tools
 
 HyperGBM also provides command-line tools to train model and predict data, view the help doc:
 ```

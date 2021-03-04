@@ -1,12 +1,9 @@
 ## 快速开始
 
 本章介绍HyperGBM主要功能，假设您已经知道机器学习的基本知识（加载数据、模型训练、预测、评估等），如果您还没安装请参照[安装文档](installation.md)来安装HyperGBM。
-您可以通过Python API和命令行工具来使用HyperGBM。
+您可以通过Python和命令行工具来使用HyperGBM。
 
-### 通过API训练模型
-本节将使用数据[Bank Marketing](http://archive.ics.uci.edu/ml/datasets/Bank+Marketing) 演示如何使用HyperGBM训练一个二分类模型。
-
-使用`tabular_toolbox`提供的工具类来读取Bank Marketing数据集： 
+本节将使用数据[Bank Marketing](http://archive.ics.uci.edu/ml/datasets/Bank+Marketing) 演示如何使用HyperGBM训练一个二分类模型。可使用`tabular_toolbox`提供的工具类来读取Bank Marketing数据集： 
 ```pydocstring
 >>> from tabular_toolbox.datasets import dsutils
 >>> df = dsutils.load_bank()
@@ -17,9 +14,53 @@
 2   2   35  management   single   tertiary      no     1350     yes   no  cellular   16   apr       185         1    330         1  failure  no
 ```
 
-接着将数据拆分为训练集和测试集，分别用来训练模型和验证最终模型的效果：
+### 通过make_experiment训练模型
+
+通过`make_experiment`训练模型主要步骤是：
+```pydocstring
+>>>  experiment=make_experiment(<数据集（包括目标列）>,[其它参数...])
+>>>  pipeline=experiment.run()
+```
+
+首先，将数据拆分为训练集和测试集，分别用来训练模型和验证最终模型的效果：
 ```pydocstring
 >>> from sklearn.model_selection import train_test_split
+>>> from tabular_toolbox.datasets import dsutils
+>>> df = dsutils.load_bank()
+>>> train_data,test_data = train_test_split(df, test_size=0.3, random_state=9527)
+```
+
+创建实验并进行训练：
+
+```pydocstring
+>>> from hypergbm import make_experiment
+>>> experiment=make_experiment(train_data,target='y')
+>>> pipeline=experiment.run(max_trials=10)
+>>> pipeline
+Pipeline(steps=[('data_clean',
+                 DataCleanStep(cv=True, data_cleaner_args={}, name='data_clean', random_state=9527)),
+                ('estimator',
+                 GreedyEnsemble(weight=[1. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.]))])
+```
+其中`pipeline`就是训练得到的模型。
+
+可通过sklearn metrics对模型进行评价：
+```pydocstring
+>>> from sklearn import metrics
+>>> X_test=test_data.copy()
+>>> y_test=X_test.pop('y')
+>>> y_proba = pipeline.predict_proba(X_test)
+>>> metrics.roc_auc_score(y_test, y_proba[:, 1])
+0.9659882829799505
+```
+
+### 通过CompeteExperiment训练模型
+
+首先，将数据拆分为训练集和测试集，分别用来训练模型和验证最终模型的效果：
+```pydocstring
+>>> from sklearn.model_selection import train_test_split
+>>> from tabular_toolbox.datasets import dsutils
+>>> df = dsutils.load_bank()
 >>> y = df.pop('y')  # target col is "y"
 >>> X_train, X_test, y_train, y_test = train_test_split(df, y, test_size=0.3, random_state=9527)
 ```
@@ -29,8 +70,7 @@ HyperGBM提供了多种搜索策略，这里使用随机搜索策略在内置的
 >>> from hypernets.searchers import RandomSearcher
 >>> from hypernets.core import OptimizeDirection
 >>> from hypergbm.search_space import search_space_general
->>> rs = RandomSearcher(space_fn=search_space_general,
-...                     optimize_direction=OptimizeDirection.Maximize)
+>>> rs = RandomSearcher(space_fn=search_space_general, optimize_direction=OptimizeDirection.Maximize)
 >>> rs
 <hypernets.searchers.random_searcher.RandomSearcher object at 0x10e5b9850>
 ```
@@ -50,19 +90,14 @@ HyperGBM提供了多种搜索策略，这里使用随机搜索策略在内置的
 1          2  0.983054  4.980630  [1, 2, 1, 2, 215, 3, 0, 0, 4, 3]
 >>> pipeline
 Pipeline(steps=[('data_clean',
-                 DataCleanStep(data_cleaner_args={}, name='data_clean',
-                               random_state=9527)),
-                ('drift_detected', DriftDetectStep(name='drift_detected')),
-                ('base_search_and_train',
-                 BaseSearchAndTrainStep(name='base_search_and_train',
-                                        scorer=make_scorer(log_loss, greater_is_better=False, needs_proba=True))),
-                ('estimator',
-                 <tabular_toolbox.ensemble.voting.GreedyEnsemble object at 0x1a24ca00d0>)])
+                 DataCleanStep(cv=True, data_cleaner_args={}, name='data_clean', random_state=9527)),
+                ('estimator', GreedyEnsemble(weight=[1. 0.]))])
 
 ```
 
 训练实验结束后我们来用测试集评估一下效果：
 ```pydocstring
+>>> from sklearn import metrics
 >>> y_proba = pipeline.predict_proba(X_test)
 >>> metrics.roc_auc_score(y_test, y_proba[:, 1])
 0.9956872713648863

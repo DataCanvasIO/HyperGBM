@@ -391,7 +391,10 @@ class DriftDetectStep(FeatureSelectStep):
             self.step_end(output=self.output_drift_detection_)
 
             if _is_notebook:
-                display(pd.DataFrame((('no drift features', features), ('history', history), ('drift score', scores)),
+                display(pd.DataFrame((('no drift features', features),
+                                      ('kept/dropped feature count', f'{len(features)}/{len(dropped)}'),
+                                      ('history', history),
+                                      ('drift score', scores)),
                                      columns=['key', 'value']), display_id='output_drift_detection')
             elif logger.is_info_enabled():
                 logger.info(f'{self.name} drop {len(dropped)} columns, {len(features)} kept')
