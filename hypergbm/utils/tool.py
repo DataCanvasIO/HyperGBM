@@ -2,9 +2,13 @@ import argparse
 import math
 import os
 import pickle
+import re
 import sys
 
+import numpy as np
 import psutil
+
+from tabular_toolbox.const import TASK_BINARY, TASK_MULTICLASS
 
 # from hypernets.utils import logging
 #
@@ -83,10 +87,23 @@ def main():
                         help='alias of "--cv true"')
         tg.add_argument('-cv-', default='cv', action='store_false',
                         help='alias of "--cv false"')
+        tg.add_argument('--cv-num-folds', '--num-folds', dest='num_folds', type=int, default=3,
+                        help='fold number of cv, default %(default)s')
         tg.add_argument('--ensemble-size', '--ensemble', type=int, default=20,
                         help='how many estimators are involved, set "0" to disable ensemble, default %(default)s')
         tg.add_argument('--model-file', '--model', type=str, default='model.pkl',
                         help='the output pickle file name for trained model, default %(default)s')
+
+        sg = a.add_argument_group('Searcher settings')
+        sg.add_argument('--searcher', type=str, default=None,
+                        choices=['mcts', 'evolution', 'random'],
+                        help='Algorithm used to explore the search space, default %(default)s seconds')
+        sg.add_argument('-mcts', dest='searcher', action='store_const', const='mcts',
+                        help='alias of "--searcher mcts"')
+        sg.add_argument('-evolution', dest='searcher', action='store_const', const='evolution',
+                        help='alias of "--searcher evolution"')
+        sg.add_argument('-random', dest='searcher', action='store_const', const='random',
+                        help='alias of "--searcher random"')
 
         eg = a.add_argument_group('Early stopping settings')
         eg.add_argument('--early-stopping-time-limit', '--es-time-limit', type=int, default=3600,
@@ -163,25 +180,37 @@ def main():
                        help='the file path of evaluation data, .csv and .parquet files are supported.')
         a.add_argument('--target', '--y', type=str, default='y',
                        help='target feature name, default is %(default)s')
+        a.add_argument('--model-file', '--model', default='model.pkl',
+                       help='the pickle file name for trained model, default %(default)s')
         a.add_argument('--metric', type=str, default=['accuracy'], nargs='*', metavar='METRIC',
                        choices=metric_choices,
                        help='metric name list, one or more of [%(choices)s], default %(default)s')
-        a.add_argument('--model-file', '--model', default='model.pkl',
-                       help='the pickle file name for trained model, default %(default)s')
+        a.add_argument('--threshold', type=float, default=0.5,
+                       help=f'probability threshold to detect pos label, '
+                            f'use when task="{TASK_BINARY}" only, default %(default)s')
+        a.add_argument('--pos-label', type=str, default=None,
+                       help='pos label')
 
     def setup_predict_args(a):
         a.add_argument('--data', '--data-file', type=str, required=True,
                        help='the data path of to predict, .csv and .parquet files are supported.')
-        a.add_argument('--model-file', '--model', default='model.pkl',
-                       help='the pickle file name for trained model, default %(default)s')
         a.add_argument('--target', '--y', type=str, default='y',
                        help='target feature name, default is %(default)s')
+        a.add_argument('--model-file', '--model', default='model.pkl',
+                       help='the pickle file name for trained model, default %(default)s')
+        a.add_argument('--proba', type=to_bool, default=False,
+                       help='predict probability instead of target, default %(default)s')
+        a.add_argument('-proba', dest='proba', action='store_true',
+                       help='alias of "--proba true"')
+
         a.add_argument('--output', '--output-file', type=str, default='prediction.csv',
                        help='the output file name, default is %(default)s')
-        a.add_argument('--output-with-data', '--with-data', type=to_bool, default=False,
-                       help='output source data ot output also')
-        a.add_argument('-output-with-data', '-with-data', dest='output_with_data', action='store_true',
-                       help='alias of "--output-with-data true"')
+        a.add_argument('--output-with-data', '--with-data', type=str, default=None, nargs='*',
+                       help='column name patterns stored with prediction result, '
+                            '"*" for all columns, default %(default)s')
+        a.add_argument('-output-with-data', '-with-data', dest='output_with_data',
+                       action='store_const', const=['*'],
+                       help='alias of "--output-with-data *"')
 
     def setup_global_args(a):
         # console output
@@ -278,10 +307,12 @@ def train(args):
                                  ensemble_size=args.ensemble_size,
                                  reward_metric=args.reward_metric,
                                  train_test_split_strategy=args.train_test_split_strategy,  # 'adversarial_validation'
+                                 searcher=args.searcher,
                                  early_stopping_time_limit=args.early_stopping_time_limit,
                                  early_stopping_rounds=args.early_stopping_rounds,
                                  early_stopping_reward=args.early_stopping_reward,
                                  cv=args.cv,
+                                 num_folds=args.num_folds,
                                  drift_detection=args.drift_detection,
                                  drift_detection_remove_shift_variable=args.drift_detection_remove_shift_variable,
                                  drift_detection_variable_shift_threshold=args.drift_detection_variable_shift_threshold,
@@ -313,7 +344,6 @@ def train(args):
 
 def evaluate(args):
     from tabular_toolbox.utils import load_data
-    from tabular_toolbox.const import TASK_BINARY, TASK_MULTICLASS
     from tabular_toolbox.metrics import calc_score
 
     eval_data = args.eval_data
@@ -345,20 +375,30 @@ def evaluate(args):
     X = load_data(eval_data)
     y = X.pop(target)
 
-    if args.verbose:
-        print(f'>>> run predict')
-
-    pred = estimator.predict(X)
-    if task in {TASK_BINARY, TASK_MULTICLASS}:
+    kwargs = {}
+    if task == TASK_BINARY:
+        if args.verbose:
+            print(f'>>> run predict_proba')
+        proba = estimator.predict_proba(X)
+        pred = (proba[:, 1] > args.threshold).astype(np.int)
+        if args.pos_label is not None:
+            kwargs['pos_label'] = args.pos_label
+    elif task == TASK_MULTICLASS:
+        if args.verbose:
+            print(f'>>> run predict')
+        pred = estimator.predict(X)
         if args.verbose:
             print(f'>>> run predict_proba')
         proba = estimator.predict_proba(X)
     else:
+        if args.verbose:
+            print(f'>>> run predict')
+        pred = estimator.predict(X)
         proba = None
 
     if args.verbose:
         print(f'>>> calc scores: {metrics}')
-    scores = calc_score(y_true=y, y_preds=pred, y_proba=proba, metrics=metrics)
+    scores = calc_score(y_true=y, y_preds=pred, y_proba=proba, metrics=metrics, **kwargs)
 
     print(scores)
 
@@ -372,7 +412,7 @@ def predict(args):
     model_file = args.model_file
     output_file = args.output
     output_with_data = args.output_with_data
-    target = args.target
+    target = args.target if args.target is not None else 'y'
 
     assert os.path.exists(model_file), f'Not found {model_file}'
     assert os.path.exists(data_file), f'Not found {data_file}'
@@ -386,24 +426,51 @@ def predict(args):
         print(f'>>> load data {data_file}')
     X = load_data(data_file)
 
-    if args.verbose:
-        print(f'>>> run predict')
-    pred = estimator.predict(X)
+    if output_with_data:
+        if '*' == output_with_data or '*' in output_with_data:
+            data = X
+        else:
+            data_columns = [c for c in X.columns if any([re.match(r, c) for r in output_with_data])]
+            if len(data_columns) == 0:
+                print(f'>>> No output column found to match {output_with_data}', file=sys.stderr)
+                exit(1)
+            data = X[data_columns]
+    else:
+        data = None
+
+    if args.proba:
+        if args.verbose:
+            print(f'>>> run predict_proba')
+        pred = estimator.predict_proba(X)
+    else:
+        if args.verbose:
+            print(f'>>> run predict')
+        pred = estimator.predict(X)
 
     if args.verbose:
-        print(f'>>> save prediction to  {output_file}')
+        print(f'>>> save prediction to {output_file}')
+
+    if len(pred.shape) > 1 and pred.shape[1] > 1:
+        columns = [f'{target}_{i}' for i in range(pred.shape[1])]
+    else:
+        columns = [target]
 
     if dex.is_dask_object(pred):
-        y = dex.dd.from_dask_array(pred, columns=[target])
+        y = dex.dd.from_dask_array(pred, columns=columns)
     else:
-        y = pd.Series(pred, name=target)
+        y = pd.DataFrame(pred, columns=columns)
 
-    if output_with_data:
-        df = dex.concat_df([X, y], axis=1)
+    df = dex.concat_df([data, y], axis=1) if data is not None else y
+    if dex.is_dask_object(df):
+        from tabular_toolbox.persistence import to_parquet
+        to_parquet(df, output_file)
     else:
-        df = y
-
-    df.to_csv(output_file, index=False)
+        if output_file.endswith('.parquet'):
+            df.to_parquet(output_file)
+        elif output_file.endswith('.pkl') or output_file.endswith('.pickle'):
+            df.to_pickle(output_file, protocol=4)
+        else:
+            df.to_csv(output_file, index=False)
 
     if args.verbose:
         print('>>> done')

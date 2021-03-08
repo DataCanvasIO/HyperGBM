@@ -226,6 +226,7 @@ class DataCleanStep(ExperimentStep):
         self.step_start('clean and split data')
         # 1. Clean Data
         if self.cv and X_eval is not None and y_eval is not None:
+            logger.info(f'{self.name} cv enabled, so concat train data and eval data')
             X_train = pd.concat([X_train, X_eval], axis=0)
             y_train = pd.concat([y_train, y_eval], axis=0)
             X_eval = None
@@ -233,10 +234,12 @@ class DataCleanStep(ExperimentStep):
 
         data_cleaner = DataCleaner(**self.data_cleaner_args)
 
+        logger.info(f'{self.name} fit_transform with train data')
         X_train, y_train = data_cleaner.fit_transform(X_train, y_train)
         self.step_progress('fit_transform train set')
 
         if X_test is not None:
+            logger.info(f'{self.name} transform test data')
             X_test = data_cleaner.transform(X_test)
             self.step_progress('transform X_test')
 
@@ -272,6 +275,8 @@ class DataCleanStep(ExperimentStep):
                               'y_eval.shape': None if y_eval is None else y_eval.shape,
                               'X_test.shape': None if X_test is None else X_test.shape})
 
+        selected_features = X_train.columns.to_list()
+
         if _is_notebook:
             display_markdown('### Data Cleaner', raw=True)
 
@@ -291,9 +296,10 @@ class DataCleanStep(ExperimentStep):
                                           'X_eval.shape',
                                           'y_eval.shape',
                                           'X_test.shape']), display_id='output_cleaner_info2')
-        original_features = X_train.columns.to_list()
+        else:
+            logger.info(f'{self.name} keep {len(selected_features)} columns')
 
-        self.selected_features_ = original_features
+        self.selected_features_ = selected_features
         self.data_cleaner = data_cleaner
 
         return hyper_model, X_train, y_train, X_test, X_eval, y_eval
