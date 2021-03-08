@@ -116,7 +116,7 @@ class BaseSearchSpaceGenerator(SearchSpaceGenerator):
 
 
 class GeneralSearchSpaceGenerator(BaseSearchSpaceGenerator):
-    def __init__(self, enable_lightgbm=True, enable_xgb=True, enable_catboost=True, enable_histgb=True, **kwargs):
+    def __init__(self, enable_lightgbm=True, enable_xgb=True, enable_catboost=True, enable_histgb=False, **kwargs):
         super(GeneralSearchSpaceGenerator, self).__init__(**kwargs)
 
         self.enable_lightgbm = enable_lightgbm
@@ -203,7 +203,16 @@ class GeneralSearchSpaceGenerator(BaseSearchSpaceGenerator):
         return r
 
 
-search_space_general = GeneralSearchSpaceGenerator(enable_histgb=False, n_estimators=200)
+search_space_general = GeneralSearchSpaceGenerator(n_estimators=200)
+
+search_space_general_gpu = \
+    GeneralSearchSpaceGenerator(n_estimators=200,
+                                lightgbm_init_kwargs={'device': 'GPU'},
+                                xgb_init_kwargs={'tree_method': 'gpu_hist'},
+                                catboost_init_kwargs={'task_type': 'GPU'})
+
+search_space_general_with_class_balancing = \
+    GeneralSearchSpaceGenerator(n_estimators=200, class_balancing=True)
 
 
 def search_space_general_removed(dataframe_mapper_default=False,

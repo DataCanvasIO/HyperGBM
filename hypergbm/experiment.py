@@ -1,30 +1,32 @@
 # -*- coding:utf-8 -*-
 __author__ = 'yangjian'
 
-from sklearn.base import BaseEstimator
-
 """
 
 """
 import copy
+import pickle
+from io import BytesIO
 
 import numpy as np
 import pandas as pd
 from IPython.display import display, display_markdown
+from sklearn.base import BaseEstimator
 from sklearn.metrics import get_scorer
 from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
 
+from hypergbm.feature_importance import feature_importance_batch
+from hypergbm.hyper_gbm import HyperGBM
 from hypernets.experiment import Experiment
-from hypernets.utils import logging
+from hypernets.utils import logging, fs
 from hypernets.utils.common import isnotebook
 from tabular_toolbox import dask_ex as dex
 from tabular_toolbox import drift_detection as dd
 from tabular_toolbox.data_cleaner import DataCleaner
 from tabular_toolbox.ensemble import GreedyEnsemble, DaskGreedyEnsemble
 from tabular_toolbox.feature_selection import select_by_multicollinearity
-from tabular_toolbox.utils import load_data, infer_task_type
-from .feature_importance import feature_importance_batch
+from tabular_toolbox.utils import load_data, infer_task_type, hash_data, hash_dataframe
 
 logger = logging.get_logger(__name__)
 
@@ -93,6 +95,83 @@ class ExperimentStep(BaseEstimator):
         return state
 
 
+def cache_fit(attr_names, keys=('X_train', 'X_test', 'X_eval'), transform_fn=None):
+    assert isinstance(attr_names, (tuple, list, str)) and len(attr_names) > 0
+    assert callable(transform_fn) or isinstance(transform_fn, str) or (transform_fn is None)
+
+    if isinstance(attr_names, str):
+        attr_names = [a.strip(' ') for a in attr_names.split(',') if len(a.strip(' ')) > 0]
+
+    def decorate(fn):
+        def _call(step, hyper_model, X_train, y_train, X_test=None, X_eval=None, y_eval=None, **kwargs):
+            assert isinstance(step, ExperimentStep)
+
+            result = None
+
+            all_items = dict(X_train=X_train, y_train=y_train, X_test=X_test, X_eval=X_eval, y_eval=y_eval,
+                             **kwargs)
+            key_items = {k: v if not isinstance(v, (pd.DataFrame, dex.dd.DataFrame)) else hash_dataframe(v)
+                         for k, v in all_items.items() if keys is None or k in keys}
+            key_items['step_params'] = step.get_params(deep=False)
+
+            buf = BytesIO()
+            pickle.dump(key_items, buf)
+            key = hash_data(buf.getvalue())
+            cache_dir = getattr(hyper_model, 'cache_dir', None)
+            if cache_dir is None:
+                cache_dir = 'step_cache'
+                try:
+                    fs.mkdirs(cache_dir, exist_ok=True)
+                except:
+                    pass
+            cache_file = f'{cache_dir}{fs.sep}cache_{step.name}_{key}.pkl'
+
+            # load cache
+            try:
+                if fs.exists(cache_file):
+                    with fs.open(cache_file, 'rb') as f:
+                        cached_data = pickle.load(f)
+                    for k in attr_names:
+                        v = cached_data[k]
+                        setattr(step, k, v)
+
+                    if isinstance(transform_fn, str):
+                        tfn = getattr(step, transform_fn)
+                        result = tfn(hyper_model,
+                                     X_train, y_train, X_test=X_test, X_eval=X_eval, y_eval=y_eval,
+                                     **kwargs)
+                    elif callable(transform_fn):
+                        tfn = transform_fn
+                        result = tfn(step, hyper_model,
+                                     X_train, y_train, X_test=X_test, X_eval=X_eval, y_eval=y_eval,
+                                     **kwargs)
+                    else:
+                        result = (X_train, y_train, X_test, X_eval, y_eval)
+            except Exception as e:
+                logger.warning(e)
+
+            if result is None:
+                result = fn(step, hyper_model, X_train, y_train, X_test=X_test, X_eval=X_eval, y_eval=y_eval,
+                            **kwargs)
+
+                try:
+                    # store cache
+                    cached_data = {k: getattr(step, k) for k in attr_names}
+                    if 'keys' not in cached_data:
+                        cached_data['keys'] = key_items  # for info
+
+                    with fs.open(cache_file, 'wb') as f:
+                        pickle.dump(cached_data, f)
+                except Exception as e:
+                    logger.warning(e)
+
+            return result
+
+        return _call
+
+    return decorate
+
+
 class FeatureSelectStep(ExperimentStep):
 
     def __init__(self, experiment, name):
@@ -108,6 +187,22 @@ class FeatureSelectStep(ExperimentStep):
                 logger.debug(msg)
             X = X[self.selected_features_]
         return X
+
+    def cache_transform(self, hyper_model, X_train, y_train, X_test=None, X_eval=None, y_eval=None, **kwargs):
+        if self.selected_features_ is not None:
+            features = self.selected_features_
+            X_train = X_train[features]
+            if X_test is not None:
+                X_test = X_test[features]
+            if X_eval is not None:
+                X_eval = X_eval[features]
+            if logger.is_info_enabled():
+                logger.info(f'{self.name} cache_transform: {len(X_train.columns)} columns kept.')
+        else:
+            if logger.is_info_enabled():
+                logger.info(f'{self.name} cache_transform: {len(X_train.columns)} columns kept (do nothing).')
+
+        return hyper_model, X_train, y_train, X_test, X_eval, y_eval
 
     def is_transform_skipped(self):
         return self.selected_features_ is None
@@ -209,25 +304,24 @@ class DataCleanStep(ExperimentStep):
 
 class MulticollinearityDetectStep(FeatureSelectStep):
 
-    def __init__(self, experiment, name, drop_feature_with_collinearity=True):
+    def __init__(self, experiment, name):
         super().__init__(experiment, name)
 
-        self.drop_feature_with_collinearity = drop_feature_with_collinearity
-
+    @cache_fit('selected_features_', keys='X_train', transform_fn='cache_transform')
     def fit_transform(self, hyper_model, X_train, y_train, X_test=None, X_eval=None, y_eval=None, **kwargs):
-        if self.drop_feature_with_collinearity:
-            if _is_notebook:
-                display_markdown('### Drop features with collinearity', raw=True)
+        if _is_notebook:
+            display_markdown('### Drop features with collinearity', raw=True)
 
-            self.step_start('drop features with multicollinearity')
-            corr_linkage, remained, dropped = select_by_multicollinearity(X_train)
-            self.output_multi_collinearity_ = {
-                'corr_linkage': corr_linkage,
-                'remained': remained,
-                'dropped': dropped
-            }
-            self.step_progress('calc correlation')
+        self.step_start('drop features with multicollinearity')
+        corr_linkage, remained, dropped = select_by_multicollinearity(X_train)
+        self.output_multi_collinearity_ = {
+            'corr_linkage': corr_linkage,
+            'remained': remained,
+            'dropped': dropped
+        }
+        self.step_progress('calc correlation')
 
+        if dropped:
             self.selected_features_ = remained
 
             X_train = X_train[self.selected_features_]
@@ -237,12 +331,16 @@ class MulticollinearityDetectStep(FeatureSelectStep):
                 X_test = X_test[self.selected_features_]
             self.step_progress('drop features')
             self.step_end(output=self.output_multi_collinearity_)
+        else:
+            self.selected_features_ = None
 
-            if _is_notebook:
-                display(pd.DataFrame([(k, v)
-                                      for k, v in self.output_multi_collinearity_.items()],
-                                     columns=['key', 'value']),
-                        display_id='output_drop_feature_with_collinearity')
+        if _is_notebook:
+            display(pd.DataFrame([(k, v)
+                                  for k, v in self.output_multi_collinearity_.items()],
+                                 columns=['key', 'value']),
+                    display_id='output_drop_feature_with_collinearity')
+        elif logger.is_info_enabled():
+            logger.info(f'{self.name} drop {len(dropped)} columns, {len(remained)} kept')
 
         return hyper_model, X_train, y_train, X_test, X_eval, y_eval
 
@@ -264,6 +362,8 @@ class DriftDetectStep(FeatureSelectStep):
         # fitted
         self.output_drift_detection_ = None
 
+    @cache_fit('selected_features_, output_drift_detection_',
+               keys='X_train,X_test', transform_fn='cache_transform')
     def fit_transform(self, hyper_model, X_train, y_train, X_test=None, X_eval=None, y_eval=None, **kwargs):
         if X_test is not None:
             if _is_notebook:
@@ -291,7 +391,10 @@ class DriftDetectStep(FeatureSelectStep):
             self.step_end(output=self.output_drift_detection_)
 
             if _is_notebook:
-                display(pd.DataFrame((('no drift features', features), ('history', history), ('drift score', scores)),
+                display(pd.DataFrame((('no drift features', features),
+                                      ('kept/dropped feature count', f'{len(features)}/{len(dropped)}'),
+                                      ('history', history),
+                                      ('drift score', scores)),
                                      columns=['key', 'value']), display_id='output_drift_detection')
             elif logger.is_info_enabled():
                 logger.info(f'{self.name} drop {len(dropped)} columns, {len(features)} kept')
@@ -905,8 +1008,8 @@ class CompeteExperiment(SteppedExperiment):
 
         # select by collinearity
         if collinearity_detection:
-            steps.append(MulticollinearityDetectStep(self, 'collinearity_detection',
-                                                     drop_feature_with_collinearity=collinearity_detection))
+            steps.append(MulticollinearityDetectStep(self, 'collinearity_detection'))
+
         # drift detection
         if drift_detection:
             steps.append(DriftDetectStep(self, 'drift_detection',
@@ -1031,6 +1134,7 @@ def make_experiment(train_data,
                     reward_metric='accuracy',
                     optimize_direction=None,
                     use_cache=None,
+                    clear_cache=None,
                     log_level=None,
                     **kwargs):
     """
@@ -1091,7 +1195,8 @@ def make_experiment(train_data,
             - recall
     optimize_direction : str, optional
         Hypernets search reward metric direction, default is detected from reward_metric.
-    use_cache : bool, optional
+    use_cache : bool, optional, (default True if Dask is not enabled, else False)
+    clear_cache: bool, optional, (default True)
     log_level : int, str, or None, (default=None),
         Level of logging, possible values:
             -logging.CRITICAL
@@ -1119,9 +1224,13 @@ def make_experiment(train_data,
     >>> estimator = experiment.run()
 
     Create experiment with csv data file '/opt/data01/test.csv' with INFO logging, and run it
-    >>> from hypernets.utils import logging
+    >>> import logging
     >>>
     >>> experiment = make_experiment('/opt/data01/test.csv', target='y', log_level=logging.INFO)
+    >>> estimator = experiment.run()
+
+    or
+    >>> experiment = make_experiment('/opt/data01/test.csv', target='y', log_level='info')
     >>> estimator = experiment.run()
 
     Create experiment with parquet data files '/opt/data02/*.parquet', and run it with Dask
@@ -1279,10 +1388,9 @@ def make_experiment(train_data,
         search_callbacks = default_search_callbacks()
     search_callbacks = append_early_stopping_callbacks(search_callbacks)
 
-    from hypergbm.hyper_gbm import HyperGBM
     hm = HyperGBM(searcher, reward_metric=reward_metric, callbacks=search_callbacks,
                   cache_dir=kwargs.pop('cache_dir', 'hypergbm_cache'),
-                  clear_cache=kwargs.pop('clear_cache', True))
+                  clear_cache=clear_cache if clear_cache is not None else True)
 
     use_cache = not dex.exist_dask_object(X_train, X_test, X_eval) if use_cache is None else bool(use_cache)
 

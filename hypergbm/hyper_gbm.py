@@ -499,7 +499,7 @@ class HyperGBMEstimator(Estimator):
 
     def save(self, model_file):
         with fs.open(f'{model_file}', 'wb') as output:
-            pickle.dump(self, output, protocol=2)
+            pickle.dump(self, output, protocol=4)
 
     @staticmethod
     def load(model_file):
@@ -553,7 +553,7 @@ class HyperGBMEstimator(Estimator):
         if pipeline_path:
             try:
                 with fs.open(pipeline_path, 'wb') as output:
-                    pickle.dump((self.data_pipeline, self.data_cleaner), output, protocol=2)
+                    pickle.dump((self.data_pipeline, self.data_cleaner), output, protocol=4)
             except Exception as e:
                 logger.error(e)
                 if fs.exists(pipeline_path):
@@ -595,12 +595,17 @@ class HyperGBMEstimator(Estimator):
             state = super().__getstate__()
         except AttributeError:
             state = self.__dict__.copy()
-        # Don't pickle eval_set
+        # Don't pickle eval_set and sample_weight
         fit_kwargs = state.get('fit_kwargs')
         if fit_kwargs is not None and 'eval_set' in fit_kwargs.keys():
             fit_kwargs = fit_kwargs.copy()
             fit_kwargs.pop('eval_set')
             state['fit_kwargs'] = fit_kwargs
+        if fit_kwargs is not None and 'sample_weight' in fit_kwargs.keys():
+            fit_kwargs = fit_kwargs.copy()
+            fit_kwargs.pop('sample_weight')
+            state['fit_kwargs'] = fit_kwargs
+
         return state
 
 

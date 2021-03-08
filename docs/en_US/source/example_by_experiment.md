@@ -1,4 +1,4 @@
-### Experiment Examples 
+## Experiment Examples 
 
 #### Basic Usages
 
@@ -19,7 +19,7 @@ Recency,Frequency,Monetary,Time,Class
 
 
 
-##### Use experiment with default settings
+#### Use experiment with default settings
 
 User can create experiment instance with the python tool `make_experiment` and run it quickly。`train_data` is the only required parameter, all others are optional.   The `target` is also required if your target feature name isn't `y`。
 
@@ -65,7 +65,7 @@ print(estimator)
 
 
 
-##### Cross Validation
+#### Cross Validation
 
 `make_experiment` enable cross validation as default,  user can disable it by set `cv= False`.  Use can change cross fold number with `num_folds`,  just like this:
 
@@ -82,7 +82,7 @@ print(estimator)
 
 
 
-##### Setup evaluate data (eval_data)
+#### Setup evaluate data (eval_data)
 
 Experiment split evaluate data from `train_data` by default if cross validation is disabled,  user can customize it with `eval_data` like this:
 
@@ -117,7 +117,7 @@ print(estimator)
 
 
 
-##### Setup search reward metric
+#### Setup search reward metric
 
 The default search reward metric is `accuracy`，user can change it with `reward_metric`,  like this:
 
@@ -134,7 +134,7 @@ print(estimator)
 
 
 
-##### Change search trial number and setup early stopping
+#### Change search trial number and setup early stopping
 
 User can limit search trial number with `max_trials`，and setup search early stopping with `early_stopping_round`, `early_stopping_time_limit`, `early_stopping_reward`. like this:
 
@@ -152,7 +152,7 @@ print(estimator)
 
 
 
-##### Drift detection
+#### Drift detection
 
 To enable the feature drift detection, set `drift_detection=True`, and set `test_data` with the testing data, like this：
 
@@ -191,7 +191,7 @@ print(estimator)
 
 
 
-##### Multicollinearity detection
+#### Multicollinearity detection
 
 To enable multicollinearity detection, set `collinearity_detection=True`, like this:
 
@@ -208,7 +208,7 @@ print(estimator)
 
 
 
-##### Pseudo labeling
+#### Pseudo labeling
 
 To enable pseudo labeling with two stage searching,  set `pseudo_labeling=True`, like this:
 ```python
@@ -219,7 +219,7 @@ experiment = make_experiment(train_data, pseudo_labeling=True, ...)
 
 
 
-##### Permutation importance feature selection
+#### Permutation importance feature selection
 
 To enable feature selection by permutation importance with two stage searching,  set `feature_reselection=True`, like this:
 ```python
@@ -230,7 +230,7 @@ experiment = make_experiment(train_data, feature_reselection=True, ...)
 
 
 
-##### Ensemble
+#### Ensemble
 
 To change estimator number for ensemble, set `ensemble_size` to expected number.  Or set `ensemble_size=0`  to disable ensemble.
 
@@ -242,7 +242,7 @@ experiment = make_experiment(train_data, ensemble_size=10, ...)
 
 
 
-##### Logging settings
+#### Logging settings
 
 To change logging level, set `log_level` with log level defined in  python logging utility.
 
@@ -289,11 +289,11 @@ Process finished with exit code 0
 
 
 
-#### Advanced Usages
+### Advanced Usages
 
 
 
-##### Customize Searcher and Search Space
+#### Customize Searcher and Search Space
 
 User can customize searcher and search space with `searcher` and `search_space`, like this:
 
@@ -339,7 +339,7 @@ print(estimator)
 
 
 
-##### Use CompeteExperiment
+#### Use CompeteExperiment
 
 Use can create  experiment with class `CompeteExperiment` for more details.
 
@@ -377,11 +377,11 @@ print(estimator)
 
 
 
-#### Distribution with Dask
+### Distribution with Dask
 
 
 
-##### Quick Start
+#### Quick Start
 
 To run  HyperGBM experiment with Dask cluster, use need to setup the  default Dask client before call `make_experiment`, like this:
 
@@ -441,7 +441,7 @@ Reference Dask  [Create DataFrames](https://docs.dask.org/en/latest/dataframe-ap
 
 
 
-##### Customize Search Space
+#### Customize Search Space
 
 To run experiment with Dask cluster, all transformers and estimators must support Dask objects, reference `hypergbm.dask.search_space.search_space_general`  for more details to customize search space pls。
 

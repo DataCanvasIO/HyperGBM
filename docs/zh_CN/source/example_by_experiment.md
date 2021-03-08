@@ -1,6 +1,6 @@
-### 实验示例
+## 实验示例
 
-#### 基础使用
+### 基础使用
 
 本节通过示例讲解如何使用实验进行模型训练，示例中使用数据集`blood`，该数据集中的目标列`Class`，数据如下：
 ```csv
@@ -18,7 +18,7 @@ Recency,Frequency,Monetary,Time,Class
 本节示例从`tabular_toolbox`中加载该数据集。
 
 
-##### 以默认配置创建并运行实验
+#### 以默认配置创建并运行实验
 
 利用工具`make_experiment`可快速创建一个可运行的实验对象，执行该实验对象的`run`方法即可开始训练并得到模型。使用该工具时只有实验数据`train_data`是必须的，其它都是可选项。数据的目标列如果不是`y`的话，需要通过参数`target`设置。
 
@@ -64,7 +64,7 @@ print(estimator)
 
 
 
-##### 交叉验证
+#### 交叉验证
 
 未来获取较好的模型效果，`make_experiment`创建实验时默认开启了交叉验证的特性 ，可通过参数`cv`指定是否启用交叉验证。当`cv`设置为`False`时表示禁用交叉验证并使用经典的train_test_split方式进行模型训练；当`cv`设置为`True`时表示开启交叉验证，折数可通过参数`num_folds`设置（默认：3）；
 
@@ -81,7 +81,7 @@ print(estimator)
 
 ```
 
-##### 指定验证数据集(eval_data)
+#### 指定验证数据集(eval_data)
 
 在禁用交叉验证时，模型训练处除了需要训练数据集，还需要评估数据集，您可在`make_experiment`时通过eval_data指定评估集，如：
 
@@ -114,7 +114,7 @@ print(estimator)
 
 
 
-##### 指定模型的评价指标
+#### 指定模型的评价指标
 
 使用`make_experiment`创建实验的默认的模型评价指标是`accuracy`，可通过参数`reward_metric`指定，如：
 
@@ -131,7 +131,7 @@ print(estimator)
 
 
 
-##### 设置搜索次数和早停（Early Stopping）策略
+#### 设置搜索次数和早停（Early Stopping）策略
 
 使用`make_experiment`时，可通过参数`max_trials`设置最大搜索次数，通过参数`early_stopping_round`、`early_stopping_time_limit`、`early_stopping_reward`设置实验的早停策略。
 
@@ -148,7 +148,7 @@ print(estimator)
 
 ```
 
-##### 漂移检测
+#### 漂移检测
 
 数据漂移是建模过程中的一个主要挑战。当数据的分布随着时间在不断的发现变化时，模型的表现会越来越差，我们在HyperGBM中引入了对抗验证的方法专门处理数据漂移问题。这个方法会自动的检测是否发生漂移，并且找出发生漂移的特征并删除他们，以保证模型在真实数据上保持良好的状态。
 
@@ -188,7 +188,7 @@ print(estimator)
 
 ```
 
-##### 共线性检测
+#### 共线性检测
 
 有时训练数据中会出现一些相关度很高的特征，这些并没有提供太多的信息量，相反，数据集拥有更多的特征意味着更容易收到噪声的影响，更容易收到特征偏移的影响等等。
 HyperGBM中提供了删除发生共线性的特征的能力， 在通过`make_experiment`创建实验时设置`collinearity_detection=True`即可。
@@ -205,7 +205,7 @@ print(estimator)
 
 ```
 
-##### 伪标签技术
+#### 伪标签技术
 
 伪标签是一种半监督学习技术，将测试集中未观测标签列的特征数据通过一阶段训练的模型预测标签后，将置信度高于一定阈值的样本添加到训练数据中重新训练模型，有时候可以进一步提升模型在新数据上的拟合效果。在通过`make_experiment`创建实验时设置`pseudo_labeling=True`可开启伪标签训练，与之匹配的配置项包括：
 
@@ -219,7 +219,7 @@ experiment = make_experiment(train_data, pseudo_labeling=True, ...)
 
 ```
 
-##### 二阶段特征筛选
+#### 二阶段特征筛选
 
 在通过`make_experiment`创建实验时设置`feature_reselection=True`可开启二阶段特征筛选，与之匹配的配置项包括：
 * feature_reselection_estimator_size：int, (default=10), 用于评估特征重要性的estimator数量（在一阶段搜索中表现最好的n个模型。
@@ -234,7 +234,7 @@ experiment = make_experiment(train_data, feature_reselection=True, ...)
 
 
 
-##### 模型融合
+#### 模型融合
 
 未来获取较好的模型效果，`make_experiment`创建实验时默认开启了模型融合的特性，并使用效果最好的20个模型进行融合，可通过参数`ensemble_size`指定参与融合的模型的数量，当`ensemble_size`设置为`0`时则表示禁用模型融合。
 
@@ -247,7 +247,7 @@ experiment = make_experiment(train_data, ensemble_size=10, ...)
 
 
 
-##### 调整实验运行的日志级别
+#### 调整实验运行的日志级别
 
 如果希望对在训练过程中看到使用进度信息的话，可通过log_level指定日志级别，可以就`str`或`int`。关于日志级别的详细定义可参考python的`logging`包。 另外，如果将`verbose`设置为`1`的话，可以得到更详细的信息。
 
@@ -296,28 +296,73 @@ Process finished with exit code 0
 
 
 
-#### 高级应用
+### 高级应用
+
+#### 自定义搜索空间(SearchSpace)
+`make_experiment`缺省使用的搜索空间是`search_space_general`，定义如下：
+
+```
+search_space_general = GeneralSearchSpaceGenerator(n_estimators=200)
+```
 
 
-##### 自定义搜索算法（Searcher）和搜索空间(SearchSpace)
+在调用`make_experiment`时可通过参数`search_space`指定自定义的搜索空间。如：指定`xgboost`的`max_depth=20`：
 
-HyperGBM内置的搜索算法包括：EvolutionSearcher（默认）、MCTSSearcher、RandomSearch，在`make_experiment`时可通过参数`searcher`指定，可以指定搜索算法的类名(class)、搜索算法的名称（str）。make_experiment将根据参数`searcher`指定的搜索算法和参数`search_space`指定的搜索空间创建搜索算法实例；如果未指定`search_space`，则使用`search_space_general`缺省配置。
+```python
+from hypergbm import make_experiment
+from tabular_toolbox.datasets import dsutils
+from hypergbm.search_space import GeneralSearchSpaceGenerator
+
+my_search_space = \
+    GeneralSearchSpaceGenerator(n_estimators=200, xgb_init_kwargs={'max_depth': 20})
+
+train_data = dsutils.load_blood()
+
+experiment = make_experiment(train_data, target='Class', search_space=my_search_space)
+estimator = experiment.run()
+print(estimator)
+```
+
+
+
+如果您希望自定义的参数是可搜索的，则需要定义`GeneralSearchSpaceGenerator`的一个子类，比如：指定`xgboost`的`max_depth`在10、20、30之间搜索：
+
+```python
+from hypergbm import make_experiment
+from tabular_toolbox.datasets import dsutils
+from hypergbm.search_space import GeneralSearchSpaceGenerator
+from hypernets.core.search_space import Choice
+
+class MySearchSpace(GeneralSearchSpaceGenerator):
+    @property
+    def default_xgb_init_kwargs(self):
+        return { **super().default_xgb_init_kwargs,
+                'max_depth': Choice([10, 20 ,30]),
+        }
+
+my_search_space = MySearchSpace()
+train_data = dsutils.load_blood()
+
+experiment = make_experiment(train_data, target='Class', search_space=my_search_space)
+estimator = experiment.run()
+print(estimator)
+```
+
+
+
+#### 自定义搜索算法（Searcher）
+
+HyperGBM内置的搜索算法包括：EvolutionSearcher（默认）、MCTSSearcher、RandomSearch，在`make_experiment`时可通过参数`searcher`指定，可以指定搜索算法的类名(class)、搜索算法的名称（str）。
 
 
 示例代码：
 ```python
 from hypergbm import make_experiment
 from tabular_toolbox.datasets import dsutils
-from hypergbm.search_space import search_space_general
-
-
-def my_search_space():
-    return search_space_general(n_esitimators=100)
-
 
 train_data = dsutils.load_blood()
 
-experiment = make_experiment(train_data, target='Class', searcher='random', search_space=my_search_space)
+experiment = make_experiment(train_data, target='Class', searcher='random')
 estimator = experiment.run()
 print(estimator)
 
@@ -347,7 +392,7 @@ print(estimator)
 
 
 
-##### 自定义CompeteExperiment
+#### 自定义CompeteExperiment
 
 如果你希望控制更多实验的细节，您可以直接创建CompeteExperiment对象并运行。
 
@@ -387,13 +432,15 @@ print(estimator)
 
 ```
 
-#### 分布式训练
+
+
+### 分布式训练
 
 
 
-##### 快速实验
+#### 快速实验
 
-HyperGBM支持使用Dask进行分布式训练，在运行实验之前您需要部署Dask集群并初始化Dask客户端`Client`对象；如果您的训练数据是cvs或parquet格式，而且数据文件的扩展名是“.csv”或“.parquet”的话，可以直接使用文件路径创建实验，make_experiment在检测到Dask环境是会自动将数据加载为Dask的DataFrame对象并进行搜索和训练。
+HyperGBM支持使用Dask进行分布式训练，在运行实验之前您需要部署Dask集群并初始化Dask客户端`Client`对象；如果您的训练数据是csv或parquet格式，而且数据文件的扩展名是“.csv”或“.parquet”的话，可以直接使用文件路径创建实验，make_experiment在检测到Dask环境是会自动将数据加载为Dask的DataFrame对象并进行搜索和训练。
 
 示例代码（以单节点为例）：
 
@@ -480,7 +527,7 @@ if __name__ == '__main__':
 
 
 
-##### 自定义SearchSpace
+#### 自定义SearchSpace
 
 在Dask环境下运行实验时，搜索空间中使用的Transformer和Estimator必须都支持Dask数据类型，您可以参考或基于HyperGBM内置的支持Dask的搜索空间定义自己的搜索空间。
 
