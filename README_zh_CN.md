@@ -20,6 +20,13 @@ HyperGBM中的优化算法和搜索空间表示技术由 [Hypernets](https://git
 pip install hypergbm
 ```
 
+## 相关文章
+* [HyperGBM用4记组合拳提升AutoML模型泛化能力](https://zhuanlan.zhihu.com/p/349824150)
+* [HyperGBM用Adversarial Validation解决数据漂移问题](https://zhuanlan.zhihu.com/p/349432455)
+* [HyperGBM的三种Early Stopping方式](https://zhuanlan.zhihu.com/p/350051541)
+* [如何HyperGBM解决分类样本不均衡问题](https://zhuanlan.zhihu.com/p/350052055)
+* [HyperGBM轻松实现Pseudo-labeling半监督学习](https://zhuanlan.zhihu.com/p/355419632)
+
 ## Hypernets 相关项目
 
 * [HyperGBM](https://github.com/DataCanvasIO/HyperGBM): 一个集成了多个GBM模型的全Pipeline AutoML工具.
