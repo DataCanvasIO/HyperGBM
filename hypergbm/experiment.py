@@ -23,6 +23,7 @@ from hypernets.utils import logging, fs
 from hypernets.utils.common import isnotebook
 from tabular_toolbox import dask_ex as dex
 from tabular_toolbox import drift_detection as dd
+from tabular_toolbox.const import TASK_BINARY, TASK_REGRESSION, TASK_MULTICLASS
 from tabular_toolbox.data_cleaner import DataCleaner
 from tabular_toolbox.ensemble import GreedyEnsemble, DaskGreedyEnsemble
 from tabular_toolbox.feature_selection import select_by_multicollinearity
@@ -252,14 +253,14 @@ class DataCleanStep(ExperimentStep):
                     detector.fit(X_train, X_test)
                     X_train, X_eval, y_train, y_eval = detector.train_test_split(X_train, y_train, test_size=eval_size)
                 else:
-                    if self.task == 'regression' or dex.is_dask_object(X_train):
+                    if self.task == TASK_REGRESSION or dex.is_dask_object(X_train):
                         X_train, X_eval, y_train, y_eval = dex.train_test_split(X_train, y_train, test_size=eval_size,
                                                                                 random_state=self.random_state)
                     else:
                         X_train, X_eval, y_train, y_eval = dex.train_test_split(X_train, y_train, test_size=eval_size,
                                                                                 random_state=self.random_state,
                                                                                 stratify=y_train)
-                if self.task != 'regression':
+                if self.task != TASK_REGRESSION:
                     y_train_uniques = set(y_train.unique()) if hasattr(y_train, 'unique') else set(y_train)
                     y_eval_uniques = set(y_eval.unique()) if hasattr(y_eval, 'unique') else set(y_eval)
                     assert y_train_uniques == y_eval_uniques, \
@@ -657,9 +658,9 @@ class PseudoLabelStep(ExperimentStep):
 
         X_pseudo = None
         y_pseudo = None
-        if self.task in ['binary', 'multiclass'] and X_test is not None:
+        if self.task in [TASK_BINARY, TASK_MULTICLASS] and X_test is not None:
             proba = estimator.predict_proba(X_test)
-            if self.task == 'binary':
+            if self.task == TASK_BINARY:
                 proba = proba[:, 1]
                 proba_threshold = self.pseudo_labeling_proba_threshold
                 X_pseudo, y_pseudo = self.extract_pseudo_label(X_test, proba, proba_threshold, estimator.classes_)
@@ -739,7 +740,7 @@ class PseudoLabelStep(ExperimentStep):
             y_mix = pd.concat(y_list, axis=0, ignore_index=True)
             if y_mix.dtype != y_train.dtype:
                 y_mix = y_mix.astype(y_train.dtype)
-            if self.task == 'regression':
+            if self.task == TASK_REGRESSION:
                 stratify = None
             else:
                 stratify = y_mix
@@ -794,7 +795,7 @@ class DaskPseudoLabelStep(PseudoLabelStep):
                 y_list.append(y_eval)
             X_mix = dex.concat_df(x_list, axis=0)
             y_mix = dex.concat_df(y_list, axis=0)
-            # if self.task == 'regression':
+            # if self.task == TASK_REGRESSION:
             #     stratify = None
             # else:
             #     stratify = y_mix
@@ -1030,7 +1031,7 @@ class CompeteExperiment(SteppedExperiment):
         steps.append(search_cls(self, 'space_search', cv=cv, num_folds=num_folds))
 
         # pseudo label
-        if pseudo_labeling and task != 'regression':
+        if pseudo_labeling and task != TASK_REGRESSION:
             if ensemble_size is not None and ensemble_size > 1:
                 estimator_builder = ensemble_cls(self, 'pseudo_ensemble', scorer=scorer, ensemble_size=ensemble_size)
             else:
@@ -1087,7 +1088,7 @@ class CompeteExperiment(SteppedExperiment):
                                 dex.compute(X_eval.shape)[0] if X_eval is not None else None,
                                 dex.compute(y_eval.shape)[0] if y_eval is not None else None,
                                 dex.compute(X_test.shape)[0] if X_test is not None else None,
-                                self.task if self.task == 'regression'
+                                self.task if self.task == TASK_REGRESSION
                                 else f'{self.task}({dex.compute(y_train.nunique())[0]})')
             else:
                 display_data = (X_train.shape,
@@ -1095,7 +1096,7 @@ class CompeteExperiment(SteppedExperiment):
                                 X_eval.shape if X_eval is not None else None,
                                 y_eval.shape if y_eval is not None else None,
                                 X_test.shape if X_test is not None else None,
-                                self.task if self.task == 'regression'
+                                self.task if self.task == TASK_REGRESSION
                                 else f'{self.task}({y_train.nunique()})')
             display(pd.DataFrame([display_data],
                                  columns=['X_train.shape',
@@ -1137,7 +1138,7 @@ def make_experiment(train_data,
                     early_stopping_rounds=10,
                     early_stopping_time_limit=3600,
                     early_stopping_reward=None,
-                    reward_metric='accuracy',
+                    reward_metric=None,
                     optimize_direction=None,
                     use_cache=None,
                     clear_cache=None,
@@ -1186,8 +1187,8 @@ def make_experiment(train_data,
     early_stopping_reward : float, optional
         Setting of EarlyStoppingCallback, is used if EarlyStoppingCallback instance not found from search_callbacks.
         Set zero or None to disable it, default is None.
-    reward_metric : str, callable, optional
-        Hypernets search reward metric name or callable, default is 'accuracy'. Possible values:
+    reward_metric : str, callable, optional, (default 'accuracy' for binary/multicalss task, 'rmse' for regression task)
+        Hypernets search reward metric name or callable. Possible values:
             - accuracy
             - auc
             - f1
@@ -1384,6 +1385,8 @@ def make_experiment(train_data,
     if task is None:
         task, _ = infer_task_type(y_train)
 
+    if reward_metric is None:
+        reward_metric = 'rmse' if task == TASK_REGRESSION else 'accuracy'
     scorer = metric_to_scoring(reward_metric) if kwargs.get('scorer') is None else kwargs.get('scorer')
     if isinstance(scorer, str):
         scorer = get_scorer(scorer)
