@@ -190,6 +190,8 @@ def main():
                             f'use when task="{TASK_BINARY}" only, default %(default)s')
         a.add_argument('--pos-label', type=str, default=None,
                        help='pos label')
+        a.add_argument('--jobs', type=int, default=1,
+                       help='job process count, default %(default)s')
 
     def setup_predict_args(a):
         a.add_argument('--data', '--data-file', type=str, required=True,
@@ -202,6 +204,8 @@ def main():
                        help='predict probability instead of target, default %(default)s')
         a.add_argument('-proba', dest='proba', action='store_true',
                        help='alias of "--proba true"')
+        a.add_argument('--jobs', type=int, default=1,
+                       help='job process count, default %(default)s')
 
         a.add_argument('--output', '--output-file', type=str, default='prediction.csv',
                        help='the output file name, default is %(default)s')
@@ -266,8 +270,9 @@ def main():
         p.parse_args(['--help'])
 
     # setup dask if enabled
-    enable_dask = args.enable_dask or os.environ.get('DASK_SCHEDULER_ADDRESS') is not None
-    if enable_dask:
+    if os.environ.get('DASK_SCHEDULER_ADDRESS') is not None:
+        args.enable_dask = True
+    if args.enable_dask:
         client = setup_dask(args.overload)
         if args.verbose:
             print(f'enable dask: {client}')
@@ -353,6 +358,7 @@ def evaluate(args):
 
     assert os.path.exists(model_file), f'Not found {model_file}'
     assert os.path.exists(eval_data), f'Not found {eval_data}'
+    assert not (args.enable_dask and args.jobs > 1)
 
     if args.verbose:
         print(f'>>> load model {model_file}')
@@ -379,21 +385,21 @@ def evaluate(args):
     if task == TASK_BINARY:
         if args.verbose:
             print(f'>>> run predict_proba')
-        proba = estimator.predict_proba(X)
+        proba = call_predict(estimator.predict_proba, X, n_jobs=args.jobs)
         pred = (proba[:, 1] > args.threshold).astype(np.int)
         if args.pos_label is not None:
             kwargs['pos_label'] = args.pos_label
     elif task == TASK_MULTICLASS:
         if args.verbose:
             print(f'>>> run predict')
-        pred = estimator.predict(X)
+        pred = call_predict(estimator.predict, X, n_jobs=args.jobs)
         if args.verbose:
             print(f'>>> run predict_proba')
-        proba = estimator.predict_proba(X)
+        proba = call_predict(estimator.predict_proba, X, n_jobs=args.jobs)
     else:
         if args.verbose:
             print(f'>>> run predict')
-        pred = estimator.predict(X)
+        pred = call_predict(estimator.predict, X, n_jobs=args.jobs)
         proba = None
 
     if args.verbose:
@@ -416,6 +422,7 @@ def predict(args):
 
     assert os.path.exists(model_file), f'Not found {model_file}'
     assert os.path.exists(data_file), f'Not found {data_file}'
+    assert not (args.enable_dask and args.jobs > 1)
 
     if args.verbose:
         print(f'>>> load model {model_file}')
@@ -441,11 +448,12 @@ def predict(args):
     if args.proba:
         if args.verbose:
             print(f'>>> run predict_proba')
-        pred = estimator.predict_proba(X)
+        fn = estimator.predict_proba
     else:
         if args.verbose:
             print(f'>>> run predict')
-        pred = estimator.predict(X)
+        fn = estimator.predict
+    pred = call_predict(fn, X, n_jobs=args.jobs)
 
     if args.verbose:
         print(f'>>> save prediction to {output_file}')
@@ -474,6 +482,25 @@ def predict(args):
 
     if args.verbose:
         print('>>> done')
+
+
+def call_predict(fn, df, n_jobs=1):
+    if n_jobs > 1:
+        from joblib import Parallel, delayed
+        import math
+
+        batch_size = math.ceil(df.shape[0] / n_jobs)
+        df_parts = [df[i:i + batch_size] for i in range(df.index.start, df.index.stop, batch_size)]
+        pss = Parallel(n_jobs=n_jobs, prefer='processes')(delayed(fn)(x) for x in df_parts)
+
+        if len(pss[0].shape) > 1:
+            result = np.vstack(pss)
+        else:
+            result = np.hstack(pss)
+    else:
+        result = fn(df)
+
+    return result
 
 
 if __name__ == '__main__':
