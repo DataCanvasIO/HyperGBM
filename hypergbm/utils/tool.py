@@ -4,6 +4,7 @@ import os
 import pickle
 import re
 import sys
+from functools import partial
 
 import numpy as np
 import psutil
@@ -16,6 +17,8 @@ from tabular_toolbox.const import TASK_BINARY, TASK_MULTICLASS
 
 
 metric_choices = ['accuracy', 'auc', 'f1', 'logloss', 'mse', 'mae', 'msle', 'precision', 'rmse', 'r2', 'recall']
+
+is_os_windows = sys.platform.find('win') >= 0
 
 
 def to_bool(v):
@@ -381,25 +384,28 @@ def evaluate(args):
     X = load_data(eval_data)
     y = X.pop(target)
 
+    fn_predict_proba = partial(load_and_predict, model_file, True) if args.jobs > 1 else estimator.predict_proba
+    fn_predict = partial(load_and_predict, model_file, False) if args.jobs > 1 else estimator.predict
+
     kwargs = {}
     if task == TASK_BINARY:
         if args.verbose:
             print(f'>>> run predict_proba')
-        proba = call_predict(estimator.predict_proba, X, n_jobs=args.jobs)
+        proba = call_predict(fn_predict_proba, X, n_jobs=args.jobs)
         pred = (proba[:, 1] > args.threshold).astype(np.int)
         if args.pos_label is not None:
             kwargs['pos_label'] = args.pos_label
     elif task == TASK_MULTICLASS:
         if args.verbose:
             print(f'>>> run predict')
-        pred = call_predict(estimator.predict, X, n_jobs=args.jobs)
+        pred = call_predict(fn_predict, X, n_jobs=args.jobs)
         if args.verbose:
             print(f'>>> run predict_proba')
-        proba = call_predict(estimator.predict_proba, X, n_jobs=args.jobs)
+        proba = call_predict(fn_predict_proba, X, n_jobs=args.jobs)
     else:
         if args.verbose:
             print(f'>>> run predict')
-        pred = call_predict(estimator.predict, X, n_jobs=args.jobs)
+        pred = call_predict(fn_predict, X, n_jobs=args.jobs)
         proba = None
 
     if args.verbose:
@@ -448,11 +454,12 @@ def predict(args):
     if args.proba:
         if args.verbose:
             print(f'>>> run predict_proba')
-        fn = estimator.predict_proba
+        fn = partial(load_and_predict, model_file, True) if args.jobs > 1 else estimator.predict_proba
     else:
         if args.verbose:
             print(f'>>> run predict')
-        fn = estimator.predict
+        fn = partial(load_and_predict, model_file, False) if args.jobs > 1 else estimator.predict
+
     pred = call_predict(fn, X, n_jobs=args.jobs)
 
     if args.verbose:
@@ -484,14 +491,27 @@ def predict(args):
         print('>>> done')
 
 
+def load_and_predict(model_file, proba, df):
+    with open(model_file, 'rb') as f:
+        estimator = pickle.load(f)
+
+    if proba:
+        result = estimator.predict_proba(df)
+    else:
+        result = estimator.predict(df)
+
+    return result
+
+
 def call_predict(fn, df, n_jobs=1):
     if n_jobs > 1:
         from joblib import Parallel, delayed
         import math
 
         batch_size = math.ceil(df.shape[0] / n_jobs)
-        df_parts = [df[i:i + batch_size] for i in range(df.index.start, df.index.stop, batch_size)]
-        pss = Parallel(n_jobs=n_jobs, prefer='processes')(delayed(fn)(x) for x in df_parts)
+        df_parts = [df[i:i + batch_size].copy() for i in range(df.index.start, df.index.stop, batch_size)]
+        options = dict(backend='multiprocessing') if is_os_windows else dict(prefer='processes')
+        pss = Parallel(n_jobs=n_jobs, **options)(delayed(fn)(x) for x in df_parts)
 
         if len(pss[0].shape) > 1:
             result = np.vstack(pss)
