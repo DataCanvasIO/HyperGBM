@@ -833,7 +833,7 @@ class SteppedExperiment(Experiment):
                 logger.warning(f'X_train{X_train.columns.to_list()} and X_test{X_test.columns.to_list()}'
                                f' have different columns before {step.name}, try fix it.')
                 X_test = X_test[X_train.columns]
-            if X_eval is not None and X_eval.columns.to_list() != X_eval.columns.to_list():
+            if X_eval is not None and X_train.columns.to_list() != X_eval.columns.to_list():
                 logger.warning(f'X_train{X_train.columns.to_list()} and X_eval{X_eval.columns.to_list()}'
                                f' have different columns before {step.name}, try fix it.')
                 X_eval = X_eval[X_train.columns]
