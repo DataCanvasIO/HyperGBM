@@ -2,9 +2,14 @@ import argparse
 import math
 import os
 import pickle
+import re
 import sys
+from functools import partial
 
+import numpy as np
 import psutil
+
+from tabular_toolbox.const import TASK_BINARY, TASK_MULTICLASS
 
 # from hypernets.utils import logging
 #
@@ -12,6 +17,8 @@ import psutil
 
 
 metric_choices = ['accuracy', 'auc', 'f1', 'logloss', 'mse', 'mae', 'msle', 'precision', 'rmse', 'r2', 'recall']
+
+is_os_windows = sys.platform.find('win') >= 0
 
 
 def to_bool(v):
@@ -83,10 +90,23 @@ def main():
                         help='alias of "--cv true"')
         tg.add_argument('-cv-', default='cv', action='store_false',
                         help='alias of "--cv false"')
+        tg.add_argument('--cv-num-folds', '--num-folds', dest='num_folds', type=int, default=3,
+                        help='fold number of cv, default %(default)s')
         tg.add_argument('--ensemble-size', '--ensemble', type=int, default=20,
                         help='how many estimators are involved, set "0" to disable ensemble, default %(default)s')
         tg.add_argument('--model-file', '--model', type=str, default='model.pkl',
                         help='the output pickle file name for trained model, default %(default)s')
+
+        sg = a.add_argument_group('Searcher settings')
+        sg.add_argument('--searcher', type=str, default=None,
+                        choices=['mcts', 'evolution', 'random'],
+                        help='Algorithm used to explore the search space, default %(default)s seconds')
+        sg.add_argument('-mcts', dest='searcher', action='store_const', const='mcts',
+                        help='alias of "--searcher mcts"')
+        sg.add_argument('-evolution', dest='searcher', action='store_const', const='evolution',
+                        help='alias of "--searcher evolution"')
+        sg.add_argument('-random', dest='searcher', action='store_const', const='random',
+                        help='alias of "--searcher random"')
 
         eg = a.add_argument_group('Early stopping settings')
         eg.add_argument('--early-stopping-time-limit', '--es-time-limit', type=int, default=3600,
@@ -163,25 +183,41 @@ def main():
                        help='the file path of evaluation data, .csv and .parquet files are supported.')
         a.add_argument('--target', '--y', type=str, default='y',
                        help='target feature name, default is %(default)s')
+        a.add_argument('--model-file', '--model', default='model.pkl',
+                       help='the pickle file name for trained model, default %(default)s')
         a.add_argument('--metric', type=str, default=['accuracy'], nargs='*', metavar='METRIC',
                        choices=metric_choices,
                        help='metric name list, one or more of [%(choices)s], default %(default)s')
-        a.add_argument('--model-file', '--model', default='model.pkl',
-                       help='the pickle file name for trained model, default %(default)s')
+        a.add_argument('--threshold', type=float, default=0.5,
+                       help=f'probability threshold to detect pos label, '
+                            f'use when task="{TASK_BINARY}" only, default %(default)s')
+        a.add_argument('--pos-label', type=str, default=None,
+                       help='pos label')
+        a.add_argument('--jobs', type=int, default=1,
+                       help='job process count, default %(default)s')
 
     def setup_predict_args(a):
         a.add_argument('--data', '--data-file', type=str, required=True,
                        help='the data path of to predict, .csv and .parquet files are supported.')
-        a.add_argument('--model-file', '--model', default='model.pkl',
-                       help='the pickle file name for trained model, default %(default)s')
         a.add_argument('--target', '--y', type=str, default='y',
                        help='target feature name, default is %(default)s')
+        a.add_argument('--model-file', '--model', default='model.pkl',
+                       help='the pickle file name for trained model, default %(default)s')
+        a.add_argument('--proba', type=to_bool, default=False,
+                       help='predict probability instead of target, default %(default)s')
+        a.add_argument('-proba', dest='proba', action='store_true',
+                       help='alias of "--proba true"')
+        a.add_argument('--jobs', type=int, default=1,
+                       help='job process count, default %(default)s')
+
         a.add_argument('--output', '--output-file', type=str, default='prediction.csv',
                        help='the output file name, default is %(default)s')
-        a.add_argument('--output-with-data', '--with-data', type=to_bool, default=False,
-                       help='output source data ot output also')
-        a.add_argument('-output-with-data', '-with-data', dest='output_with_data', action='store_true',
-                       help='alias of "--output-with-data true"')
+        a.add_argument('--output-with-data', '--with-data', type=str, default=None, nargs='*',
+                       help='column name patterns stored with prediction result, '
+                            '"*" for all columns, default %(default)s')
+        a.add_argument('-output-with-data', '-with-data', dest='output_with_data',
+                       action='store_const', const=['*'],
+                       help='alias of "--output-with-data *"')
 
     def setup_global_args(a):
         # console output
@@ -237,8 +273,9 @@ def main():
         p.parse_args(['--help'])
 
     # setup dask if enabled
-    enable_dask = args.enable_dask or os.environ.get('DASK_SCHEDULER_ADDRESS') is not None
-    if enable_dask:
+    if os.environ.get('DASK_SCHEDULER_ADDRESS') is not None:
+        args.enable_dask = True
+    if args.enable_dask:
         client = setup_dask(args.overload)
         if args.verbose:
             print(f'enable dask: {client}')
@@ -278,10 +315,12 @@ def train(args):
                                  ensemble_size=args.ensemble_size,
                                  reward_metric=args.reward_metric,
                                  train_test_split_strategy=args.train_test_split_strategy,  # 'adversarial_validation'
+                                 searcher=args.searcher,
                                  early_stopping_time_limit=args.early_stopping_time_limit,
                                  early_stopping_rounds=args.early_stopping_rounds,
                                  early_stopping_reward=args.early_stopping_reward,
                                  cv=args.cv,
+                                 num_folds=args.num_folds,
                                  drift_detection=args.drift_detection,
                                  drift_detection_remove_shift_variable=args.drift_detection_remove_shift_variable,
                                  drift_detection_variable_shift_threshold=args.drift_detection_variable_shift_threshold,
@@ -313,7 +352,6 @@ def train(args):
 
 def evaluate(args):
     from tabular_toolbox.utils import load_data
-    from tabular_toolbox.const import TASK_BINARY, TASK_MULTICLASS
     from tabular_toolbox.metrics import calc_score
 
     eval_data = args.eval_data
@@ -323,6 +361,7 @@ def evaluate(args):
 
     assert os.path.exists(model_file), f'Not found {model_file}'
     assert os.path.exists(eval_data), f'Not found {eval_data}'
+    assert not (args.enable_dask and args.jobs > 1)
 
     if args.verbose:
         print(f'>>> load model {model_file}')
@@ -345,20 +384,33 @@ def evaluate(args):
     X = load_data(eval_data)
     y = X.pop(target)
 
-    if args.verbose:
-        print(f'>>> run predict')
+    fn_predict_proba = partial(load_and_predict, model_file, True) if args.jobs > 1 else estimator.predict_proba
+    fn_predict = partial(load_and_predict, model_file, False) if args.jobs > 1 else estimator.predict
 
-    pred = estimator.predict(X)
-    if task in {TASK_BINARY, TASK_MULTICLASS}:
+    kwargs = {}
+    if task == TASK_BINARY:
         if args.verbose:
             print(f'>>> run predict_proba')
-        proba = estimator.predict_proba(X)
+        proba = call_predict(fn_predict_proba, X, n_jobs=args.jobs)
+        pred = (proba[:, 1] > args.threshold).astype(np.int)
+        if args.pos_label is not None:
+            kwargs['pos_label'] = args.pos_label
+    elif task == TASK_MULTICLASS:
+        if args.verbose:
+            print(f'>>> run predict')
+        pred = call_predict(fn_predict, X, n_jobs=args.jobs)
+        if args.verbose:
+            print(f'>>> run predict_proba')
+        proba = call_predict(fn_predict_proba, X, n_jobs=args.jobs)
     else:
+        if args.verbose:
+            print(f'>>> run predict')
+        pred = call_predict(fn_predict, X, n_jobs=args.jobs)
         proba = None
 
     if args.verbose:
         print(f'>>> calc scores: {metrics}')
-    scores = calc_score(y_true=y, y_preds=pred, y_proba=proba, metrics=metrics)
+    scores = calc_score(y_true=y, y_preds=pred, y_proba=proba, metrics=metrics, **kwargs)
 
     print(scores)
 
@@ -372,10 +424,11 @@ def predict(args):
     model_file = args.model_file
     output_file = args.output
     output_with_data = args.output_with_data
-    target = args.target
+    target = args.target if args.target is not None else 'y'
 
     assert os.path.exists(model_file), f'Not found {model_file}'
     assert os.path.exists(data_file), f'Not found {data_file}'
+    assert not (args.enable_dask and args.jobs > 1)
 
     if args.verbose:
         print(f'>>> load model {model_file}')
@@ -386,27 +439,88 @@ def predict(args):
         print(f'>>> load data {data_file}')
     X = load_data(data_file)
 
-    if args.verbose:
-        print(f'>>> run predict')
-    pred = estimator.predict(X)
+    if output_with_data:
+        if '*' == output_with_data or '*' in output_with_data:
+            data = X
+        else:
+            data_columns = [c for c in X.columns if any([re.match(r, c) for r in output_with_data])]
+            if len(data_columns) == 0:
+                print(f'>>> No output column found to match {output_with_data}', file=sys.stderr)
+                exit(1)
+            data = X[data_columns]
+    else:
+        data = None
+
+    if args.proba:
+        if args.verbose:
+            print(f'>>> run predict_proba')
+        fn = partial(load_and_predict, model_file, True) if args.jobs > 1 else estimator.predict_proba
+    else:
+        if args.verbose:
+            print(f'>>> run predict')
+        fn = partial(load_and_predict, model_file, False) if args.jobs > 1 else estimator.predict
+
+    pred = call_predict(fn, X, n_jobs=args.jobs)
 
     if args.verbose:
-        print(f'>>> save prediction to  {output_file}')
+        print(f'>>> save prediction to {output_file}')
+
+    if len(pred.shape) > 1 and pred.shape[1] > 1:
+        columns = [f'{target}_{i}' for i in range(pred.shape[1])]
+    else:
+        columns = [target]
 
     if dex.is_dask_object(pred):
-        y = dex.dd.from_dask_array(pred, columns=[target])
+        y = dex.dd.from_dask_array(pred, columns=columns)
     else:
-        y = pd.Series(pred, name=target)
+        y = pd.DataFrame(pred, columns=columns)
 
-    if output_with_data:
-        df = dex.concat_df([X, y], axis=1)
+    df = dex.concat_df([data, y], axis=1) if data is not None else y
+    if dex.is_dask_object(df):
+        from tabular_toolbox.persistence import to_parquet
+        to_parquet(df, output_file)
     else:
-        df = y
-
-    df.to_csv(output_file, index=False)
+        if output_file.endswith('.parquet'):
+            df.to_parquet(output_file)
+        elif output_file.endswith('.pkl') or output_file.endswith('.pickle'):
+            df.to_pickle(output_file, protocol=4)
+        else:
+            df.to_csv(output_file, index=False)
 
     if args.verbose:
         print('>>> done')
+
+
+def load_and_predict(model_file, proba, df):
+    with open(model_file, 'rb') as f:
+        estimator = pickle.load(f)
+
+    if proba:
+        result = estimator.predict_proba(df)
+    else:
+        result = estimator.predict(df)
+
+    return result
+
+
+def call_predict(fn, df, n_jobs=1):
+    if n_jobs > 1:
+        from joblib import Parallel, delayed
+        import math
+
+        batch_size = math.ceil(df.shape[0] / n_jobs)
+        df_parts = [df[i:i + batch_size].copy() for i in range(df.index.start, df.index.stop, batch_size)]
+        options = dict(backend='multiprocessing') if is_os_windows else dict(prefer='processes')
+        pss = Parallel(n_jobs=n_jobs, **options)(delayed(fn)(x) for x in df_parts)
+
+        if len(pss[0].shape) > 1:
+            result = np.vstack(pss)
+        else:
+            result = np.hstack(pss)
+    else:
+        result = fn(df)
+
+    return result
 
 
 if __name__ == '__main__':

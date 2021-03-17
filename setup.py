@@ -96,6 +96,7 @@ setup(
     entry_points={
         'console_scripts': [
             'hypergbm = hypergbm.utils.cli:main',
+            'hypergbm-tool = hypergbm.utils.tool:main',
         ]
     },
     include_package_data=True,
