@@ -27,7 +27,7 @@ from tabular_toolbox.data_cleaner import DataCleaner
 from tabular_toolbox.ensemble import GreedyEnsemble, DaskGreedyEnsemble
 from tabular_toolbox.feature_selection import select_by_multicollinearity
 from tabular_toolbox.utils import load_data, infer_task_type, hash_data, hash_dataframe
-
+from tabular_toolbox.lifelong_learning import select_valid_oof
 logger = logging.get_logger(__name__)
 
 DEFAULT_EVAL_SIZE = 0.3
@@ -544,7 +544,8 @@ class EnsembleStep(EstimatorBuilderStep):
             logger.info('ensemble with oofs')
             oofs = self.get_ensemble_predictions(best_trials, ensemble)
             assert oofs is not None
-            ensemble.fit(None, y_train, oofs)
+            y_, oofs_ = select_valid_oof(y_train, oofs)
+            ensemble.fit(None, y_, oofs_)
         else:
             ensemble.fit(X_eval, y_eval)
 

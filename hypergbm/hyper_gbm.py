@@ -27,6 +27,7 @@ from tabular_toolbox.data_cleaner import DataCleaner
 from tabular_toolbox.metrics import calc_score
 from tabular_toolbox.persistence import read_parquet, to_parquet
 from tabular_toolbox.utils import hash_dataframe
+from tabular_toolbox.lifelong_learning import select_valid_oof
 from .estimators import HyperEstimator
 
 try:
@@ -210,10 +211,14 @@ class HyperGBMEstimator(Estimator):
 
         X = self.transform_data(X, y, fit=True, use_cache=use_cache, verbose=verbose)
 
-        if stratified and self.task == 'binary':
-            iterators = StratifiedKFold(n_splits=num_folds, shuffle=True, random_state=9527)
+        cross_validator = kwargs.pop('cross_validator', None)
+        if cross_validator is not None:
+            iterators = cross_validator
         else:
-            iterators = KFold(n_splits=num_folds, shuffle=True, random_state=9527)
+            if stratified and self.task == 'binary':
+                iterators = StratifiedKFold(n_splits=num_folds, shuffle=True, random_state=9527)
+            else:
+                iterators = KFold(n_splits=num_folds, shuffle=True, random_state=9527)
 
         y = np.array(y)
 
@@ -250,20 +255,20 @@ class HyperGBMEstimator(Estimator):
 
             if oof_ is None:
                 if len(proba.shape) == 1:
-                    oof_ = np.zeros(y.shape, proba.dtype)
+                    oof_ = np.full(y.shape, np.nan, proba.dtype)
                 else:
-                    oof_ = np.zeros((y.shape[0], proba.shape[-1]), proba.dtype)
+                    oof_ = np.full((y.shape[0], proba.shape[-1]), np.nan, proba.dtype)
             oof_[valid_idx] = proba
             self.cv_gbm_models_.append(fold_est)
 
         if metrics is None:
             metrics = ['accuracy']
-        proba = oof_
+        y, proba = select_valid_oof(y, oof_)
         if self.task == 'regression':
+            preds = proba
             proba = None
-            preds = oof_
         else:
-            preds = self.proba2predict(oof_)
+            preds = self.proba2predict(proba)
             preds = np.array(self.classes_).take(preds, axis=0)
         scores = calc_score(y, preds, proba, metrics, self.task)
         if verbose > 0:
