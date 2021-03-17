@@ -34,6 +34,29 @@ class Test_HyperGBM():
         assert len(score) == 200
         return estimator, hk
 
+    def test_cross_validator(self):
+        from tabular_toolbox.lifelong_learning import PrequentialSplit
+        df = dsutils.load_bank()
+        df.drop(['id'], axis=1, inplace=True)
+        rs = RandomSearcher(search_space_general, optimize_direction=OptimizeDirection.Maximize)
+        hk = HyperGBM(rs, task='binary', reward_metric='accuracy',
+                      cache_dir=f'{test_output_dir}/hypergbm_cache',
+                      callbacks=[SummaryCallback(), FileLoggingCallback(rs, output_dir=f'{test_output_dir}/hyn_logs')])
+
+        X_train, X_test = train_test_split(df.head(1000), test_size=0.2, random_state=42)
+        y_train = X_train.pop('y')
+        y_test = X_test.pop('y')
+
+        preq_split = PrequentialSplit(PrequentialSplit.STRATEGY_PREQ_BLS, n_splits=3)
+        hk.search(X_train, y_train, X_test, y_test, cv=True, max_trials=3, cross_validator=preq_split)
+        best_trial = hk.get_best_trial()
+
+        estimator = hk.final_train(best_trial.space_sample, X_train, y_train)
+        score = estimator.predict(X_test)
+        result = estimator.evaluate(X_test, y_test)
+        assert len(score) == 200
+        return estimator, hk
+
     def test_save_load(self):
         df = dsutils.load_bank()
         df.drop(['id'], axis=1, inplace=True)
@@ -74,7 +97,7 @@ class Test_HyperGBM():
         def f():
             return X_train, X_test, y_train, y_test
 
-        self.train_bankdata(f,cv=True)
+        self.train_bankdata(f, cv=True)
 
     def test_no_categorical(self):
         df = dsutils.load_bank()
