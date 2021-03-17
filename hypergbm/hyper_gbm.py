@@ -7,6 +7,7 @@ import hashlib
 import pickle
 import re
 import time
+from tqdm import tqdm
 
 import dask.array as da
 import dask.dataframe as dd
@@ -228,7 +229,10 @@ class HyperGBMEstimator(Estimator):
 
         oof_ = None
         self.cv_gbm_models_ = []
+        pbar = tqdm(total=iterators.n_splits)
+
         for n_fold, (train_idx, valid_idx) in enumerate(iterators.split(X, y)):
+            pbar.update(n_fold + 1)
             x_train_fold, y_train_fold = X.iloc[train_idx], y[train_idx]
             x_val_fold, y_val_fold = X.iloc[valid_idx], y[valid_idx]
 
@@ -260,6 +264,8 @@ class HyperGBMEstimator(Estimator):
                     oof_ = np.full((y.shape[0], proba.shape[-1]), np.nan, proba.dtype)
             oof_[valid_idx] = proba
             self.cv_gbm_models_.append(fold_est)
+
+        pbar.close()
 
         if metrics is None:
             metrics = ['accuracy']

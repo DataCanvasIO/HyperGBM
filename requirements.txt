@@ -10,3 +10,4 @@ xgboost
 catboost>=0.21
 featuretools
 imblearn
+tqdm
