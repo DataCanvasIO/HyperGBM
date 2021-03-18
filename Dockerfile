@@ -1,5 +1,8 @@
 FROM centos:7
 
+ARG HYPERGBM_VERSION
+ARG HYPERGBM_GIT=https://github.com/DataCanvasIO/hypergbm.git
+
 USER root
 ENV LANG C.UTF-8
 ENV NotebookToken ''
@@ -22,27 +25,30 @@ RUN  yum install epel-release  centos-release-scl -y \
 
 ENV LLVM_CONFIG /usr/bin/llvm-config-9.0-64
 
-#RUN mkdir -p /root/.pip \
-#    && echo -e "[global]\n\
-#index-url = https://mirrors.aliyun.com/pypi/simple" > /root/.pip/pip.conf
+RUN mkdir -p /root/.pip \
+    && echo -e "[global]\n\
+index-url = https://mirrors.aliyun.com/pypi/simple" > /root/.pip/pip.conf
 
 # For install shap
-#RUN echo -e "[easy_install]\n\
-#index_url = https://mirrors.aliyun.com/pypi/simple" > /root/.pydistutils.cfg
+RUN echo -e "[easy_install]\n\
+index_url = https://mirrors.aliyun.com/pypi/simple" > /root/.pydistutils.cfg
 
 RUN mkdir -p /opt/datacanvas
 
-RUN git clone -b 0.2.1 https://github.com/DataCanvasIO/hypergbm.git /opt/datacanvas/hypergbm
+RUN git clone -b ${HYPERGBM_VERSION} ${HYPERGBM_GIT} /opt/datacanvas/hypergbm
 
 RUN pip3 install jupyterlab Cython # Docker Image deps
 
 RUN pip3 -v install numpy==1.19.1 scikit-learn==0.23.1  # Prepare for shap
 RUN pip3 -v install shap==0.28.5 pyarrow==2.0.0 matplotlib  # Prepare for hypergbm
 
-RUN pip3 install hypergbm==0.2.1
+RUN pip3 install hypergbm==${HYPERGBM_VERSION}
 
 EXPOSE 8888
 
 CMD [ "bash", "-c", "/usr/local/bin/jupyter notebook --notebook-dir=/opt/datacanvas/hypergbm/hypergbm/examples  --ip=0.0.0.0 --allow-root --NotebookApp.token=$NotebookToken"]
 
-# docker run --rm  -p 8888:8888 -e NotebookToken=your-token datacanvas/hypergbm-example
+# docker run --rm  -p 8888:8888 datacanvas/hypergbm
+# docker run --rm  -p 8888:8888 -e NotebookToken=your-token datacanvas/hypergbm
+# docker build --build-arg HYPERGBM_VERSION=0.2.2 --build-arg HYPERGBM_GIT=https://gitee.com/oaksharks/hypergbm.git  -t datacanvas/hypergbm:0.2.2 .
+
