@@ -275,7 +275,7 @@ class HyperGBMEstimator(Estimator):
         scores = self.get_scores(y, oof_, metrics)
         if verbose > 0:
             logger.info(f'taken {time.time() - starttime}s')
-        return scores, oof_
+        return scores, oof_, oof_scores
 
     def get_scores(self, y, oof_, metrics):
         y, proba = select_valid_oof(y, oof_)
@@ -373,7 +373,7 @@ class HyperGBMEstimator(Estimator):
         scores = calc_score(y, preds, proba, metrics, self.task)
         if verbose > 0:
             logger.info(f'taken {time.time() - starttime}s')
-        return scores, oof_
+        return scores, oof_, None
 
     def fit(self, X, y, use_cache=None, verbose=0, **kwargs):
         starttime = time.time()
