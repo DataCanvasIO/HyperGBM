@@ -264,6 +264,7 @@ class HyperGBMEstimator(Estimator):
             oof_[valid_idx] = proba
             self.cv_gbm_models_.append(fold_est)
 
+        pbar.moveto(iterators.n_splits)
         pbar.close()
 
         if metrics is None:
