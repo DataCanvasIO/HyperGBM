@@ -540,7 +540,8 @@ class EnsembleStep(EstimatorBuilderStep):
     def fit_transform(self, hyper_model, X_train, y_train, X_test=None, X_eval=None, y_eval=None, **kwargs):
         if _is_notebook:
             display_markdown('### Ensemble', raw=True)
-
+        else:
+            logger.info('start ensemble')
         self.step_start('ensemble')
 
         best_trials = hyper_model.get_top_trials(self.ensemble_size)
@@ -561,6 +562,8 @@ class EnsembleStep(EstimatorBuilderStep):
 
         if _is_notebook:
             display(ensemble)
+        else:
+            logging.info(f'ensemble info: {ensemble}')
 
         return hyper_model, X_train, y_train, X_test, X_eval, y_eval
 

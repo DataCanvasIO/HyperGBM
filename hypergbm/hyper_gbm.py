@@ -208,7 +208,7 @@ class HyperGBMEstimator(Estimator):
         if verbose is None:
             verbose = 0
         if verbose > 0:
-            logger.info('estimator is transforming the train set')
+            logger.info('transforming the train set')
 
         X = self.transform_data(X, y, fit=True, use_cache=use_cache, verbose=verbose)
 
@@ -230,7 +230,6 @@ class HyperGBMEstimator(Estimator):
         oof_ = None
         self.cv_gbm_models_ = []
         pbar = tqdm(total=iterators.n_splits)
-
         for n_fold, (train_idx, valid_idx) in enumerate(iterators.split(X, y)):
             pbar.update(1)
             x_train_fold, y_train_fold = X.iloc[train_idx], y[train_idx]
