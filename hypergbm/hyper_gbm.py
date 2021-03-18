@@ -232,9 +232,7 @@ class HyperGBMEstimator(Estimator):
         oof_ = None
         oof_scores = []
         self.cv_gbm_models_ = []
-        pbar = tqdm(total=iterators.n_splits)
-        for n_fold, (train_idx, valid_idx) in enumerate(iterators.split(X, y)):
-            pbar.update(1)
+        for n_fold, (train_idx, valid_idx) in enumerate(tqdm(iterators.split(X, y))):
             x_train_fold, y_train_fold = X.iloc[train_idx], y[train_idx]
             x_val_fold, y_val_fold = X.iloc[valid_idx], y[valid_idx]
 
@@ -269,8 +267,6 @@ class HyperGBMEstimator(Estimator):
             oof_[valid_idx] = proba
             self.cv_gbm_models_.append(fold_est)
 
-        pbar.moveto(iterators.n_splits)
-        pbar.close()
         logger.info(f'oof_scores:{oof_scores}')
         scores = self.get_scores(y, oof_, metrics)
         if verbose > 0:
