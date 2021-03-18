@@ -563,7 +563,7 @@ class EnsembleStep(EstimatorBuilderStep):
         if _is_notebook:
             display(ensemble)
         else:
-            logging.info(f'ensemble info: {ensemble}')
+            logger.info(f'ensemble info: {ensemble}')
 
         return hyper_model, X_train, y_train, X_test, X_eval, y_eval
 
