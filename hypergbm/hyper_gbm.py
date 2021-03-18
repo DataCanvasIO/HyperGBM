@@ -227,7 +227,10 @@ class HyperGBMEstimator(Estimator):
         if kwargs.get('verbose') is None:
             kwargs['verbose'] = verbose
 
+        if metrics is None:
+            metrics = ['accuracy']
         oof_ = None
+        oof_scores = []
         self.cv_gbm_models_ = []
         pbar = tqdm(total=iterators.n_splits)
         for n_fold, (train_idx, valid_idx) in enumerate(iterators.split(X, y)):
@@ -256,6 +259,8 @@ class HyperGBMEstimator(Estimator):
             else:
                 proba = fold_est.predict_proba(x_val_fold)
 
+            fold_scores = self.get_scores(y_val_fold, proba, metrics)
+            oof_scores.append(fold_scores)
             if oof_ is None:
                 if len(proba.shape) == 1:
                     oof_ = np.full(y.shape, np.nan, proba.dtype)
@@ -266,9 +271,13 @@ class HyperGBMEstimator(Estimator):
 
         pbar.moveto(iterators.n_splits)
         pbar.close()
+        logger.info(f'oof_scores:{oof_scores}')
+        scores = self.get_scores(y, oof_, metrics)
+        if verbose > 0:
+            logger.info(f'taken {time.time() - starttime}s')
+        return scores, oof_
 
-        if metrics is None:
-            metrics = ['accuracy']
+    def get_scores(self, y, oof_, metrics):
         y, proba = select_valid_oof(y, oof_)
         if self.task == 'regression':
             preds = proba
@@ -277,9 +286,7 @@ class HyperGBMEstimator(Estimator):
             preds = self.proba2predict(proba)
             preds = np.array(self.classes_).take(preds, axis=0)
         scores = calc_score(y, preds, proba, metrics, self.task)
-        if verbose > 0:
-            logger.info(f'taken {time.time() - starttime}s')
-        return scores, oof_
+        return scores
 
     def fit_cross_validation_by_dask(self, X, y, use_cache=None, verbose=0, stratified=True, num_folds=3,
                                      shuffle=False, random_state=9527, metrics=None, **kwargs):
