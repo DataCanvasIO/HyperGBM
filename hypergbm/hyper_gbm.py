@@ -243,7 +243,7 @@ class HyperGBMEstimator(Estimator):
                 if sampler is None:
                     sample_weight = self._get_sample_weight(y_train_fold)
                 else:
-                    x_train_fold, y_train_fold = sampler.fit_sample(x_train_fold, y_train_fold)
+                    x_train_fold, y_train_fold = sampler.fit_resample(x_train_fold, y_train_fold)
             kwargs['sample_weight'] = sample_weight
 
             fold_est = copy.deepcopy(self.gbm_model)
@@ -318,7 +318,7 @@ class HyperGBMEstimator(Estimator):
                 if sampler is None:
                     sample_weight = self._get_sample_weight(y_train_fold)
                 else:
-                    x_train_fold, y_train_fold = sampler.fit_sample(x_train_fold, y_train_fold)
+                    x_train_fold, y_train_fold = sampler.fit_resample(x_train_fold, y_train_fold)
 
             if valid_idx.shape[0] > eval_size_limit:
                 eval_idx = valid_idx[0:eval_size_limit]
@@ -413,7 +413,7 @@ class HyperGBMEstimator(Estimator):
             else:
                 if verbose > 0:
                     logger.info(f'sample balancing:{self.class_balancing}')
-                X, y = sampler.fit_sample(X, y)
+                X, y = sampler.fit_resample(X, y)
 
         if verbose > 0:
             logger.info('estimator is fitting the data')
