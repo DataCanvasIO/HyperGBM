@@ -222,7 +222,7 @@ def search_space_general_removed(dataframe_mapper_default=False,
                                  histgb_fit_kwargs=None,
                                  cat_pipeline_mode='simple',
                                  class_balancing=None,
-                                 n_esitimators=200,
+                                 n_estimators=200,
                                  **kwargs):
     """
     A general search space function
@@ -251,7 +251,7 @@ def search_space_general_removed(dataframe_mapper_default=False,
             - 'NearMiss'
             - 'TomeksLinks'
             - 'EditedNearestNeighbours'
-    :param n_esitimators: int, default=200
+    :param n_estimators: int, default=200
         Number of estimators
     :param kwargs:
     :return:
@@ -291,7 +291,7 @@ def search_space_general_removed(dataframe_mapper_default=False,
         # poly_pipeline = Pipeline(module_list=[poly_dm])(union_pipeline)
 
         lightgbm_init_kwargs = {
-            'n_estimators': n_esitimators,  # Choice([10, 30, 50, 100, 200, 300, 500]),
+            'n_estimators': n_estimators,  # Choice([10, 30, 50, 100, 200, 300, 500]),
             'boosting_type': Choice(['gbdt', 'dart', 'goss']),
             'num_leaves': Int(15, 513, 5),
             'learning_rate': Choice([0.001, 0.01, 0.5, 0.1]),
@@ -304,7 +304,7 @@ def search_space_general_removed(dataframe_mapper_default=False,
         xgb_init_kwargs = {
             'booster': Choice(['gbtree', 'dart']),
             'max_depth': Choice([3, 5, 7, 10]),
-            'n_estimators': n_esitimators,  # Choice([10, 30, 50, 100, 200, 300]),
+            'n_estimators': n_estimators,  # Choice([10, 30, 50, 100, 200, 300]),
             'learning_rate': Choice([0.001, 0.01, 0.5, 0.1]),
             'min_child_weight': Choice([1, 5, 10]),
             'gamma': Choice([0.5, 1, 1.5, 2, 5]),
@@ -315,7 +315,7 @@ def search_space_general_removed(dataframe_mapper_default=False,
 
         catboost_init_kwargs = {
             'silent': True,
-            'n_estimators': n_esitimators,
+            'n_estimators': n_estimators,
             'depth': Choice([3, 5, 7, 10]),
             'learning_rate': Choice([0.001, 0.01, 0.5, 0.1]),
             'l2_leaf_reg': Choice([None, 2, 10, 20, 30]),

@@ -1294,7 +1294,7 @@ def make_experiment(train_data,
         if early_stopping_rounds is not None:
             args['early_stopping_rounds'] = early_stopping_rounds
 
-        for key in ('n_esitimators', 'class_balancing'):
+        for key in ('n_estimators', 'class_balancing'):
             if key in kwargs.keys():
                 args[key] = kwargs.pop(key)
 

@@ -378,7 +378,7 @@ from hypergbm.search_space import search_space_general
 from hypernets.searchers import MCTSSearcher
 from tabular_toolbox.datasets import dsutils
 
-my_searcher = MCTSSearcher(lambda: search_space_general(n_esitimators=100),
+my_searcher = MCTSSearcher(lambda: search_space_general(n_estimators=100),
                            max_node_space=20,
                            optimize_direction='max')
 
@@ -542,7 +542,7 @@ from tabular_toolbox.datasets import dsutils
 
 
 def my_search_space():
-    return search_space_general(n_esitimators=100)
+    return search_space_general(n_estimators=100)
 
 
 def train():
