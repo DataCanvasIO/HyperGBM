@@ -9,5 +9,5 @@ lightgbm
 xgboost
 catboost>=0.21
 featuretools
-imblearn
+imbalanced-learn>=0.7.0
 tqdm
