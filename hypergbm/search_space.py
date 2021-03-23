@@ -43,21 +43,21 @@ class SearchSpaceGenerator(object):
     def __init__(self, **kwargs) -> None:
         super().__init__()
 
-        self.kwargs = kwargs
+        self.options = kwargs
 
-    def create_preprocessor(self, hyper_input, **kwargs):
+    def create_preprocessor(self, hyper_input, options):
         raise NotImplementedError()
 
-    def create_estimators(self, hyper_input, **kwargs):
+    def create_estimators(self, hyper_input, options):
         raise NotImplementedError()
 
     def __call__(self, *args, **kwargs):
-        kwargs = _merge_dict(self.kwargs, kwargs)
+        options = _merge_dict(self.options, kwargs)
 
         space = HyperSpace()
         with space.as_default():
             hyper_input = HyperInput(name='input1')
-            self.create_estimators(self.create_preprocessor(hyper_input, **kwargs), **kwargs)
+            self.create_estimators(self.create_preprocessor(hyper_input, options), options)
             space.set_inputs(hyper_input)
 
         return space
@@ -69,9 +69,9 @@ class BaseSearchSpaceGenerator(SearchSpaceGenerator):
         # return dict:  key-->(hyper_estimator_cls, default_init_kwargs, default_fit_kwargs)
         raise NotImplementedError()
 
-    def create_preprocessor(self, hyper_input, **kwargs):
-        cat_pipeline_mode = kwargs.pop('cat_pipeline_mode', 'simple')
-        dataframe_mapper_default = kwargs.pop('dataframe_mapper_default', False)
+    def create_preprocessor(self, hyper_input, options):
+        cat_pipeline_mode = options.pop('cat_pipeline_mode', 'simple')
+        dataframe_mapper_default = options.pop('dataframe_mapper_default', False)
 
         num_pipeline = numeric_pipeline_complex()(hyper_input)
         if cat_pipeline_mode == 'simple':
@@ -84,16 +84,16 @@ class BaseSearchSpaceGenerator(SearchSpaceGenerator):
 
         return preprocessor
 
-    def create_estimators(self, hyper_input, **kwargs):
+    def create_estimators(self, hyper_input, options):
         assert len(self.estimators.keys()) > 0
 
         creators = [_HyperEstimatorCreator(pairs[0],
-                                           init_kwargs=_merge_dict(pairs[1], kwargs.pop(f'{k}_init_kwargs', None)),
-                                           fit_kwargs=_merge_dict(pairs[2], kwargs.pop(f'{k}_fit_kwargs', None)))
+                                           init_kwargs=_merge_dict(pairs[1], options.pop(f'{k}_init_kwargs', None)),
+                                           fit_kwargs=_merge_dict(pairs[2], options.pop(f'{k}_fit_kwargs', None)))
                     for k, pairs in self.estimators.items()]
 
         unused = {}
-        for k, v in kwargs.items():
+        for k, v in options.items():
             used = False
             for c in creators:
                 if k in c.estimator_init_kwargs.keys():
@@ -106,7 +106,7 @@ class BaseSearchSpaceGenerator(SearchSpaceGenerator):
                 # logger.warn(f'Unused parameter: {k} = {v}')
                 unused[k] = v
 
-        # set unused kwargs as fit_kwargs of all estimators
+        # set unused options as fit_kwargs of all estimators
         if unused:
             for c in creators:
                 c.estimator_fit_kwargs.update(unused)
