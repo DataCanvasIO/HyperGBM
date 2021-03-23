@@ -72,9 +72,9 @@ class DaskGeneralSearchSpaceGenerator(GeneralSearchSpaceGenerator):
 
         return r
 
-    def create_preprocessor(self, hyper_input, **kwargs):
-        cat_pipeline_mode = kwargs.pop('cat_pipeline_mode', 'simple')
-        dataframe_mapper_default = kwargs.pop('dataframe_mapper_default', False)
+    def create_preprocessor(self, hyper_input, options):
+        cat_pipeline_mode = options.pop('cat_pipeline_mode', 'simple')
+        dataframe_mapper_default = options.pop('dataframe_mapper_default', False)
 
         if self.enable_persist:
             space = get_default_space()
