@@ -236,7 +236,7 @@ experiment = make_experiment(train_data, feature_reselection=True, ...)
 
 #### 模型融合
 
-未来获取较好的模型效果，`make_experiment`创建实验时默认开启了模型融合的特性，并使用效果最好的20个模型进行融合，可通过参数`ensemble_size`指定参与融合的模型的数量，当`ensemble_size`设置为`0`时则表示禁用模型融合。
+未了获取较好的模型效果，`make_experiment`创建实验时默认开启了模型融合的特性，并使用效果最好的20个模型进行融合，可通过参数`ensemble_size`指定参与融合的模型的数量，当`ensemble_size`设置为`0`时则表示禁用模型融合。
 
 调整参与融合的模型数量的示例代码：
 ```python
