@@ -67,7 +67,7 @@ class HyperGBMExplainer:
         self.hypergbm_estimator = hypergbm_estimator
         if data is not None:
             data = self.hypergbm_estimator.transform_data(data)
-        self.explainer = TreeExplainer(self.hypergbm_estimator.estimator, data)
+        self.explainer = TreeExplainer(self.hypergbm_estimator.gbm_model, data)
 
     @property
     def expected_value(self):
