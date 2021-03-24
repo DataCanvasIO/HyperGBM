@@ -165,6 +165,8 @@ def main():
 
         # others
         og = a.add_argument_group('Other settings')
+        og.add_argument('--id', type=str, default=None,
+                        help='experiment id')
         og.add_argument('--use-cache', type=to_bool, default=None)
         og.add_argument('-use-cache', '-use-cache+', dest='use_cache', action='store_true',
                         help='alias of "--use-cache true"')
@@ -311,6 +313,7 @@ def train(args):
 
     experiment = make_experiment(train_data, target=target, test_data=args.test_data, eval_data=args.eval_data,
                                  task=args.task,
+                                 id=args.id,
                                  max_trials=args.max_trials,
                                  ensemble_size=args.ensemble_size,
                                  reward_metric=args.reward_metric,

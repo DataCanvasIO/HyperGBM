@@ -6,7 +6,6 @@ __author__ = 'yangjian'
 """
 import copy
 import pickle
-from io import BytesIO
 
 import numpy as np
 import pandas as pd
@@ -27,8 +26,9 @@ from tabular_toolbox.const import TASK_BINARY, TASK_REGRESSION, TASK_MULTICLASS
 from tabular_toolbox.data_cleaner import DataCleaner
 from tabular_toolbox.ensemble import GreedyEnsemble, DaskGreedyEnsemble
 from tabular_toolbox.feature_selection import select_by_multicollinearity
-from tabular_toolbox.utils import load_data, infer_task_type, hash_data, hash_dataframe
 from tabular_toolbox.lifelong_learning import select_valid_oof
+from tabular_toolbox.utils import load_data, infer_task_type, hash_data
+
 logger = logging.get_logger(__name__)
 
 DEFAULT_EVAL_SIZE = 0.3
@@ -111,13 +111,12 @@ def cache_fit(attr_names, keys=('X_train', 'X_test', 'X_eval'), transform_fn=Non
 
             all_items = dict(X_train=X_train, y_train=y_train, X_test=X_test, X_eval=X_eval, y_eval=y_eval,
                              **kwargs)
-            key_items = {k: v if not isinstance(v, (pd.DataFrame, dex.dd.DataFrame)) else hash_dataframe(v)
+            pre_hashed_types = (pd.DataFrame, pd.Series, dex.dd.DataFrame, dex.dd.Series)
+            key_items = {k: v if not isinstance(v, pre_hashed_types) else hash_data(v)
                          for k, v in all_items.items() if keys is None or k in keys}
             key_items['step_params'] = step.get_params(deep=False)
+            key = hash_data(key_items)
 
-            buf = BytesIO()
-            pickle.dump(key_items, buf)
-            key = hash_data(buf.getvalue())
             cache_dir = getattr(hyper_model, 'cache_dir', None)
             if cache_dir is None:
                 cache_dir = 'step_cache'
@@ -891,6 +890,7 @@ class CompeteExperiment(SteppedExperiment):
                  train_test_split_strategy=None,
                  cv=True, num_folds=3,
                  task=None,
+                 id=None,
                  callbacks=None,
                  random_state=9527,
                  scorer=None,
@@ -1079,6 +1079,7 @@ class CompeteExperiment(SteppedExperiment):
         super(CompeteExperiment, self).__init__(steps,
                                                 hyper_model, X_train, y_train, X_eval=X_eval, y_eval=y_eval,
                                                 X_test=X_test, eval_size=eval_size, task=task,
+                                                id=id,
                                                 callbacks=callbacks,
                                                 random_state=random_state)
 
@@ -1136,6 +1137,7 @@ def make_experiment(train_data,
                     eval_data=None,
                     test_data=None,
                     task=None,
+                    id=None,
                     searcher=None,
                     search_space=None,
                     search_callbacks=None,
@@ -1169,6 +1171,8 @@ def make_experiment(train_data,
     task : str or None, (default=None)
         Task type(*binary*, *multiclass* or *regression*).
         If None, inference the type of task automatically
+    id : str or None, (default=None)
+        The experiment id.
     searcher : str, searcher class, search object, optional
         The hypernets Searcher instance to explore search space, default is EvolutionSearcher instance.
         For str, should be one of 'evolution', 'mcts', 'random'.
@@ -1401,14 +1405,20 @@ def make_experiment(train_data,
         search_callbacks = default_search_callbacks()
     search_callbacks = append_early_stopping_callbacks(search_callbacks)
 
+    if id is None:
+        id = hash_data(dict(X_train=X_train, y_train=y_train, X_test=X_test, X_eval=X_eval, y_eval=y_eval,
+                            eval_size=kwargs.get('eval_size'), target=target, task=task))
+        id = f'hypergbm_{id}'
+    default_cache_dir = f'{id}/cache'
+
     hm = HyperGBM(searcher, reward_metric=reward_metric, callbacks=search_callbacks,
-                  cache_dir=kwargs.pop('cache_dir', 'hypergbm_cache'),
+                  cache_dir=kwargs.pop('cache_dir', default_cache_dir),
                   clear_cache=clear_cache if clear_cache is not None else True)
 
     use_cache = not dex.exist_dask_object(X_train, X_test, X_eval) if use_cache is None else bool(use_cache)
 
     experiment = CompeteExperiment(hm, X_train, y_train, X_eval=X_eval, y_eval=y_eval, X_test=X_test,
-                                   task=task, scorer=scorer, use_cache=use_cache,
+                                   task=task, id=id, scorer=scorer, use_cache=use_cache,
                                    **kwargs)
 
     if logger.is_info_enabled():
