@@ -135,6 +135,7 @@ class GeneralSearchSpaceGenerator(BaseSearchSpaceGenerator):
             'gamma': Choice([0.5, 1, 1.5, 2, 5]),
             'reg_alpha': Choice([0.001, 0.01, 0.1, 1, 10, 100]),
             'reg_lambda': Choice([0.001, 0.01, 0.1, 0.5, 1]),
+            'random_state': 9527,
             'class_balancing': None,
         }
 
@@ -152,6 +153,7 @@ class GeneralSearchSpaceGenerator(BaseSearchSpaceGenerator):
             'max_depth': Choice([3, 5, 7, 10]),
             'reg_alpha': Choice([0.001, 0.01, 0.1, 1, 10, 100]),
             'reg_lambda': Choice([0.001, 0.01, 0.1, 0.5, 1]),
+            'random_state': 9527,
             'class_balancing': None,
         }
 
@@ -167,6 +169,7 @@ class GeneralSearchSpaceGenerator(BaseSearchSpaceGenerator):
             'depth': Choice([3, 5, 7, 10]),
             'learning_rate': Choice([0.001, 0.01, 0.5, 0.1]),
             'l2_leaf_reg': Choice([None, 2, 10, 20, 30]),
+            'random_state': 9527,
             'class_balancing': None,
         }
 
