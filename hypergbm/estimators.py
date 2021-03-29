@@ -104,7 +104,7 @@ class LGBMClassifierWrapper(lightgbm.LGBMClassifier):
         if not kwargs.__contains__('categorical_feature'):
             cat_cols = get_categorical_features(X)
             kwargs['categorical_feature'] = cat_cols
-        if kwargs.get('early_stopping_rounds') is None:
+        if kwargs.get('early_stopping_rounds') is None and kwargs.get('eval_set') is not None:
             kwargs['early_stopping_rounds'] = _default_early_stopping_rounds(self)
         super(LGBMClassifierWrapper, self).fit(X, y, sample_weight=sample_weight, **kwargs)
 
@@ -121,7 +121,7 @@ class LGBMRegressorWrapper(lightgbm.LGBMRegressor):
         if not kwargs.__contains__('categorical_feature'):
             cat_cols = get_categorical_features(X)
             kwargs['categorical_feature'] = cat_cols
-        if kwargs.get('early_stopping_rounds') is None:
+        if kwargs.get('early_stopping_rounds') is None and kwargs.get('eval_set') is not None:
             kwargs['early_stopping_rounds'] = _default_early_stopping_rounds(self)
         super(LGBMRegressorWrapper, self).fit(X, y, sample_weight=sample_weight, **kwargs)
 
@@ -236,7 +236,7 @@ class XGBClassifierWrapper(xgboost.XGBClassifier):
                 kwargs['eval_metric'] = 'mlogloss'
             else:
                 kwargs['eval_metric'] = 'logloss'
-        if kwargs.get('early_stopping_rounds') is None:
+        if kwargs.get('early_stopping_rounds') is None and kwargs.get('eval_set') is not None:
             kwargs['early_stopping_rounds'] = _default_early_stopping_rounds(self)
         super(XGBClassifierWrapper, self).fit(X, y, **kwargs)
 
@@ -261,7 +261,7 @@ class XGBRegressorWrapper(xgboost.XGBRegressor):
     def fit(self, X, y, **kwargs):
         if kwargs.get('eval_metric') is None:
             kwargs['eval_metric'] = 'logloss'
-        if kwargs.get('early_stopping_rounds') is None:
+        if kwargs.get('early_stopping_rounds') is None and kwargs.get('eval_set') is not None:
             kwargs['early_stopping_rounds'] = _default_early_stopping_rounds(self)
         super(XGBRegressorWrapper, self).fit(X, y, **kwargs)
 
@@ -462,7 +462,7 @@ class CatBoostClassifierWrapper(catboost.CatBoostClassifier):
         if not kwargs.__contains__('cat_features'):
             cat_cols = get_categorical_features(X)
             kwargs['cat_features'] = cat_cols
-        if kwargs.get('early_stopping_rounds') is None:
+        if kwargs.get('early_stopping_rounds') is None and kwargs.get('eval_set') is not None:
             kwargs['early_stopping_rounds'] = _default_early_stopping_rounds(self)
         super(CatBoostClassifierWrapper, self).fit(X, y, **kwargs)
 
@@ -484,7 +484,7 @@ class CatBoostRegressionWrapper(catboost.CatBoostRegressor):
         if not kwargs.__contains__('cat_features'):
             cat_cols = get_categorical_features(X)
             kwargs['cat_features'] = cat_cols
-        if kwargs.get('early_stopping_rounds') is None:
+        if kwargs.get('early_stopping_rounds') is None and kwargs.get('eval_set') is not None:
             kwargs['early_stopping_rounds'] = _default_early_stopping_rounds(self)
         super(CatBoostRegressionWrapper, self).fit(X, y, **kwargs)
 
