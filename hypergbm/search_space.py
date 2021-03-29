@@ -183,7 +183,8 @@ class GeneralSearchSpaceGenerator(BaseSearchSpaceGenerator):
             'learning_rate': Choice([0.01, 0.1, 0.2, 0.5, 0.8, 1]),
             'min_samples_leaf': Choice([10, 20, 50, 80, 100, 150, 180, 200]),
             'max_leaf_nodes': Int(15, 513, 5),
-            'l2_regularization': Choice([1e-10, 1e-8, 1e-6, 1e-5, 1e-3, 0.01, 0.1, 1])
+            'l2_regularization': Choice([1e-10, 1e-8, 1e-6, 1e-5, 1e-3, 0.01, 0.1, 1]),
+            'random_state': 9527,
         }
 
     @property
