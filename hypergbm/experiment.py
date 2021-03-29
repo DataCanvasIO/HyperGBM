@@ -1146,6 +1146,7 @@ def make_experiment(train_data,
                     early_stopping_reward=None,
                     reward_metric=None,
                     optimize_direction=None,
+                    estimator_early_stopping_rounds=None,
                     use_cache=None,
                     clear_cache=None,
                     log_level=None,
@@ -1210,6 +1211,8 @@ def make_experiment(train_data,
             - recall
     optimize_direction : str, optional
         Hypernets search reward metric direction, default is detected from reward_metric.
+    estimator_early_stopping_rounds : int or None, optional
+        Esitmator fit early_stopping_rounds option.
     use_cache : bool, optional, (default True if Dask is not enabled, else False)
     clear_cache: bool, optional, (default True)
     log_level : int, str, or None, (default=None),
@@ -1295,8 +1298,10 @@ def make_experiment(train_data,
 
     def default_search_space():
         args = {}
-        if early_stopping_rounds is not None:
-            args['early_stopping_rounds'] = early_stopping_rounds
+        if estimator_early_stopping_rounds is not None:
+            assert isinstance(estimator_early_stopping_rounds, int), \
+                f'estimator_early_stopping_rounds should be int or None, {estimator_early_stopping_rounds} found.'
+            args['early_stopping_rounds'] = estimator_early_stopping_rounds
 
         for key in ('n_estimators', 'class_balancing'):
             if key in kwargs.keys():
