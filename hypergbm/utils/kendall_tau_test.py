@@ -13,7 +13,7 @@ from hypergbm import make_experiment
 from hypernets.searchers import PlaybackSearcher
 
 
-def kendall_tau_between_sampled_and_whole(df, target_col, sample_rate=0.2, max_trials=50, reward_metric='auc', random_state=9527):
+def kendalltau_between_sampled_and_whole(df, target_col, sample_rate=0.2, max_trials=50, reward_metric='auc', random_state=9527):
     """
     Calculate Kendall's tau between models rewards with sampled and whole data
     """
@@ -25,7 +25,8 @@ def kendall_tau_between_sampled_and_whole(df, target_col, sample_rate=0.2, max_t
                                   reward_metric=reward_metric,
                                   collinearity_detection=False,
                                   max_trials=max_trials,
-                                  early_stopping_rounds=max_trials,
+                                  early_stopping_rounds=0,
+                                  early_stopping_time_limit=0,
                                   )
     exp_sampled.run()
     playback = PlaybackSearcher(exp_sampled.hyper_model.history, top_n=max_trials)
@@ -37,7 +38,8 @@ def kendall_tau_between_sampled_and_whole(df, target_col, sample_rate=0.2, max_t
                                     collinearity_detection=False,
                                     reward_metric=reward_metric,
                                     max_trials=max_trials,
-                                    early_stopping_rounds=max_trials,
+                                    early_stopping_rounds=0,
+                                    early_stopping_time_limit=0,
                                     )
     exp_wholedata.run()
 
