@@ -46,12 +46,12 @@ def kendalltau_between_sampled_and_whole(df, target_col, sample_rate=0.2, max_tr
     r1 = [r[0] for r in sorted([(t.reward,
                                  hashlib.md5(
                                      (';'.join([f'{v}' for v in t.space_sample.vectors])).encode('utf_8')).hexdigest())
-                                for t in exp_sampled.hyper_model.history.history], key=lambda x: x[1])]
+                                for t in exp_sampled.hyper_model.history.trials], key=lambda x: x[1])]
 
     r2 = [r[0] for r in sorted([(t.reward,
                                  hashlib.md5(
                                      (';'.join([f'{v}' for v in t.space_sample.vectors])).encode('utf_8')).hexdigest())
-                                for t in exp_wholedata.hyper_model.history.history], key=lambda x: x[1])]
+                                for t in exp_wholedata.hyper_model.history.trials], key=lambda x: x[1])]
 
     k, p = kendalltau(r1, r2)
     print(f'kendall tau:{k}, p_value:{p}')
