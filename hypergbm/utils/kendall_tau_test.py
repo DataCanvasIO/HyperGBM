@@ -25,7 +25,7 @@ def kendalltau_between_sampled_and_whole(df, target_col, sample_rate=0.2, max_tr
                                   reward_metric=reward_metric,
                                   collinearity_detection=False,
                                   max_trials=max_trials,
-                                  early_stopping_rounds=0,
+                                  early_stopping_rounds=max_trials,
                                   early_stopping_time_limit=0,
                                   )
     exp_sampled.run()
@@ -38,7 +38,7 @@ def kendalltau_between_sampled_and_whole(df, target_col, sample_rate=0.2, max_tr
                                     collinearity_detection=False,
                                     reward_metric=reward_metric,
                                     max_trials=max_trials,
-                                    early_stopping_rounds=0,
+                                    early_stopping_rounds=max_trials,
                                     early_stopping_time_limit=0,
                                     )
     exp_wholedata.run()
