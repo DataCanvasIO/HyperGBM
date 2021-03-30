@@ -14,6 +14,7 @@ from hypernets.searchers import PlaybackSearcher
 
 
 def kendalltau_between_sampled_and_whole(df, target_col, sample_rate=0.2, max_trials=50, reward_metric='auc',
+                                         calc_top_n_kendalltau=None,
                                          random_state=9527):
     """
     Calculate Kendall's tau between models rewards with sampled and whole data
@@ -57,4 +58,10 @@ def kendalltau_between_sampled_and_whole(df, target_col, sample_rate=0.2, max_tr
 
     k, p = kendalltau(r1, r2)
     print(f'kendall tau:{k}, p_value:{p}')
+
+    if calc_top_n_kendalltau is not None and calc_top_n_kendalltau > 0:
+        x_top = sorted([(a, b) for a, b in zip(r1, r2)], key=lambda x: x[0], reverse=True)[:calc_top_n_kendalltau]
+        k1, p1 = kendalltau([x[0] for x in x_top], [x[1] for x in x_top])
+        print(f'Top {calc_top_n_kendalltau} kendall tau:{k1}, p_value:{p1}')
+
     return k, p, exp_sampled.hyper_model.history, exp_wholedata.hyper_model.history
