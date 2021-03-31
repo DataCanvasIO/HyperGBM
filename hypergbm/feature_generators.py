@@ -7,8 +7,8 @@ import featuretools as ft
 import numpy as np
 import pandas as pd
 from featuretools import variable_types, primitives
-from tabular_toolbox.column_selector import column_all_datetime, column_number_exclude_timedelta
-from tabular_toolbox.sklearn_ex import FeatureSelectionTransformer
+from hypernets.tabular.column_selector import column_all_datetime, column_number_exclude_timedelta
+from hypernets.tabular.sklearn_ex import FeatureSelectionTransformer
 
 
 class CrossCategorical(primitives.TransformPrimitive):

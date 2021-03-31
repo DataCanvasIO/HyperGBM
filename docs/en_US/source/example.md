@@ -75,7 +75,7 @@ Using feature generation in search space：
 >>> from hypergbm.sklearn.transformers import FeatureGenerationTransformer
 >>> from hypernets.core.ops import ModuleChoice, HyperInput
 >>> from hypernets.core.search_space import HyperSpace
->>> from tabular_toolbox.column_selector import column_exclude_datetime
+>>> from hypernets.tabular.column_selector import column_exclude_datetime
 >>> 
 >>> def search_space(task=None):  # Define a search space include feature geeration
 ...     space = HyperSpace()
@@ -139,7 +139,7 @@ Name: target, dtype: int64
 >>> from hypernets.core import OptimizeDirection
 >>> from hypernets.core.ops import ModuleChoice, HyperInput
 >>> from hypernets.core.search_space import HyperSpace
->>> from tabular_toolbox.column_selector import column_number_exclude_timedelta
+>>> from hypernets.tabular.column_selector import column_number_exclude_timedelta
 # Define search space included XGBoost
 >>> def search_space():
 ...     space = HyperSpace()
@@ -350,7 +350,7 @@ Here is an example that training with `ClassWeight` sampling strategy:
 >>> from hypergbm.sklearn.transformers import MinMaxScaler, StandardScaler
 >>> from hypernets.core.ops import ModuleChoice, HyperInput
 >>> from hypernets.core.search_space import HyperSpace
->>> from tabular_toolbox.column_selector import column_number_exclude_timedelta
+>>> from hypernets.tabular.column_selector import column_number_exclude_timedelta
 >>> 
 >>> def search_space():
 ...     space = HyperSpace()

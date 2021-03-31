@@ -11,7 +11,7 @@ from hypergbm.tests import test_output_dir
 from hypernets.core.callbacks import *
 from hypernets.core.searcher import OptimizeDirection
 from hypernets.searchers.random_searcher import RandomSearcher
-from tabular_toolbox.datasets import dsutils
+from hypernets.tabular.datasets import dsutils
 
 
 def main():

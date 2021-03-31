@@ -11,8 +11,8 @@ from hypergbm.search_space import GeneralSearchSpaceGenerator
 from hypernets.core.ops import ModuleChoice, HyperInput
 from hypernets.core.search_space import Choice, HyperSpace, Int, get_default_space
 from hypernets.utils import logging
-from tabular_toolbox import dask_ex as dex
-from tabular_toolbox.column_selector import column_object, column_all
+from hypernets.tabular import dask_ex as dex
+from hypernets.tabular.column_selector import column_object, column_all
 
 logger = logging.get_logger(__name__)
 

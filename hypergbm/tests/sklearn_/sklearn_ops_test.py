@@ -13,7 +13,7 @@ from hypergbm.sklearn.sklearn_ops import categorical_pipeline_simple, categorica
     numeric_pipeline_simple, numeric_pipeline_complex
 from hypernets.core.ops import HyperInput
 from hypernets.core.search_space import HyperSpace
-from tabular_toolbox.column_selector import column_number, column_object_category_bool
+from hypernets.tabular.column_selector import column_number, column_object_category_bool
 
 ids = []
 

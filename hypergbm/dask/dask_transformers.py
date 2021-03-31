@@ -9,7 +9,7 @@ from dask_ml import preprocessing as dm_pre
 
 from hypergbm.pipeline import HyperTransformer
 from hypernets.utils import logging
-from tabular_toolbox import dask_ex as dex
+from hypernets.tabular import dask_ex as dex
 
 logger = logging.get_logger(__name__)
 

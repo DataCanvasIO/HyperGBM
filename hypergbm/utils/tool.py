@@ -9,7 +9,7 @@ from functools import partial
 import numpy as np
 import psutil
 
-from tabular_toolbox.const import TASK_BINARY, TASK_MULTICLASS
+from hypernets.utils.const import TASK_BINARY, TASK_MULTICLASS
 
 # from hypernets.utils import logging
 #
@@ -290,8 +290,8 @@ def main():
 
 def train(args):
     from hypergbm import make_experiment
-    from tabular_toolbox.datasets import dsutils
-    from tabular_toolbox import dask_ex as dex
+    from hypernets.tabular.datasets import dsutils
+    from hypernets.tabular import dask_ex as dex
 
     if args.train_data is None or len(args.train_data) == 0:
         if dex.dask_enabled():
@@ -354,8 +354,8 @@ def train(args):
 
 
 def evaluate(args):
-    from tabular_toolbox.utils import load_data
-    from tabular_toolbox.metrics import calc_score
+    from hypernets.utils import load_data
+    from hypernets.tabular.metrics import calc_score
 
     eval_data = args.eval_data
     target = args.target
@@ -419,8 +419,8 @@ def evaluate(args):
 
 
 def predict(args):
-    from tabular_toolbox.utils import load_data
-    from tabular_toolbox import dask_ex as dex
+    from hypernets.utils import load_data
+    from hypernets.tabular import dask_ex as dex
     import pandas as pd
 
     data_file = args.data
@@ -480,7 +480,7 @@ def predict(args):
 
     df = dex.concat_df([data, y], axis=1) if data is not None else y
     if dex.is_dask_object(df):
-        from tabular_toolbox.persistence import to_parquet
+        from hypernets.tabular.persistence import to_parquet
         to_parquet(df, output_file)
     else:
         if output_file.endswith('.parquet'):

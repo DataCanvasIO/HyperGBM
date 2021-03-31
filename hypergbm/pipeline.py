@@ -6,9 +6,9 @@ __author__ = 'yangjian'
 
 from sklearn import pipeline, compose
 
-from tabular_toolbox import dataframe_mapper
 from hypernets.core.ops import ConnectionSpace
 from hypernets.core.search_space import ModuleSpace, Choice
+from hypernets.tabular import dataframe_mapper
 
 
 class HyperTransformer(ModuleSpace):

@@ -12,8 +12,8 @@ from sklearn.experimental import enable_hist_gradient_boosting
 from sklearn.ensemble import HistGradientBoostingRegressor, HistGradientBoostingClassifier
 
 from hypernets.core.search_space import ModuleSpace
-from tabular_toolbox import dask_ex as dex
-from tabular_toolbox.column_selector import column_object_category_bool, column_zero_or_positive_int32
+from hypernets.tabular import dask_ex as dex
+from hypernets.tabular.column_selector import column_object_category_bool, column_zero_or_positive_int32
 
 
 def get_categorical_features(X):

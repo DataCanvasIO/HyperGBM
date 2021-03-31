@@ -11,7 +11,7 @@ from hypernets.core.callbacks import SummaryCallback, FileLoggingCallback
 from hypernets.core.searcher import OptimizeDirection
 from hypernets.searchers.random_searcher import RandomSearcher
 from hypernets.utils import fs
-from tabular_toolbox.datasets import dsutils
+from hypernets.tabular.datasets import dsutils
 from hypergbm.tests import test_output_dir
 
 
@@ -35,7 +35,7 @@ class Test_HyperGBM():
         return estimator, hk
 
     def test_cross_validator(self):
-        from tabular_toolbox.lifelong_learning import PrequentialSplit
+        from hypernets.tabular.lifelong_learning import PrequentialSplit
         df = dsutils.load_bank()
         df.drop(['id'], axis=1, inplace=True)
         rs = RandomSearcher(search_space_general, optimize_direction=OptimizeDirection.Maximize)

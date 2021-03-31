@@ -18,16 +18,14 @@ from sklearn.pipeline import Pipeline
 from hypergbm.feature_importance import feature_importance_batch
 from hypergbm.hyper_gbm import HyperGBM
 from hypernets.experiment import Experiment
-from hypernets.utils import logging, fs
-from hypernets.utils.common import isnotebook
-from tabular_toolbox import dask_ex as dex
-from tabular_toolbox import drift_detection as dd
-from tabular_toolbox.const import TASK_BINARY, TASK_REGRESSION, TASK_MULTICLASS
-from tabular_toolbox.data_cleaner import DataCleaner
-from tabular_toolbox.ensemble import GreedyEnsemble, DaskGreedyEnsemble
-from tabular_toolbox.feature_selection import select_by_multicollinearity
-from tabular_toolbox.lifelong_learning import select_valid_oof
-from tabular_toolbox.utils import load_data, infer_task_type, hash_data
+from hypernets.tabular import dask_ex as dex
+from hypernets.tabular import drift_detection as dd
+from hypernets.tabular.data_cleaner import DataCleaner
+from hypernets.tabular.ensemble import GreedyEnsemble, DaskGreedyEnsemble
+from hypernets.tabular.feature_selection import select_by_multicollinearity
+from hypernets.tabular.lifelong_learning import select_valid_oof
+from hypernets.utils import load_data, infer_task_type, hash_data, logging, fs, isnotebook
+from hypernets.utils.const import TASK_BINARY, TASK_REGRESSION, TASK_MULTICLASS
 
 logger = logging.get_logger(__name__)
 
@@ -39,9 +37,6 @@ _is_notebook = isnotebook()
 
 def _set_log_level(log_level):
     logging.set_level(log_level)
-
-    from tabular_toolbox.utils import logging as tlogging
-    tlogging.set_level(log_level)
 
     # if log_level >= logging.ERROR:
     #     import logging as pylogging

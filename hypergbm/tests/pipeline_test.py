@@ -14,8 +14,8 @@ from hypergbm.pipeline import ColumnTransformer, Pipeline
 from hypergbm.sklearn.transformers import SimpleImputer, StandardScaler
 from hypernets.core.search_space import HyperSpace
 from hypernets.core.ops import HyperInput
-from tabular_toolbox.column_selector import column_skewness_kurtosis
-from tabular_toolbox.sklearn_ex import SkewnessKurtosisTransformer
+from hypernets.tabular.column_selector import column_skewness_kurtosis
+from hypernets.tabular.sklearn_ex import SkewnessKurtosisTransformer
 
 ids = []
 

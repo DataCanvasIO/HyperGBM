@@ -13,8 +13,8 @@ from hypergbm.sklearn.transformers import FeatureGenerationTransformer
 from hypernets.core.ops import ModuleChoice, HyperInput
 from hypernets.core.search_space import Choice, Real, Int
 from hypernets.core.search_space import HyperSpace
+from hypernets.tabular.column_selector import column_object, column_exclude_datetime
 from hypernets.utils import logging
-from tabular_toolbox.column_selector import column_object, column_exclude_datetime
 
 logger = logging.get_logger(__name__)
 

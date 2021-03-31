@@ -15,7 +15,7 @@ Recency,Frequency,Monetary,Time,Class
 ...
 
 ```
-本节示例从`tabular_toolbox`中加载该数据集。
+本节示例从`hypernets.tabular`中加载该数据集。
 
 
 #### 以默认配置创建并运行实验
@@ -25,7 +25,7 @@ Recency,Frequency,Monetary,Time,Class
 示例代码：
 ```python
 from hypergbm import make_experiment
-from tabular_toolbox.datasets import dsutils
+from hypernets.tabular.datasets import dsutils
 
 train_data = dsutils.load_blood()
 experiment = make_experiment(train_data, target='Class')
@@ -53,7 +53,7 @@ Process finished with exit code 0
 
 ```python
 from hypergbm import make_experiment
-from tabular_toolbox.datasets import dsutils
+from hypernets.tabular.datasets import dsutils
 
 train_data = '/path/to/mydata.csv'
 experiment = make_experiment(train_data, target='my_target')
@@ -72,7 +72,7 @@ print(estimator)
 启用交叉验证的示例代码：
 ```python
 from hypergbm import make_experiment
-from tabular_toolbox.datasets import dsutils
+from hypernets.tabular.datasets import dsutils
 
 train_data = dsutils.load_blood()
 experiment = make_experiment(train_data, target='Class', cv=True, num_folds=5)
@@ -87,7 +87,7 @@ print(estimator)
 
 ```python
 from hypergbm import make_experiment
-from tabular_toolbox.datasets import dsutils
+from hypernets.tabular.datasets import dsutils
 from sklearn.model_selection import train_test_split
 
 train_data = dsutils.load_blood()
@@ -102,7 +102,7 @@ print(estimator)
 
 ```python
 from hypergbm import make_experiment
-from tabular_toolbox.datasets import dsutils
+from hypernets.tabular.datasets import dsutils
 
 train_data = dsutils.load_blood()
 
@@ -120,7 +120,7 @@ print(estimator)
 
 ```python
 from hypergbm import make_experiment
-from tabular_toolbox.datasets import dsutils
+from hypernets.tabular.datasets import dsutils
 
 train_data = dsutils.load_blood()
 experiment = make_experiment(train_data, target='Class', reward_metric='auc')
@@ -138,7 +138,7 @@ print(estimator)
 将搜索时间设置为最多3小时的示例代码：
 ```pytyon
 from hypergbm import make_experiment
-from tabular_toolbox.datasets import dsutils
+from hypernets.tabular.datasets import dsutils
 
 train_data = dsutils.load_blood()
 
@@ -159,7 +159,7 @@ print(estimator)
 from io import StringIO
 import pandas as pd
 from hypergbm import make_experiment
-from tabular_toolbox.datasets import dsutils
+from hypernets.tabular.datasets import dsutils
 
 test_data = """
 Recency,Frequency,Monetary,Time
@@ -196,7 +196,7 @@ HyperGBM中提供了删除发生共线性的特征的能力， 在通过`make_ex
 启用共线性检测的示例代码：
 ```python
 from hypergbm import make_experiment
-from tabular_toolbox.datasets import dsutils
+from hypernets.tabular.datasets import dsutils
 
 train_data = dsutils.load_blood()
 experiment = make_experiment(train_data, target='Class', `collinearity_detection=True)
@@ -255,7 +255,7 @@ experiment = make_experiment(train_data, ensemble_size=10, ...)
 将日志级别设置为`INFO`的示例代码如下：
 ```python
 from hypergbm import make_experiment
-from tabular_toolbox.datasets import dsutils
+from hypernets.tabular.datasets import dsutils
 
 train_data = dsutils.load_blood()
 experiment = make_experiment(train_data, target='Class', log_level='INFO', verbose=1)
@@ -266,7 +266,7 @@ print(estimator)
 
 输出：
 ```
-14:24:33 I tabular_toolbox.u._common.py 30 - 2 class detected, {0, 1}, so inferred as a [binary classification] task
+14:24:33 I hypernets.tabular.u._common.py 30 - 2 class detected, {0, 1}, so inferred as a [binary classification] task
 14:24:33 I hypergbm.experiment.py 699 - create experiment with ['data_clean', 'drift_detection', 'space_search', 'final_ensemble']
 14:24:33 I hypergbm.experiment.py 1262 - make_experiment with train data:(748, 4), test data:None, eval data:None, target:Class
 14:24:33 I hypergbm.experiment.py 716 - fit_transform data_clean
@@ -310,7 +310,7 @@ search_space_general = GeneralSearchSpaceGenerator(n_estimators=200)
 
 ```python
 from hypergbm import make_experiment
-from tabular_toolbox.datasets import dsutils
+from hypernets.tabular.datasets import dsutils
 from hypergbm.search_space import GeneralSearchSpaceGenerator
 
 my_search_space = \
@@ -329,7 +329,7 @@ print(estimator)
 
 ```python
 from hypergbm import make_experiment
-from tabular_toolbox.datasets import dsutils
+from hypernets.tabular.datasets import dsutils
 from hypergbm.search_space import GeneralSearchSpaceGenerator
 from hypernets.core.search_space import Choice
 
@@ -358,7 +358,7 @@ HyperGBM内置的搜索算法包括：EvolutionSearcher（默认）、MCTSSearch
 示例代码：
 ```python
 from hypergbm import make_experiment
-from tabular_toolbox.datasets import dsutils
+from hypernets.tabular.datasets import dsutils
 
 train_data = dsutils.load_blood()
 
@@ -376,7 +376,7 @@ print(estimator)
 from hypergbm import make_experiment
 from hypergbm.search_space import search_space_general
 from hypernets.searchers import MCTSSearcher
-from tabular_toolbox.datasets import dsutils
+from hypernets.tabular.datasets import dsutils
 
 my_searcher = MCTSSearcher(lambda: search_space_general(n_estimators=100),
                            max_node_space=20,
@@ -405,7 +405,7 @@ from hypergbm import HyperGBM, CompeteExperiment
 from hypergbm.search_space import search_space_general
 from hypernets.core.callbacks import EarlyStoppingCallback, SummaryCallback
 from hypernets.searchers import EvolutionSearcher
-from tabular_toolbox.datasets import dsutils
+from hypernets.tabular.datasets import dsutils
 
 train_data = dsutils.load_blood()
 
@@ -448,7 +448,7 @@ HyperGBM支持使用Dask进行分布式训练，在运行实验之前您需要�
 from dask.distributed import LocalCluster, Client
 
 from hypergbm import make_experiment
-from tabular_toolbox.datasets import dsutils
+from hypernets.tabular.datasets import dsutils
 
 
 def train():
@@ -475,7 +475,7 @@ if __name__ == '__main__':
 from dask.distributed import LocalCluster, Client
 
 from hypergbm import make_experiment
-from tabular_toolbox.datasets import dsutils
+from hypernets.tabular.datasets import dsutils
 
 
 def train():
@@ -503,7 +503,7 @@ from dask import dataframe as dd
 from dask.distributed import LocalCluster, Client
 
 from hypergbm import make_experiment
-from tabular_toolbox.datasets import dsutils
+from hypernets.tabular.datasets import dsutils
 
 
 def train():
@@ -538,7 +538,7 @@ from dask.distributed import LocalCluster, Client
 
 from hypergbm import make_experiment
 from hypergbm.dask.search_space import search_space_general
-from tabular_toolbox.datasets import dsutils
+from hypernets.tabular.datasets import dsutils
 
 
 def my_search_space():

@@ -15,10 +15,10 @@ from hypergbm.sklearn.sklearn_ops import categorical_pipeline_simple, numeric_pi
     categorical_pipeline_complex, numeric_pipeline_complex
 from hypernets.core.ops import HyperInput, Choice, ModuleChoice
 from hypernets.core.search_space import HyperSpace, Real
-from tabular_toolbox.column_selector import column_object, column_exclude_datetime, column_number_exclude_timedelta, \
+from hypernets.tabular.column_selector import column_object, column_exclude_datetime, column_number_exclude_timedelta, \
     column_object_category_bool
-from tabular_toolbox.datasets import dsutils
-from tabular_toolbox.drift_detection import general_preprocessor
+from hypernets.tabular.datasets import dsutils
+from hypernets.tabular.drift_detection import general_preprocessor
 from hypergbm.tests import test_output_dir
 
 

@@ -8,7 +8,7 @@ from sklearn.inspection import permutation_importance as sk_permutation_importan
 from sklearn.utils import Bunch
 
 from hypernets.utils import logging
-from tabular_toolbox import dask_ex as dex
+from hypernets.tabular import dask_ex as dex
 
 logger = logging.get_logger(__name__)
 

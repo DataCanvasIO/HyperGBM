@@ -7,7 +7,6 @@ import hashlib
 import pickle
 import re
 import time
-from tqdm import tqdm
 
 import dask.array as da
 import dask.dataframe as dd
@@ -18,17 +17,17 @@ from imblearn.over_sampling import RandomOverSampler, SMOTE, ADASYN
 from imblearn.under_sampling import RandomUnderSampler, NearMiss, TomekLinks, EditedNearestNeighbours
 from sklearn import pipeline as sk_pipeline
 from sklearn.model_selection import KFold, StratifiedKFold
+from tqdm import tqdm
 
 from hypergbm.pipeline import ComposeTransformer
 from hypernets.model.estimator import Estimator
 from hypernets.model.hyper_model import HyperModel
-from hypernets.utils import logging, fs
-from tabular_toolbox import dask_ex as dex
-from tabular_toolbox.data_cleaner import DataCleaner
-from tabular_toolbox.metrics import calc_score
-from tabular_toolbox.persistence import read_parquet, to_parquet
-from tabular_toolbox.utils import hash_dataframe
-from tabular_toolbox.lifelong_learning import select_valid_oof
+from hypernets.tabular import dask_ex as dex
+from hypernets.tabular.data_cleaner import DataCleaner
+from hypernets.tabular.lifelong_learning import select_valid_oof
+from hypernets.tabular.metrics import calc_score
+from hypernets.tabular.persistence import read_parquet, to_parquet
+from hypernets.utils import logging, fs, hash_dataframe
 from .estimators import HyperEstimator
 
 try:

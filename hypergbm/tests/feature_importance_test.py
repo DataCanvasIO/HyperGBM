@@ -16,7 +16,7 @@ from hypergbm.feature_importance import feature_importance_batch
 from hypergbm.search_space import search_space_general
 from hypernets.core.searcher import OptimizeDirection
 from hypernets.searchers.random_searcher import RandomSearcher
-from tabular_toolbox.datasets import dsutils
+from hypernets.tabular.datasets import dsutils
 from hypergbm.tests import test_output_dir
 
 

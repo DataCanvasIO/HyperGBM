@@ -11,7 +11,7 @@ from hypergbm.search_space import search_space_general
 from hypernets.core import OptimizeDirection, EarlyStoppingCallback
 from hypernets.experiment import GeneralExperiment, ExperimentCallback, ConsoleCallback
 from hypernets.searchers import RandomSearcher
-from tabular_toolbox.datasets import dsutils
+from hypernets.tabular.datasets import dsutils
 import numpy as np
 import pandas as pd
 
@@ -65,7 +65,7 @@ class Test_Experiment():
         self.run_regression(train_test_split_strategy='adversarial_validation')
 
     def test_regression_cross_validator(self):
-        from tabular_toolbox.lifelong_learning import PrequentialSplit
+        from hypernets.tabular.lifelong_learning import PrequentialSplit
         preq_split = PrequentialSplit(PrequentialSplit.STRATEGY_PREQ_BLS, n_splits=3)
         self.run_regression(cv=True, cross_validator=preq_split)
 
@@ -112,7 +112,7 @@ class Test_Experiment():
         self.run_multiclass(train_test_split_strategy='adversarial_validation')
 
     def test_multiclass_cross_validator(self):
-        from tabular_toolbox.lifelong_learning import PrequentialSplit
+        from hypernets.tabular.lifelong_learning import PrequentialSplit
         preq_split = PrequentialSplit(PrequentialSplit.STRATEGY_PREQ_BLS, n_splits=3)
         self.run_multiclass(cv=True, cross_validator=preq_split)
 
@@ -222,6 +222,6 @@ class Test_Experiment():
         self.run_binary(train_test_split_strategy='adversarial_validation')
 
     def test_binary_cross_validator(self):
-        from tabular_toolbox.lifelong_learning import PrequentialSplit
+        from hypernets.tabular.lifelong_learning import PrequentialSplit
         preq_split = PrequentialSplit(PrequentialSplit.STRATEGY_PREQ_BLS, n_splits=3)
         self.run_binary(cv=True, cross_validator=preq_split)
