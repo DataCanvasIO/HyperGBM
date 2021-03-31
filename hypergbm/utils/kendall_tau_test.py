@@ -15,35 +15,42 @@ from hypernets.searchers import PlaybackSearcher
 
 def kendalltau_between_sampled_and_whole(df, target_col, sample_rate=0.2, max_trials=50, reward_metric='auc',
                                          calc_top_n_kendalltau=None,
+                                         exp_sampled_params=None, exp_wholedata_params=None,
                                          random_state=9527):
     """
     Calculate Kendall's tau between models rewards with sampled and whole data
     """
-    df_sampled, df_test = train_test_split(df, train_size=sample_rate, random_state=random_state)
-    exp_sampled = make_experiment(df_sampled,
-                                  log_level='warn',
-                                  target=target_col,
-                                  cv=True,
-                                  reward_metric=reward_metric,
-                                  collinearity_detection=False,
-                                  max_trials=max_trials,
-                                  early_stopping_rounds=max_trials,
-                                  early_stopping_time_limit=0,
-                                  )
+    if sample_rate >= 1.0:
+        df_sampled = df
+    else:
+        df_sampled, _ = train_test_split(df, train_size=sample_rate, random_state=random_state)
+    base_params = {'log_level': 'warn',
+                   'target': target_col,
+                   'cv': True,
+                   'reward_metric': reward_metric,
+                   'collinearity_detection': False,
+                   'max_trials': max_trials,
+                   'early_stopping_rounds': max_trials,
+                   'early_stopping_time_limit': 0, }
+    if exp_sampled_params is not None:
+        p1 = base_params.copy()
+        p1.update(exp_sampled_params)
+        exp_sampled_params = p1
+    else:
+        exp_sampled_params = base_params.copy()
+    exp_sampled = make_experiment(df_sampled,  **exp_sampled_params)
     exp_sampled.run()
+    
     playback = PlaybackSearcher(exp_sampled.hyper_model.history, top_n=max_trials,
                                 optimize_direction=exp_sampled.hyper_model.searcher.optimize_direction)
-    exp_wholedata = make_experiment(df,
-                                    searcher=playback,
-                                    log_level='warn',
-                                    target=target_col,
-                                    cv=True,
-                                    collinearity_detection=False,
-                                    reward_metric=reward_metric,
-                                    max_trials=max_trials,
-                                    early_stopping_rounds=max_trials,
-                                    early_stopping_time_limit=0,
-                                    )
+    if exp_wholedata_params is not None:
+        p2 = base_params.copy()
+        p2.update(exp_wholedata_params)
+        exp_wholedata_params = p2
+    else:
+        exp_wholedata_params = base_params.copy()
+    exp_wholedata_params['searcher'] = playback
+    exp_wholedata = make_experiment(df, **exp_wholedata_params)
     exp_wholedata.run()
 
     r1 = [r[0] for r in sorted([(t.reward,
