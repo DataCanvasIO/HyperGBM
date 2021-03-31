@@ -81,7 +81,7 @@ def main():
                         help='train task type, will be detected from target by default')
         tg.add_argument('--max-trials', '--trials', '--n', type=int, default=10,
                         help='search trial number limit, default %(default)s')
-        tg.add_argument('--reward-metric', '--reward', '--metric', type=str, default='accuracy', metavar='METRIC',
+        tg.add_argument('--reward-metric', '--reward', '--metric', type=str, default=None, metavar='METRIC',
                         choices=metric_choices,
                         help='search reward metric name, one of [%(choices)s], default %(default)s')
         tg.add_argument('--cv', type=to_bool, default=True,
