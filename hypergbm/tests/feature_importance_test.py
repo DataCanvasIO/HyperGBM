@@ -12,12 +12,12 @@ from sklearn.metrics import get_scorer
 from sklearn.model_selection import train_test_split
 
 from hypergbm import HyperGBM
-from hypergbm.feature_importance import feature_importance_batch
 from hypergbm.search_space import search_space_general
+from hypergbm.tests import test_output_dir
 from hypernets.core.searcher import OptimizeDirection
 from hypernets.searchers.random_searcher import RandomSearcher
 from hypernets.tabular.datasets import dsutils
-from hypergbm.tests import test_output_dir
+from hypernets.tabular.feature_importance import feature_importance_batch
 
 
 class Test_FeatureImportance():

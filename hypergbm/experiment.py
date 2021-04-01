@@ -15,13 +15,13 @@ from sklearn.metrics import get_scorer
 from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
 
-from hypergbm.feature_importance import feature_importance_batch
 from hypergbm.hyper_gbm import HyperGBM
 from hypernets.experiment import Experiment
 from hypernets.tabular import dask_ex as dex
 from hypernets.tabular import drift_detection as dd
 from hypernets.tabular.data_cleaner import DataCleaner
 from hypernets.tabular.ensemble import GreedyEnsemble, DaskGreedyEnsemble
+from hypernets.tabular.feature_importance import feature_importance_batch
 from hypernets.tabular.feature_selection import select_by_multicollinearity
 from hypernets.tabular.lifelong_learning import select_valid_oof
 from hypernets.utils import load_data, infer_task_type, hash_data, logging, fs, isnotebook
