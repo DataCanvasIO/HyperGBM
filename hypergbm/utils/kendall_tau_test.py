@@ -21,7 +21,7 @@ def kendalltau_between_sampled_and_whole(df, target_col, sample_rate=0.2, max_tr
     Calculate Kendall's tau between models rewards with sampled and whole data
     """
     if sample_rate >= 1.0:
-        df_sampled = df
+        df_sampled = df.copy()
     else:
         df_sampled, _ = train_test_split(df, train_size=sample_rate, random_state=random_state)
     base_params = {'log_level': 'warn',
@@ -50,7 +50,7 @@ def kendalltau_between_sampled_and_whole(df, target_col, sample_rate=0.2, max_tr
     else:
         exp_wholedata_params = base_params.copy()
     exp_wholedata_params['searcher'] = playback
-    exp_wholedata = make_experiment(df, **exp_wholedata_params)
+    exp_wholedata = make_experiment(df.copy(), **exp_wholedata_params)
     exp_wholedata.run()
 
     r1 = [r[0] for r in sorted([(t.reward,
@@ -71,4 +71,4 @@ def kendalltau_between_sampled_and_whole(df, target_col, sample_rate=0.2, max_tr
         k1, p1 = kendalltau([x[0] for x in x_top], [x[1] for x in x_top])
         print(f'Top {calc_top_n_kendalltau} kendall tau:{k1}, p_value:{p1}')
 
-    return k, p, exp_sampled.hyper_model.history, exp_wholedata.hyper_model.history
+    return k, p, exp_sampled, exp_wholedata,
