@@ -86,9 +86,9 @@ def main():
                         help='search reward metric name, one of [%(choices)s], default %(default)s')
         tg.add_argument('--cv', type=to_bool, default=True,
                         help='enable to disable cross validation, default %(default)s')
-        tg.add_argument('-cv', '-cv+', default='cv', action='store_true',
+        tg.add_argument('-cv', '-cv+', dest='cv', action='store_true',
                         help='alias of "--cv true"')
-        tg.add_argument('-cv-', default='cv', action='store_false',
+        tg.add_argument('-cv-', dest='cv', action='store_false',
                         help='alias of "--cv false"')
         tg.add_argument('--cv-num-folds', '--num-folds', dest='num_folds', type=int, default=3,
                         help='fold number of cv, default %(default)s')
