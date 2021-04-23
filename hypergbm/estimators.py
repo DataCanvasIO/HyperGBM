@@ -63,11 +63,19 @@ class HistGradientBoostingClassifierWrapper(HistGradientBoostingClassifier):
     def fit(self, X, y, sample_weight=None, **kwargs):
         return super(HistGradientBoostingClassifierWrapper, self).fit(X, y, sample_weight)
 
+    # TODO: Implementation iteration_scores
+    @property
+    def iteration_scores(self):
+        raise NotImplementedError
 
 class HistGradientBoostingRegressorWrapper(HistGradientBoostingRegressor):
     def fit(self, X, y, sample_weight=None, **kwargs):
         return super(HistGradientBoostingRegressorWrapper, self).fit(X, y, sample_weight)
 
+    # TODO: Implementation iteration_scores
+    @property
+    def iteration_scores(self):
+        raise NotImplementedError
 
 class HistGBEstimator(HyperEstimator):
     def __init__(self, fit_kwargs, loss='least_squares', learning_rate=0.1,
@@ -115,6 +123,15 @@ class LGBMClassifierWrapper(lightgbm.LGBMClassifier):
         else:
             return self.best_iteration_
 
+    @property
+    def iteration_scores(self):
+        scores = []
+        if self.evals_result_:
+            valid = self.evals_result_.get('valid_0')
+            if valid:
+                scores = list(valid.values())[0]
+        return scores
+
 
 class LGBMRegressorWrapper(lightgbm.LGBMRegressor):
     def fit(self, X, y, sample_weight=None, **kwargs):
@@ -135,6 +152,15 @@ class LGBMRegressorWrapper(lightgbm.LGBMRegressor):
     def predict(self, X, **kwargs):
         pred = super(LGBMRegressorWrapper, self).predict(X, **kwargs)
         return pred
+
+    @property
+    def iteration_scores(self):
+        scores = []
+        if self.evals_result_:
+            valid = self.evals_result_.get('valid_0')
+            if valid:
+                scores = list(valid.values())[0]
+        return scores
 
 
 class LightGBMEstimator(HyperEstimator):
@@ -207,6 +233,11 @@ class LGBMClassifierDaskWrapper(LGBMClassifierWrapper):
     def predict_proba(self, *args, **kwargs):
         return dex.compute_and_call(super().predict_proba, *args, **kwargs)
 
+    # TODO: Implementation iteration_scores
+    @property
+    def iteration_scores(self):
+        raise NotImplementedError
+
 
 class LGBMRegressorDaskWrapper(LGBMRegressorWrapper):
     def fit(self, *args, **kwargs):
@@ -217,6 +248,11 @@ class LGBMRegressorDaskWrapper(LGBMRegressorWrapper):
 
     # def predict_proba(self, *args, **kwargs):
     #     return dex.compute_and_call(super().predict_proba, *args, **kwargs)
+
+    # TODO: Implementation iteration_scores
+    @property
+    def iteration_scores(self):
+        raise NotImplementedError
 
 
 class LightGBMDaskEstimator(LightGBMEstimator):
@@ -256,6 +292,15 @@ class XGBClassifierWrapper(xgboost.XGBClassifier):
         data = data[self.get_booster().feature_names]
         return super(XGBClassifierWrapper, self).predict(data, **kwargs)
 
+    @property
+    def iteration_scores(self):
+        scores = []
+        if hasattr(self, 'evals_result_'):
+            valid = self.evals_result_.get('validation_0')
+            if valid:
+                scores = list(valid.values())[0]
+        return scores
+
 
 class XGBRegressorWrapper(xgboost.XGBRegressor):
     def fit(self, X, y, **kwargs):
@@ -276,6 +321,15 @@ class XGBRegressorWrapper(xgboost.XGBRegressor):
     def predict(self, data, **kwargs):
         data = data[self.get_booster().feature_names]
         return super(XGBRegressorWrapper, self).predict(data, **kwargs)
+
+    @property
+    def iteration_scores(self):
+        scores = []
+        if hasattr(self, 'evals_result_'):
+            valid = self.evals_result_.get('validation_0')
+            if valid:
+                scores = list(valid.values())[0]
+        return scores
 
 
 class XGBoostEstimator(HyperEstimator):
@@ -418,6 +472,11 @@ class XGBClassifierDaskWrapper(dask_xgboost.XGBClassifier):
 
         return attr
 
+    # TODO: Implementation iteration_scores
+    @property
+    def iteration_scores(self):
+        raise NotImplementedError
+
 
 class XGBRegressorDaskWrapper(dask_xgboost.XGBRegressor):
     def fit(self, X, y=None, eval_set=None,
@@ -443,6 +502,11 @@ class XGBRegressorDaskWrapper(dask_xgboost.XGBRegressor):
     def predict(self, data, **kwargs):
         data = data[self.get_booster().feature_names]
         return super(XGBRegressorDaskWrapper, self).predict(data)
+
+    # TODO: Implementation iteration_scores
+    @property
+    def iteration_scores(self):
+        raise NotImplementedError
 
 
 class XGBoostDaskEstimator(XGBoostEstimator):
@@ -478,6 +542,19 @@ class CatBoostClassifierWrapper(catboost.CatBoostClassifier):
         data = data[self.feature_names_]
         return super(CatBoostClassifierWrapper, self).predict_proba(data, **kwargs)
 
+    @property
+    def iteration_scores(self):
+        scores = []
+        if self.evals_result_:
+            valid = self.evals_result_.get('validation')
+            if valid:
+                scores = list(valid.values())[0]
+            else:
+                learn = self.evals_result_.get('learn')
+                if learn:
+                    scores = list(learn.values())[0]
+        return scores
+
 
 class CatBoostRegressionWrapper(catboost.CatBoostRegressor):
     def fit(self, X, y=None, **kwargs):
@@ -495,6 +572,19 @@ class CatBoostRegressionWrapper(catboost.CatBoostRegressor):
     def predict(self, data, **kwargs):
         data = data[self.feature_names_]
         return super(CatBoostRegressionWrapper, self).predict(data, **kwargs)
+
+    @property
+    def iteration_scores(self):
+        scores = []
+        if self.evals_result_:
+            valid = self.evals_result_.get('validation')
+            if valid:
+                scores = list(valid.values())[0]
+            else:
+                learn = self.evals_result_.get('learn')
+                if learn:
+                    scores = list(learn.values())[0]
+        return scores
 
 
 class CatBoostEstimator(HyperEstimator):
@@ -548,6 +638,11 @@ class CatBoostClassifierDaskWrapper(CatBoostClassifierWrapper):
     def predict_proba(self, *args, **kwargs):
         return dex.compute_and_call(super().predict_proba, *args, **kwargs)
 
+    # TODO: Implementation iteration_scores
+    @property
+    def iteration_scores(self):
+        raise NotImplementedError
+
 
 class CatBoostRegressionDaskWrapper(CatBoostRegressionWrapper):
     def fit(self, *args, **kwargs):
@@ -558,6 +653,11 @@ class CatBoostRegressionDaskWrapper(CatBoostRegressionWrapper):
 
     # def predict_proba(self, *args, **kwargs):
     #     return dex.compute_and_call(super().predict_proba, *args, **kwargs)
+
+    # TODO: Implementation iteration_scores
+    @property
+    def iteration_scores(self):
+        raise NotImplementedError
 
 
 class CatBoostDaskEstimator(CatBoostEstimator):
