@@ -120,7 +120,7 @@ class HyperGBMEstimator(Estimator):
                           ComposeTransformer), 'The upstream node of `HyperEstimator` must be `ComposeTransformer`.'
         # next, (name, p) = pipeline_module[0].compose()
         self.data_pipeline = self.build_pipeline(space, pipeline_module[0])
-        logger.debug(f'data_pipeline:{self.data_pipeline}')
+        #logger.debug(f'data_pipeline:{self.data_pipeline}')
         self.pipeline_signature = self.get_pipeline_signature(self.data_pipeline)
         if self.data_cleaner_params is not None:
             self.data_cleaner = DataCleaner(**self.data_cleaner_params)
