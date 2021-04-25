@@ -120,7 +120,7 @@ class HyperGBMEstimator(Estimator):
                           ComposeTransformer), 'The upstream node of `HyperEstimator` must be `ComposeTransformer`.'
         # next, (name, p) = pipeline_module[0].compose()
         self.data_pipeline = self.build_pipeline(space, pipeline_module[0])
-        logger.debug(f'data_pipeline:{self.data_pipeline}')
+        #logger.debug(f'data_pipeline:{self.data_pipeline}')
         self.pipeline_signature = self.get_pipeline_signature(self.data_pipeline)
         if self.data_cleaner_params is not None:
             self.data_cleaner = DataCleaner(**self.data_cleaner_params)
@@ -247,8 +247,11 @@ class HyperGBMEstimator(Estimator):
             kwargs['sample_weight'] = sample_weight
 
             fold_est = copy.deepcopy(self.gbm_model)
+            fold_est.group_id = f'{fold_est.__class__.__name__}_cv_{n_fold}'
             fit_kwargs = {**kwargs, 'verbose': 0}
             fold_est.fit(x_train_fold, y_train_fold, **fit_kwargs)
+            # print(fold_est.__class__)
+            # print(fold_est.evals_result_)
             # print(f'fold {n_fold}, est:{fold_est.__class__},  best_n_estimators:{fold_est.best_n_estimators}')
             if self.classes_ is None and hasattr(fold_est, 'classes_'):
                 self.classes_ = fold_est.classes_
@@ -283,6 +286,27 @@ class HyperGBMEstimator(Estimator):
             preds = np.array(self.classes_).take(preds, axis=0)
         scores = calc_score(y, preds, proba, metrics, self.task)
         return scores
+
+    def get_iteration_scores(self):
+        iteration_scores = {}
+
+        def get_scores(gbm_model, iteration_scores, fold=None, ):
+            if hasattr(gbm_model, 'iteration_scores'):
+                if gbm_model.__dict__.get('group_id'):
+                    group_id = gbm_model.group_id
+                else:
+                    if fold is not None:
+                        group_id = f'{gbm_model.__class__.__name__}_cv_{i}'
+                    else:
+                        group_id = gbm_model.__class__.__name__
+                iteration_scores[group_id] = gbm_model.iteration_scores
+
+        if self.cv_gbm_models_:
+            for i, gbm_model in enumerate(self.cv_gbm_models_):
+                get_scores(gbm_model, iteration_scores, i)
+        else:
+            get_scores(self.gbm_model, iteration_scores)
+        return iteration_scores
 
     def fit_cross_validation_by_dask(self, X, y, use_cache=None, verbose=0, stratified=True, num_folds=3,
                                      shuffle=False, random_state=9527, metrics=None, **kwargs):
@@ -418,6 +442,7 @@ class HyperGBMEstimator(Estimator):
         if verbose > 0:
             logger.info('estimator is fitting the data')
         fit_kwargs = {**kwargs, 'verbose': 0}
+        self.gbm_model.group_id = f'{self.gbm_model.__class__.__name__}'
         self.gbm_model.fit(X, y, **fit_kwargs)
 
         if self.classes_ is None and hasattr(self.gbm_model, 'classes_'):
