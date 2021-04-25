@@ -120,7 +120,7 @@ class HyperGBMEstimator(Estimator):
                           ComposeTransformer), 'The upstream node of `HyperEstimator` must be `ComposeTransformer`.'
         # next, (name, p) = pipeline_module[0].compose()
         self.data_pipeline = self.build_pipeline(space, pipeline_module[0])
-        #logger.debug(f'data_pipeline:{self.data_pipeline}')
+        # logger.debug(f'data_pipeline:{self.data_pipeline}')
         self.pipeline_signature = self.get_pipeline_signature(self.data_pipeline)
         if self.data_cleaner_params is not None:
             self.data_cleaner = DataCleaner(**self.data_cleaner_params)
@@ -249,6 +249,13 @@ class HyperGBMEstimator(Estimator):
             fold_est = copy.deepcopy(self.gbm_model)
             fold_est.group_id = f'{fold_est.__class__.__name__}_cv_{n_fold}'
             fit_kwargs = {**kwargs, 'verbose': 0}
+            if hasattr(fold_est, 'build_discriminator_callback'):
+                callback = fold_est.build_discriminator_callback(self.discriminator)
+                if callback:
+                    callbacks = fit_kwargs.get('callbacks', [])
+                    callbacks.append(callback)
+                    fit_kwargs['callbacks'] = callbacks
+
             fold_est.fit(x_train_fold, y_train_fold, **fit_kwargs)
             # print(fold_est.__class__)
             # print(fold_est.evals_result_)
@@ -441,8 +448,16 @@ class HyperGBMEstimator(Estimator):
 
         if verbose > 0:
             logger.info('estimator is fitting the data')
+
         fit_kwargs = {**kwargs, 'verbose': 0}
         self.gbm_model.group_id = f'{self.gbm_model.__class__.__name__}'
+        if hasattr(self.gbm_model, 'build_discriminator_callback'):
+            callback = self.gbm_model.build_discriminator_callback(self.discriminator)
+            if callback:
+                callbacks = fit_kwargs.get('callbacks', [])
+                callbacks.append(callback)
+                fit_kwargs['callbacks'] = callbacks
+
         self.gbm_model.fit(X, y, **fit_kwargs)
 
         if self.classes_ is None and hasattr(self.gbm_model, 'classes_'):
@@ -654,7 +669,7 @@ class HyperGBM(HyperModel):
     """
 
     def __init__(self, searcher, dispatcher=None, callbacks=None, reward_metric='accuracy', task=None,
-                 data_cleaner_params=None, cache_dir=None, clear_cache=True):
+                 discriminator=None, data_cleaner_params=None, cache_dir=None, clear_cache=True):
         """
 
         :param searcher: hypernets.searcher.Searcher
@@ -688,7 +703,7 @@ class HyperGBM(HyperModel):
         self.cache_dir = self._prepare_cache_dir(cache_dir, clear_cache)
         self.clear_cache = clear_cache
         HyperModel.__init__(self, searcher, dispatcher=dispatcher, callbacks=callbacks, reward_metric=reward_metric,
-                            task=task)
+                            task=task, discriminator=discriminator)
 
     def _get_estimator(self, space_sample):
         estimator = HyperGBMEstimator(task=self.task, space_sample=space_sample,

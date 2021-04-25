@@ -14,6 +14,7 @@ from sklearn.ensemble import HistGradientBoostingRegressor, HistGradientBoosting
 from hypernets.core.search_space import ModuleSpace
 from hypernets.tabular import dask_ex as dex
 from hypernets.tabular.column_selector import column_object_category_bool, column_zero_or_positive_int32
+from .gbm_callbacks import LightGBMDiscriminationCallback, XGBoostDiscriminationCallback
 
 
 def get_categorical_features(X):
@@ -68,6 +69,10 @@ class HistGradientBoostingClassifierWrapper(HistGradientBoostingClassifier):
     def iteration_scores(self):
         raise NotImplementedError
 
+    def build_discriminator_callback(self, discriminator):
+        raise NotImplementedError
+
+
 class HistGradientBoostingRegressorWrapper(HistGradientBoostingRegressor):
     def fit(self, X, y, sample_weight=None, **kwargs):
         return super(HistGradientBoostingRegressorWrapper, self).fit(X, y, sample_weight)
@@ -76,6 +81,10 @@ class HistGradientBoostingRegressorWrapper(HistGradientBoostingRegressor):
     @property
     def iteration_scores(self):
         raise NotImplementedError
+
+    def build_discriminator_callback(self, discriminator):
+        raise NotImplementedError
+
 
 class HistGBEstimator(HyperEstimator):
     def __init__(self, fit_kwargs, loss='least_squares', learning_rate=0.1,
@@ -132,6 +141,12 @@ class LGBMClassifierWrapper(lightgbm.LGBMClassifier):
                 scores = list(valid.values())[0]
         return scores
 
+    def build_discriminator_callback(self, discriminator):
+        if discriminator is None:
+            return None
+        callback = LightGBMDiscriminationCallback(discriminator=discriminator, group_id=self.group_id)
+        return callback
+
 
 class LGBMRegressorWrapper(lightgbm.LGBMRegressor):
     def fit(self, X, y, sample_weight=None, **kwargs):
@@ -161,6 +176,12 @@ class LGBMRegressorWrapper(lightgbm.LGBMRegressor):
             if valid:
                 scores = list(valid.values())[0]
         return scores
+
+    def build_discriminator_callback(self, discriminator):
+        if discriminator is None:
+            return None
+        callback = LightGBMDiscriminationCallback(discriminator=discriminator, group_id=self.group_id)
+        return callback
 
 
 class LightGBMEstimator(HyperEstimator):
@@ -301,6 +322,12 @@ class XGBClassifierWrapper(xgboost.XGBClassifier):
                 scores = list(valid.values())[0]
         return scores
 
+    def build_discriminator_callback(self, discriminator):
+        if discriminator is None:
+            return None
+        callback = XGBoostDiscriminationCallback(discriminator=discriminator, group_id=self.group_id)
+        return callback
+
 
 class XGBRegressorWrapper(xgboost.XGBRegressor):
     def fit(self, X, y, **kwargs):
@@ -330,6 +357,12 @@ class XGBRegressorWrapper(xgboost.XGBRegressor):
             if valid:
                 scores = list(valid.values())[0]
         return scores
+
+    def build_discriminator_callback(self, discriminator):
+        if discriminator is None:
+            return None
+        callback = XGBoostDiscriminationCallback(discriminator=discriminator, group_id=self.group_id)
+        return callback
 
 
 class XGBoostEstimator(HyperEstimator):
@@ -555,6 +588,9 @@ class CatBoostClassifierWrapper(catboost.CatBoostClassifier):
                     scores = list(learn.values())[0]
         return scores
 
+    def build_discriminator_callback(self, discriminator):
+        return None
+
 
 class CatBoostRegressionWrapper(catboost.CatBoostRegressor):
     def fit(self, X, y=None, **kwargs):
@@ -585,6 +621,9 @@ class CatBoostRegressionWrapper(catboost.CatBoostRegressor):
                 if learn:
                     scores = list(learn.values())[0]
         return scores
+
+    def build_discriminator_callback(self, discriminator):
+        return None
 
 
 class CatBoostEstimator(HyperEstimator):
