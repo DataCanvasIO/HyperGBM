@@ -14,6 +14,7 @@ from hypernets.utils import fs
 from hypernets.tabular.datasets import dsutils
 from hypergbm.tests import test_output_dir
 from hypernets.discriminators import PercentileDiscriminator
+from hypernets.core import set_random_state, get_random_state
 
 
 class Test_HyperGBM():
@@ -135,3 +136,10 @@ class Test_HyperGBM():
         _, hk = self.run_search(self.get_data, cv=True, discriminator=discriminator, max_trials=10, space_fn=space_fn)
         broken_trials = [t for t in hk.history.trials if not t.succeeded]
         assert len(broken_trials) > 0
+
+    def test_set_random_state(self):
+        set_random_state(9527)
+        _, hk = self.run_search(self.get_data, cv=False, max_trials=5)
+        vectors = [t.space_sample.vectors for t in hk.history.trials]
+        assert vectors == [[0, 0, 1, 0, 30, 0, 0, 0, 4, 0], [1, 3, 1, 0, 3, 1, 2, 1, 0, 0, 4],
+                           [0, 0, 1, 1, 180, 2, 3, 5, 1, 0], [1, 1, 0, 1, 0, 0, 4, 1, 4, 1], [2, 3, 1, 3, 2, 4, 1]]
