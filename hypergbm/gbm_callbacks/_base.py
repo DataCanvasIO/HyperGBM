@@ -3,6 +3,8 @@ __author__ = 'yangjian'
 """
 
 """
+from hypernets.discriminators import UnPromisingTrial
+
 
 class BaseDiscriminationCallback(object):
     def __init__(self, discriminator, group_id):
@@ -14,7 +16,7 @@ class BaseDiscriminationCallback(object):
         self.iteration_trajectory.append(score)
         promising = self.discriminator.is_promising(self.iteration_trajectory, self.group_id)
         if not promising:
-            raise ValueError('unpromising trial')
+            raise UnPromisingTrial(f'unpromising trial:{self.iteration_trajectory}')
 
     def _get_score(self, env):
         raise NotImplementedError
