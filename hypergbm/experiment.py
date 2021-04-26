@@ -36,6 +36,7 @@ def make_experiment(train_data,
                     estimator_early_stopping_rounds=None,
                     use_cache=None,
                     clear_cache=None,
+                    discriminator=None,
                     log_level=None,
                     **kwargs):
     """
@@ -100,6 +101,8 @@ def make_experiment(train_data,
         Hypernets search reward metric direction, default is detected from reward_metric.
     estimator_early_stopping_rounds : int or None, optional
         Esitmator fit early_stopping_rounds option.
+    discriminator : instance of hypernets.discriminator.BaseDiscriminator, optional
+        Discriminator is used to determine whether to continue training
     use_cache : bool, optional, (default True if Dask is not enabled, else False)
     clear_cache: bool, optional, (default True)
     log_level : int, str, or None, (default=None),
@@ -269,7 +272,7 @@ def make_experiment(train_data,
     hm = HyperGBM(searcher, reward_metric=reward_metric, callbacks=search_callbacks,
                   cache_dir=kwargs.pop('cache_dir', default_cache_dir),
                   clear_cache=clear_cache if clear_cache is not None else True,
-                  discriminator=kwargs.pop('discriminator', None))
+                  discriminator=discriminator)
 
     use_cache = not dex.exist_dask_object(X_train, X_test, X_eval) if use_cache is None else bool(use_cache)
 
