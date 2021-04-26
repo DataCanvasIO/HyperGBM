@@ -18,7 +18,7 @@ from hypernets.core.search_space import HyperSpace, Real
 from hypernets.tabular.column_selector import column_object, column_exclude_datetime, column_number_exclude_timedelta, \
     column_object_category_bool
 from hypernets.tabular.datasets import dsutils
-from hypernets.tabular.drift_detection import general_preprocessor
+from hypernets.tabular.general import general_preprocessor
 from hypergbm.tests import test_output_dir
 
 
