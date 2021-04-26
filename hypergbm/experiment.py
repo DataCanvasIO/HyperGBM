@@ -268,7 +268,8 @@ def make_experiment(train_data,
 
     hm = HyperGBM(searcher, reward_metric=reward_metric, callbacks=search_callbacks,
                   cache_dir=kwargs.pop('cache_dir', default_cache_dir),
-                  clear_cache=clear_cache if clear_cache is not None else True)
+                  clear_cache=clear_cache if clear_cache is not None else True,
+                  discriminator=kwargs.pop('discriminator', None))
 
     use_cache = not dex.exist_dask_object(X_train, X_test, X_eval) if use_cache is None else bool(use_cache)
 
