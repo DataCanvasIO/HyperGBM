@@ -253,7 +253,8 @@ def make_experiment(train_data,
         reward_metric = 'rmse' if task == const.TASK_REGRESSION else 'accuracy'
         logger.info(f'no reward metric specified, use "{reward_metric}" for {task} task by default.')
 
-    scorer = metric_to_scoring(reward_metric) if kwargs.get('scorer') is None else kwargs.get('scorer')
+    scorer = metric_to_scoring(reward_metric) if kwargs.get('scorer') is None else kwargs.pop('scorer')
+
     if isinstance(scorer, str):
         scorer = get_scorer(scorer)
 
