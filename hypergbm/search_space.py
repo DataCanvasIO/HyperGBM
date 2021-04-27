@@ -13,8 +13,8 @@ from hypergbm.sklearn.transformers import FeatureGenerationTransformer
 from hypernets.core.ops import ModuleChoice, HyperInput
 from hypernets.core.search_space import Choice, Real, Int
 from hypernets.core.search_space import HyperSpace
+from hypernets.tabular.column_selector import column_object, column_exclude_datetime
 from hypernets.utils import logging
-from tabular_toolbox.column_selector import column_object, column_exclude_datetime
 
 logger = logging.get_logger(__name__)
 
@@ -43,21 +43,21 @@ class SearchSpaceGenerator(object):
     def __init__(self, **kwargs) -> None:
         super().__init__()
 
-        self.kwargs = kwargs
+        self.options = kwargs
 
-    def create_preprocessor(self, hyper_input, **kwargs):
+    def create_preprocessor(self, hyper_input, options):
         raise NotImplementedError()
 
-    def create_estimators(self, hyper_input, **kwargs):
+    def create_estimators(self, hyper_input, options):
         raise NotImplementedError()
 
     def __call__(self, *args, **kwargs):
-        kwargs = _merge_dict(self.kwargs, kwargs)
+        options = _merge_dict(self.options, kwargs)
 
         space = HyperSpace()
         with space.as_default():
             hyper_input = HyperInput(name='input1')
-            self.create_estimators(self.create_preprocessor(hyper_input, **kwargs), **kwargs)
+            self.create_estimators(self.create_preprocessor(hyper_input, options), options)
             space.set_inputs(hyper_input)
 
         return space
@@ -69,9 +69,9 @@ class BaseSearchSpaceGenerator(SearchSpaceGenerator):
         # return dict:  key-->(hyper_estimator_cls, default_init_kwargs, default_fit_kwargs)
         raise NotImplementedError()
 
-    def create_preprocessor(self, hyper_input, **kwargs):
-        cat_pipeline_mode = kwargs.pop('cat_pipeline_mode', 'simple')
-        dataframe_mapper_default = kwargs.pop('dataframe_mapper_default', False)
+    def create_preprocessor(self, hyper_input, options):
+        cat_pipeline_mode = options.pop('cat_pipeline_mode', 'simple')
+        dataframe_mapper_default = options.pop('dataframe_mapper_default', False)
 
         num_pipeline = numeric_pipeline_complex()(hyper_input)
         if cat_pipeline_mode == 'simple':
@@ -84,16 +84,16 @@ class BaseSearchSpaceGenerator(SearchSpaceGenerator):
 
         return preprocessor
 
-    def create_estimators(self, hyper_input, **kwargs):
+    def create_estimators(self, hyper_input, options):
         assert len(self.estimators.keys()) > 0
 
         creators = [_HyperEstimatorCreator(pairs[0],
-                                           init_kwargs=_merge_dict(pairs[1], kwargs.pop(f'{k}_init_kwargs', None)),
-                                           fit_kwargs=_merge_dict(pairs[2], kwargs.pop(f'{k}_fit_kwargs', None)))
+                                           init_kwargs=_merge_dict(pairs[1], options.pop(f'{k}_init_kwargs', None)),
+                                           fit_kwargs=_merge_dict(pairs[2], options.pop(f'{k}_fit_kwargs', None)))
                     for k, pairs in self.estimators.items()]
 
         unused = {}
-        for k, v in kwargs.items():
+        for k, v in options.items():
             used = False
             for c in creators:
                 if k in c.estimator_init_kwargs.keys():
@@ -106,7 +106,7 @@ class BaseSearchSpaceGenerator(SearchSpaceGenerator):
                 # logger.warn(f'Unused parameter: {k} = {v}')
                 unused[k] = v
 
-        # set unused kwargs as fit_kwargs of all estimators
+        # set unused options as fit_kwargs of all estimators
         if unused:
             for c in creators:
                 c.estimator_fit_kwargs.update(unused)
@@ -135,6 +135,7 @@ class GeneralSearchSpaceGenerator(BaseSearchSpaceGenerator):
             'gamma': Choice([0.5, 1, 1.5, 2, 5]),
             'reg_alpha': Choice([0.001, 0.01, 0.1, 1, 10, 100]),
             'reg_lambda': Choice([0.001, 0.01, 0.1, 0.5, 1]),
+            'random_state': 9527,
             'class_balancing': None,
         }
 
@@ -152,6 +153,7 @@ class GeneralSearchSpaceGenerator(BaseSearchSpaceGenerator):
             'max_depth': Choice([3, 5, 7, 10]),
             'reg_alpha': Choice([0.001, 0.01, 0.1, 1, 10, 100]),
             'reg_lambda': Choice([0.001, 0.01, 0.1, 0.5, 1]),
+            'random_state': 9527,
             'class_balancing': None,
         }
 
@@ -167,6 +169,7 @@ class GeneralSearchSpaceGenerator(BaseSearchSpaceGenerator):
             'depth': Choice([3, 5, 7, 10]),
             'learning_rate': Choice([0.001, 0.01, 0.5, 0.1]),
             'l2_leaf_reg': Choice([None, 2, 10, 20, 30]),
+            'random_state': 9527,
             'class_balancing': None,
         }
 
@@ -180,7 +183,8 @@ class GeneralSearchSpaceGenerator(BaseSearchSpaceGenerator):
             'learning_rate': Choice([0.01, 0.1, 0.2, 0.5, 0.8, 1]),
             'min_samples_leaf': Choice([10, 20, 50, 80, 100, 150, 180, 200]),
             'max_leaf_nodes': Int(15, 513, 5),
-            'l2_regularization': Choice([1e-10, 1e-8, 1e-6, 1e-5, 1e-3, 0.01, 0.1, 1])
+            'l2_regularization': Choice([1e-10, 1e-8, 1e-6, 1e-5, 1e-3, 0.01, 0.1, 1]),
+            'random_state': 9527,
         }
 
     @property
@@ -222,7 +226,7 @@ def search_space_general_removed(dataframe_mapper_default=False,
                                  histgb_fit_kwargs=None,
                                  cat_pipeline_mode='simple',
                                  class_balancing=None,
-                                 n_esitimators=200,
+                                 n_estimators=200,
                                  **kwargs):
     """
     A general search space function
@@ -251,7 +255,7 @@ def search_space_general_removed(dataframe_mapper_default=False,
             - 'NearMiss'
             - 'TomeksLinks'
             - 'EditedNearestNeighbours'
-    :param n_esitimators: int, default=200
+    :param n_estimators: int, default=200
         Number of estimators
     :param kwargs:
     :return:
@@ -291,7 +295,7 @@ def search_space_general_removed(dataframe_mapper_default=False,
         # poly_pipeline = Pipeline(module_list=[poly_dm])(union_pipeline)
 
         lightgbm_init_kwargs = {
-            'n_estimators': n_esitimators,  # Choice([10, 30, 50, 100, 200, 300, 500]),
+            'n_estimators': n_estimators,  # Choice([10, 30, 50, 100, 200, 300, 500]),
             'boosting_type': Choice(['gbdt', 'dart', 'goss']),
             'num_leaves': Int(15, 513, 5),
             'learning_rate': Choice([0.001, 0.01, 0.5, 0.1]),
@@ -304,7 +308,7 @@ def search_space_general_removed(dataframe_mapper_default=False,
         xgb_init_kwargs = {
             'booster': Choice(['gbtree', 'dart']),
             'max_depth': Choice([3, 5, 7, 10]),
-            'n_estimators': n_esitimators,  # Choice([10, 30, 50, 100, 200, 300]),
+            'n_estimators': n_estimators,  # Choice([10, 30, 50, 100, 200, 300]),
             'learning_rate': Choice([0.001, 0.01, 0.5, 0.1]),
             'min_child_weight': Choice([1, 5, 10]),
             'gamma': Choice([0.5, 1, 1.5, 2, 5]),
@@ -315,7 +319,7 @@ def search_space_general_removed(dataframe_mapper_default=False,
 
         catboost_init_kwargs = {
             'silent': True,
-            'n_estimators': n_esitimators,
+            'n_estimators': n_estimators,
             'depth': Choice([3, 5, 7, 10]),
             'learning_rate': Choice([0.001, 0.01, 0.5, 0.1]),
             'l2_leaf_reg': Choice([None, 2, 10, 20, 30]),

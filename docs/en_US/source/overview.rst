@@ -38,7 +38,7 @@ The code example of Numeric Pipeline is as follows：
     from hypergbm.pipeline import Pipeline
     from hypergbm.sklearn.transformers import SimpleImputer, StandardScaler, MinMaxScaler, MaxAbsScaler, RobustScaler, LogStandardScaler
     from hypernets.core.ops import ModuleChoice, Optional, Choice
-    from tabular_toolbox.column_selector import  column_number_exclude_timedelta
+    from hypernets.tabular.column_selector import  column_number_exclude_timedelta
 
 
     def numeric_pipeline_complex(impute_strategy=None, seq_no=0):
@@ -119,7 +119,7 @@ Here is feature matrix of training modes:
 |                            | | Evolution                                          | | √        | | √                           | | √                              |
 |                            | | Random search                                      | | √        | | √                           | | √                              |
 +----------------------------+------------------------------------------------------+------------+-------------------------------+----------------------------------+
-|Class balancing             | | Class Weight                                       | | √        | | √                           | |                                |
+|Class balancing             | | Class Weight                                       | | √        | | √                           | | √                              |
 |                            | | Under-Samping(Near miss,Tomeks links,Random)       | | √        | |                             | |                                |
 |                            | | Over-Samping(SMOTE,ADASYN,Random)                  | | √        | |                             | |                                |
 +----------------------------+------------------------------------------------------+------------+-------------------------------+----------------------------------+

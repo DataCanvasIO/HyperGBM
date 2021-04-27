@@ -24,7 +24,7 @@ import numpy as np
 from hypergbm.pipeline import Pipeline
 from hypergbm.sklearn.transformers import SimpleImputer, StandardScaler, MinMaxScaler, MaxAbsScaler, RobustScaler, LogStandardScaler
 from hypernets.core.ops import ModuleChoice, Optional, Choice
-from tabular_toolbox.column_selector import  column_number_exclude_timedelta
+from hypernets.tabular.column_selector import  column_number_exclude_timedelta
 
 
 def numeric_pipeline_complex(impute_strategy=None, seq_no=0):
@@ -337,7 +337,7 @@ We have provided several approaches to deal with imbalanced data: *Class Weight*
 
 **Code example**
 ```python
-from tabular_toolbox.datasets import dsutils
+from hypernets.tabular.datasets import dsutils
 from sklearn.model_selection import train_test_split
 from hypergbm.search_space import search_space_general
 from hypergbm import make_experiment

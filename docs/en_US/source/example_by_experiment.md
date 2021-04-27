@@ -26,7 +26,7 @@ User can create experiment instance with the python tool `make_experiment` and r
 Codes:
 ```python
 from hypergbm import make_experiment
-from tabular_toolbox.datasets import dsutils
+from hypernets.tabular.datasets import dsutils
 
 train_data = dsutils.load_blood()
 experiment = make_experiment(train_data, target='Class')
@@ -54,7 +54,7 @@ If your training data files are  .csv or .parquet files，user can  call `make_e
 
 ```python
 from hypergbm import make_experiment
-from tabular_toolbox.datasets import dsutils
+from hypernets.tabular.datasets import dsutils
 
 train_data = '/path/to/mydata.csv'
 experiment = make_experiment(train_data, target='my_target')
@@ -71,7 +71,7 @@ print(estimator)
 
 ```python
 from hypergbm import make_experiment
-from tabular_toolbox.datasets import dsutils
+from hypernets.tabular.datasets import dsutils
 
 train_data = dsutils.load_blood()
 experiment = make_experiment(train_data, target='Class', cv=True, num_folds=5)
@@ -88,7 +88,7 @@ Experiment split evaluate data from `train_data` by default if cross validation 
 
 ```python
 from hypergbm import make_experiment
-from tabular_toolbox.datasets import dsutils
+from hypernets.tabular.datasets import dsutils
 from sklearn.model_selection import train_test_split
 
 train_data = dsutils.load_blood()
@@ -105,7 +105,7 @@ If `eval_data` is None and `cv` is False,  the experiment will split evaluation 
 
 ```python
 from hypergbm import make_experiment
-from tabular_toolbox.datasets import dsutils
+from hypernets.tabular.datasets import dsutils
 
 train_data = dsutils.load_blood()
 
@@ -123,7 +123,7 @@ The default search reward metric is `accuracy`，user can change it with `reward
 
 ```python
 from hypergbm import make_experiment
-from tabular_toolbox.datasets import dsutils
+from hypernets.tabular.datasets import dsutils
 
 train_data = dsutils.load_blood()
 experiment = make_experiment(train_data, target='Class', reward_metric='auc')
@@ -140,7 +140,7 @@ User can limit search trial number with `max_trials`，and setup search early st
 
 ```pytyon
 from hypergbm import make_experiment
-from tabular_toolbox.datasets import dsutils
+from hypernets.tabular.datasets import dsutils
 
 train_data = dsutils.load_blood()
 
@@ -160,7 +160,7 @@ To enable the feature drift detection, set `drift_detection=True`, and set `test
 from io import StringIO
 import pandas as pd
 from hypergbm import make_experiment
-from tabular_toolbox.datasets import dsutils
+from hypernets.tabular.datasets import dsutils
 
 test_data = """
 Recency,Frequency,Monetary,Time
@@ -197,7 +197,7 @@ To enable multicollinearity detection, set `collinearity_detection=True`, like t
 
 ```python
 from hypergbm import make_experiment
-from tabular_toolbox.datasets import dsutils
+from hypernets.tabular.datasets import dsutils
 
 train_data = dsutils.load_blood()
 experiment = make_experiment(train_data, target='Class', `collinearity_detection=True)
@@ -248,7 +248,7 @@ To change logging level, set `log_level` with log level defined in  python loggi
 
 ```python
 from hypergbm import make_experiment
-from tabular_toolbox.datasets import dsutils
+from hypernets.tabular.datasets import dsutils
 
 train_data = dsutils.load_blood()
 experiment = make_experiment(train_data, target='Class', log_level='INFO', verbose=1)
@@ -259,7 +259,7 @@ print(estimator)
 
 Outputs：
 ```
-14:24:33 I tabular_toolbox.u._common.py 30 - 2 class detected, {0, 1}, so inferred as a [binary classification] task
+14:24:33 I hypernets.tabular.u._common.py 30 - 2 class detected, {0, 1}, so inferred as a [binary classification] task
 14:24:33 I hypergbm.experiment.py 699 - create experiment with ['data_clean', 'drift_detection', 'space_search', 'final_ensemble']
 14:24:33 I hypergbm.experiment.py 1262 - make_experiment with train data:(748, 4), test data:None, eval data:None, target:Class
 14:24:33 I hypergbm.experiment.py 716 - fit_transform data_clean
@@ -299,12 +299,12 @@ User can customize searcher and search space with `searcher` and `search_space`,
 
 ```python
 from hypergbm import make_experiment
-from tabular_toolbox.datasets import dsutils
+from hypernets.tabular.datasets import dsutils
 from hypergbm.search_space import search_space_general
 
 
 def my_search_space():
-    return search_space_general(n_esitimators=100)
+    return search_space_general(n_estimators=100)
 
 
 train_data = dsutils.load_blood()
@@ -323,9 +323,9 @@ Or like this：
 from hypergbm import make_experiment
 from hypergbm.search_space import search_space_general
 from hypernets.searchers import MCTSSearcher
-from tabular_toolbox.datasets import dsutils
+from hypernets.tabular.datasets import dsutils
 
-my_searcher = MCTSSearcher(lambda: search_space_general(n_esitimators=100),
+my_searcher = MCTSSearcher(lambda: search_space_general(n_estimators=100),
                            max_node_space=20,
                            optimize_direction='max')
 
@@ -348,7 +348,7 @@ from hypergbm import HyperGBM, CompeteExperiment
 from hypergbm.search_space import search_space_general
 from hypernets.core.callbacks import EarlyStoppingCallback, SummaryCallback
 from hypernets.searchers import EvolutionSearcher
-from tabular_toolbox.datasets import dsutils
+from hypernets.tabular.datasets import dsutils
 
 train_data = dsutils.load_blood()
 
@@ -389,7 +389,7 @@ To run  HyperGBM experiment with Dask cluster, use need to setup the  default Da
 from dask.distributed import LocalCluster, Client
 
 from hypergbm import make_experiment
-from tabular_toolbox.datasets import dsutils
+from hypernets.tabular.datasets import dsutils
 
 
 def train():
@@ -417,7 +417,7 @@ from dask import dataframe as dd
 from dask.distributed import LocalCluster, Client
 
 from hypergbm import make_experiment
-from tabular_toolbox.datasets import dsutils
+from hypernets.tabular.datasets import dsutils
 
 
 def train():
@@ -452,11 +452,11 @@ from dask.distributed import LocalCluster, Client
 
 from hypergbm import make_experiment
 from hypergbm.dask.search_space import search_space_general
-from tabular_toolbox.datasets import dsutils
+from hypernets.tabular.datasets import dsutils
 
 
 def my_search_space():
-    return search_space_general(n_esitimators=100)
+    return search_space_general(n_estimators=100)
 
 
 def train():

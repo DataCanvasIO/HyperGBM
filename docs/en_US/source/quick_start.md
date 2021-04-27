@@ -6,9 +6,9 @@ Please refer to [installation](installation.md) instructions for installing hype
 
 This section will show you how to train a binary model using hypergbm.
 
-You can use `tabular_toolbox` utility to read [Bank Marketing](http://archive.ics.uci.edu/ml/datasets/Bank+Marketing) dataset： 
+You can use `hypernets.tabular` utility to read [Bank Marketing](http://archive.ics.uci.edu/ml/datasets/Bank+Marketing) dataset： 
 ```pydocstring
->>> from tabular_toolbox.datasets import dsutils
+>>> from hypernets.tabular.datasets import dsutils
 >>> df = dsutils.load_bank()
 >>> df[:3]
    id  age         job  marital  education default  balance housing loan   contact  day month  duration  campaign  pdays  previous poutcome   y
@@ -22,7 +22,7 @@ You can use `tabular_toolbox` utility to read [Bank Marketing](http://archive.ic
 Firstly,  we load and split the data into training set and test set to train and evaluate the model: 
 ```pydocstring
 >>> from sklearn.model_selection import train_test_split
->>> from tabular_toolbox.datasets import dsutils
+>>> from hypernets.tabular.datasets import dsutils
 >>> df = dsutils.load_bank()
 >>> train_data,test_data = train_test_split(df, test_size=0.3, random_state=9527)
 ```
@@ -57,7 +57,7 @@ We can use sklearn metrics to evaluate the trained model：
 Load and  split the data into training set and test set to train and evaluate the model: 
 ```pydocstring
 >>> from sklearn.model_selection import train_test_split
->>> from tabular_toolbox.datasets import dsutils
+>>> from hypernets.tabular.datasets import dsutils
 >>> df = dsutils.load_bank()
 >>> y = df.pop('y')  # target col is "y"
 >>> X_train, X_test, y_train, y_test = train_test_split(df, y, test_size=0.3, random_state=9527)
@@ -122,7 +122,7 @@ usage: hypergbm [-h] --train_file TRAIN_FILE [--eval_file EVAL_FILE]
 
 Similarly, taking the training Bank Marketing as an example, we first split the data set into training set and test set and generate the CSV file for command-line tools:
 ```pydocstring
->>> from tabular_toolbox.datasets import dsutils
+>>> from hypernets.tabular.datasets import dsutils
 >>> from sklearn.model_selection import train_test_split
 >>> df = dsutils.load_bank()
 >>> df_train, df_test = train_test_split(df, test_size=0.3, random_state=9527)

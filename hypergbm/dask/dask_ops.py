@@ -9,7 +9,7 @@ from hypergbm.pipeline import Pipeline
 from hypernets.core.ops import ModuleChoice, Optional
 from hypernets.core.search_space import Choice
 from hypernets.utils import logging
-from tabular_toolbox.column_selector import column_object_category_bool, column_number_exclude_timedelta
+from hypernets.tabular.column_selector import column_object_category_bool, column_number_exclude_timedelta
 from . import dask_transformers as tf
 
 logger = logging.get_logger(__name__)

@@ -9,7 +9,7 @@ from functools import partial
 import numpy as np
 import psutil
 
-from tabular_toolbox.const import TASK_BINARY, TASK_MULTICLASS
+from hypernets.utils.const import TASK_BINARY, TASK_MULTICLASS
 
 # from hypernets.utils import logging
 #
@@ -81,7 +81,7 @@ def main():
                         help='train task type, will be detected from target by default')
         tg.add_argument('--max-trials', '--trials', '--n', type=int, default=10,
                         help='search trial number limit, default %(default)s')
-        tg.add_argument('--reward-metric', '--reward', '--metric', type=str, default='accuracy', metavar='METRIC',
+        tg.add_argument('--reward-metric', '--reward', '--metric', type=str, default=None, metavar='METRIC',
                         choices=metric_choices,
                         help='search reward metric name, one of [%(choices)s], default %(default)s')
         tg.add_argument('--cv', type=to_bool, default=True,
@@ -165,6 +165,8 @@ def main():
 
         # others
         og = a.add_argument_group('Other settings')
+        og.add_argument('--id', type=str, default=None,
+                        help='experiment id')
         og.add_argument('--use-cache', type=to_bool, default=None)
         og.add_argument('-use-cache', '-use-cache+', dest='use_cache', action='store_true',
                         help='alias of "--use-cache true"')
@@ -288,8 +290,8 @@ def main():
 
 def train(args):
     from hypergbm import make_experiment
-    from tabular_toolbox.datasets import dsutils
-    from tabular_toolbox import dask_ex as dex
+    from hypernets.tabular.datasets import dsutils
+    from hypernets.tabular import dask_ex as dex
 
     if args.train_data is None or len(args.train_data) == 0:
         if dex.dask_enabled():
@@ -311,6 +313,7 @@ def train(args):
 
     experiment = make_experiment(train_data, target=target, test_data=args.test_data, eval_data=args.eval_data,
                                  task=args.task,
+                                 id=args.id,
                                  max_trials=args.max_trials,
                                  ensemble_size=args.ensemble_size,
                                  reward_metric=args.reward_metric,
@@ -351,8 +354,8 @@ def train(args):
 
 
 def evaluate(args):
-    from tabular_toolbox.utils import load_data
-    from tabular_toolbox.metrics import calc_score
+    from hypernets.utils import load_data
+    from hypernets.tabular.metrics import calc_score
 
     eval_data = args.eval_data
     target = args.target
@@ -416,8 +419,8 @@ def evaluate(args):
 
 
 def predict(args):
-    from tabular_toolbox.utils import load_data
-    from tabular_toolbox import dask_ex as dex
+    from hypernets.utils import load_data
+    from hypernets.tabular import dask_ex as dex
     import pandas as pd
 
     data_file = args.data
@@ -477,7 +480,7 @@ def predict(args):
 
     df = dex.concat_df([data, y], axis=1) if data is not None else y
     if dex.is_dask_object(df):
-        from tabular_toolbox.persistence import to_parquet
+        from hypernets.tabular.persistence import to_parquet
         to_parquet(df, output_file)
     else:
         if output_file.endswith('.parquet'):

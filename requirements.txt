@@ -1,5 +1,4 @@
 hypernets==0.1.8
-tabular-toolbox==0.1.4
 tables>=3.6.1
 fsspec>=0.8.0
 dask
@@ -9,4 +8,5 @@ lightgbm
 xgboost
 catboost>=0.21
 featuretools
-imblearn
+imbalanced-learn>=0.7.0
+tqdm

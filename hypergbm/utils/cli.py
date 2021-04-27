@@ -70,7 +70,7 @@ def main():
 
 
     # import after check
-    from tabular_toolbox import const as tt_const
+    from hypernets.utils import const as tt_const
     import pandas as pd
     import pickle
     from hypernets.core.callbacks import EarlyStoppingCallback, SummaryCallback, FileLoggingCallback
@@ -85,7 +85,7 @@ def main():
     from hypergbm.sklearn.sklearn_ops import numeric_pipeline_complex, categorical_pipeline_simple
     from hypergbm.search_space import search_space_general
     from hypernets.experiment.general import GeneralExperiment
-    from tabular_toolbox.column_selector import column_object
+    from hypernets.tabular.column_selector import column_object
 
     # 3. data partition
     df_train = pd.read_csv(train_file)
@@ -95,7 +95,7 @@ def main():
     X_train = df_train
     y_train = X_train.pop(target)
     classes = list(set(y_train))
-    from tabular_toolbox.utils._common import infer_task_type
+    from hypernets.utils import infer_task_type
     task_type = infer_task_type(y_train)[0]
 
     if task_type == tt_const.TASK_BINARY:

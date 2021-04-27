@@ -9,7 +9,7 @@ from hypergbm.sklearn.transformers import SimpleImputer, SafeOneHotEncoder, Trun
     StandardScaler, MinMaxScaler, MaxAbsScaler, RobustScaler, SafeOrdinalEncoder, \
     LogStandardScaler
 from hypernets.core.ops import ModuleChoice, Optional, Choice
-from tabular_toolbox.column_selector import column_object_category_bool, column_number_exclude_timedelta
+from hypernets.tabular.column_selector import column_object_category_bool, column_number_exclude_timedelta
 
 
 def categorical_pipeline_simple(impute_strategy='constant', seq_no=0):

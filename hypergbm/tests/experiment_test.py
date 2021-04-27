@@ -11,7 +11,7 @@ from hypergbm.search_space import search_space_general
 from hypernets.core import OptimizeDirection, EarlyStoppingCallback
 from hypernets.experiment import GeneralExperiment, ExperimentCallback, ConsoleCallback
 from hypernets.searchers import RandomSearcher
-from tabular_toolbox.datasets import dsutils
+from hypernets.tabular.datasets import dsutils
 import numpy as np
 import pandas as pd
 
@@ -51,7 +51,7 @@ class LogCallback(ExperimentCallback):
         self.logs.append(f'step break, step:{step}, error:{error}')
 
 
-class Test_HyperGBM():
+class Test_Experiment():
     def test_regression_cv(self):
         self.run_regression(cv=True)
 
@@ -64,8 +64,13 @@ class Test_HyperGBM():
     def test_regression_adversarial_validation(self):
         self.run_regression(train_test_split_strategy='adversarial_validation')
 
+    def test_regression_cross_validator(self):
+        from hypernets.tabular.lifelong_learning import PrequentialSplit
+        preq_split = PrequentialSplit(PrequentialSplit.STRATEGY_PREQ_BLS, n_splits=3)
+        self.run_regression(cv=True, cross_validator=preq_split)
+
     def run_regression(self, train_test_split_strategy=None, cv=False, feature_reselection=False, pseudo_labeling=False,
-                       collinearity_detection=False, drift_detection=True, max_trials=3):
+                       collinearity_detection=False, drift_detection=True, max_trials=3, cross_validator=None):
         df = dsutils.load_Bike_Sharing()
         y = df.pop('count')
 
@@ -86,7 +91,8 @@ class Test_HyperGBM():
                                        feature_reselection=feature_reselection,
                                        feature_reselection_estimator_size=5,
                                        feature_reselection_threshold=1e-5,
-                                       ensemble_size=10
+                                       ensemble_size=10,
+                                       cross_validator=cross_validator
                                        )
         pipeline = experiment.run(use_cache=True, max_trials=max_trials)
         rmse_scorer = get_scorer('neg_root_mean_squared_error')
@@ -105,8 +111,13 @@ class Test_HyperGBM():
     def test_multiclass_adversarial_validation(self):
         self.run_multiclass(train_test_split_strategy='adversarial_validation')
 
+    def test_multiclass_cross_validator(self):
+        from hypernets.tabular.lifelong_learning import PrequentialSplit
+        preq_split = PrequentialSplit(PrequentialSplit.STRATEGY_PREQ_BLS, n_splits=3)
+        self.run_multiclass(cv=True, cross_validator=preq_split)
+
     def run_multiclass(self, train_test_split_strategy=None, cv=False, feature_reselection=False, pseudo_labeling=False,
-                       collinearity_detection=False, drift_detection=True, max_trials=3):
+                       collinearity_detection=False, drift_detection=True, max_trials=3, cross_validator=None):
         df = dsutils.load_glass_uci()
         df.columns = [f'x_{c}' for c in df.columns.to_list()]
         df.pop('x_0')
@@ -130,7 +141,8 @@ class Test_HyperGBM():
                                        feature_reselection=feature_reselection,
                                        feature_reselection_estimator_size=5,
                                        feature_reselection_threshold=1e-5,
-                                       ensemble_size=10
+                                       ensemble_size=10,
+                                       cross_validator=cross_validator
                                        )
         pipeline = experiment.run(use_cache=True, max_trials=max_trials)
         acc_scorer = get_scorer('accuracy')
@@ -164,7 +176,8 @@ class Test_HyperGBM():
 
     def run_binary(self, train_test_split_strategy=None, cv=False, pseudo_labeling=False,
                    feature_reselection=False,
-                   collinearity_detection=False, drift_detection=True, max_trials=3, scoring='roc_auc_ovr'):
+                   collinearity_detection=False, drift_detection=True, max_trials=3, scoring='roc_auc_ovr',
+                   cross_validator=None):
         rs = RandomSearcher(lambda: search_space_general(early_stopping_rounds=20, verbose=0),
                             optimize_direction=OptimizeDirection.Maximize)
         hk = HyperGBM(rs, reward_metric='auc', cache_dir=f'hypergbm_cache', callbacks=[])
@@ -185,7 +198,8 @@ class Test_HyperGBM():
                                        feature_reselection=feature_reselection,
                                        feature_reselection_estimator_size=5,
                                        feature_reselection_threshold=1e-5,
-                                       ensemble_size=5
+                                       ensemble_size=5,
+                                       cross_validator=cross_validator
                                        )
         pipeline = experiment.run(use_cache=True, max_trials=max_trials)
         auc_scorer = get_scorer('roc_auc_ovo')
@@ -206,3 +220,8 @@ class Test_HyperGBM():
 
     def test_binary_adversarial_validation(self):
         self.run_binary(train_test_split_strategy='adversarial_validation')
+
+    def test_binary_cross_validator(self):
+        from hypernets.tabular.lifelong_learning import PrequentialSplit
+        preq_split = PrequentialSplit(PrequentialSplit.STRATEGY_PREQ_BLS, n_splits=3)
+        self.run_binary(cv=True, cross_validator=preq_split)

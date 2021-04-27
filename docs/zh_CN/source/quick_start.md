@@ -3,9 +3,9 @@
 本章介绍HyperGBM主要功能，假设您已经知道机器学习的基本知识（加载数据、模型训练、预测、评估等），如果您还没安装请参照[安装文档](installation.md)来安装HyperGBM。
 您可以通过Python和命令行工具来使用HyperGBM。
 
-本节将使用数据[Bank Marketing](http://archive.ics.uci.edu/ml/datasets/Bank+Marketing) 演示如何使用HyperGBM训练一个二分类模型。可使用`tabular_toolbox`提供的工具类来读取Bank Marketing数据集： 
+本节将使用数据[Bank Marketing](http://archive.ics.uci.edu/ml/datasets/Bank+Marketing) 演示如何使用HyperGBM训练一个二分类模型。可使用`hypernets.tabular`提供的工具类来读取Bank Marketing数据集： 
 ```pydocstring
->>> from tabular_toolbox.datasets import dsutils
+>>> from hypernets.tabular.datasets import dsutils
 >>> df = dsutils.load_bank()
 >>> df[:3]
    id  age         job  marital  education default  balance housing loan   contact  day month  duration  campaign  pdays  previous poutcome   y
@@ -25,7 +25,7 @@
 首先，将数据拆分为训练集和测试集，分别用来训练模型和验证最终模型的效果：
 ```pydocstring
 >>> from sklearn.model_selection import train_test_split
->>> from tabular_toolbox.datasets import dsutils
+>>> from hypernets.tabular.datasets import dsutils
 >>> df = dsutils.load_bank()
 >>> train_data,test_data = train_test_split(df, test_size=0.3, random_state=9527)
 ```
@@ -59,7 +59,7 @@ Pipeline(steps=[('data_clean',
 首先，将数据拆分为训练集和测试集，分别用来训练模型和验证最终模型的效果：
 ```pydocstring
 >>> from sklearn.model_selection import train_test_split
->>> from tabular_toolbox.datasets import dsutils
+>>> from hypernets.tabular.datasets import dsutils
 >>> df = dsutils.load_bank()
 >>> y = df.pop('y')  # target col is "y"
 >>> X_train, X_test, y_train, y_test = train_test_split(df, y, test_size=0.3, random_state=9527)
@@ -119,7 +119,7 @@ usage: hypergbm [-h] --train_file TRAIN_FILE [--eval_file EVAL_FILE]
 
 同样以训练数据Bank Marketing为例子，我们先将数据集拆分成训练集和测试集并生成csv文件：
 ```pydocstring
->>> from tabular_toolbox.datasets import dsutils
+>>> from hypernets.tabular.datasets import dsutils
 >>> from sklearn.model_selection import train_test_split
 >>> df = dsutils.load_bank()
 >>> df_train, df_test = train_test_split(df, test_size=0.3, random_state=9527)

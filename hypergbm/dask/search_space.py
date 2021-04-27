@@ -11,8 +11,8 @@ from hypergbm.search_space import GeneralSearchSpaceGenerator
 from hypernets.core.ops import ModuleChoice, HyperInput
 from hypernets.core.search_space import Choice, HyperSpace, Int, get_default_space
 from hypernets.utils import logging
-from tabular_toolbox import dask_ex as dex
-from tabular_toolbox.column_selector import column_object, column_all
+from hypernets.tabular import dask_ex as dex
+from hypernets.tabular.column_selector import column_object, column_all
 
 logger = logging.get_logger(__name__)
 
@@ -72,9 +72,9 @@ class DaskGeneralSearchSpaceGenerator(GeneralSearchSpaceGenerator):
 
         return r
 
-    def create_preprocessor(self, hyper_input, **kwargs):
-        cat_pipeline_mode = kwargs.pop('cat_pipeline_mode', 'simple')
-        dataframe_mapper_default = kwargs.pop('dataframe_mapper_default', False)
+    def create_preprocessor(self, hyper_input, options):
+        cat_pipeline_mode = options.pop('cat_pipeline_mode', 'simple')
+        dataframe_mapper_default = options.pop('dataframe_mapper_default', False)
 
         if self.enable_persist:
             space = get_default_space()
@@ -111,7 +111,7 @@ def search_space_general_removed(dataframe_mapper_default=False,
                                  catboost_init_kwargs=None,
                                  catboost_fit_kwargs=None,
                                  class_balancing=None,
-                                 n_esitimators=200,
+                                 n_estimators=200,
                                  early_stopping_rounds=None,
                                  enable_persist=True,
                                  **kwargs):
@@ -167,8 +167,8 @@ def search_space_general_removed(dataframe_mapper_default=False,
         union_pipeline = dfm_decorater('dfm', 'num,cat', dfm)
 
         lightgbm_init_kwargs = {
-            # 'n_estimators': n_esitimators,  # Choice([10, 30, 50, 100, 200, 300, 500]),
-            'n_estimators': Choice([10, 30, 100, 200, 300]) if n_esitimators is None else n_esitimators,
+            # 'n_estimators': n_estimators,  # Choice([10, 30, 50, 100, 200, 300, 500]),
+            'n_estimators': Choice([10, 30, 100, 200, 300]) if n_estimators is None else n_estimators,
             'boosting_type': Choice(['gbdt', 'dart', 'goss']),
             'num_leaves': Int(15, 513, 5),
             'learning_rate': Choice([0.001, 0.01, 0.5, 0.1]),
@@ -185,7 +185,7 @@ def search_space_general_removed(dataframe_mapper_default=False,
         xgb_init_kwargs = {
             'booster': Choice(['gbtree', 'dart']),
             'max_depth': Choice([3, 5, 7, 10]),
-            'n_estimators': Choice([10, 30, 100, 200, 300]) if n_esitimators is None else n_esitimators,
+            'n_estimators': Choice([10, 30, 100, 200, 300]) if n_estimators is None else n_estimators,
             'learning_rate': Choice([0.001, 0.01, 0.5, 0.1]),
             'min_child_weight': Choice([1, 5, 10]),
             'gamma': Choice([0.5, 1, 1.5, 2, 5]),
@@ -202,7 +202,7 @@ def search_space_general_removed(dataframe_mapper_default=False,
 
         catboost_init_kwargs = {
             'silent': True,
-            'n_estimators': Choice([10, 30, 100, 200, 300]) if n_esitimators is None else n_esitimators,
+            'n_estimators': Choice([10, 30, 100, 200, 300]) if n_estimators is None else n_estimators,
             'depth': Choice([3, 5, 7, 10]),
             'learning_rate': Choice([0.001, 0.01, 0.5, 0.1]),
             # 'iterations': Choice([30, 50, 100, 200, 300]),

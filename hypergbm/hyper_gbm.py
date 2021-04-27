@@ -17,16 +17,17 @@ from imblearn.over_sampling import RandomOverSampler, SMOTE, ADASYN
 from imblearn.under_sampling import RandomUnderSampler, NearMiss, TomekLinks, EditedNearestNeighbours
 from sklearn import pipeline as sk_pipeline
 from sklearn.model_selection import KFold, StratifiedKFold
+from tqdm import tqdm
 
 from hypergbm.pipeline import ComposeTransformer
 from hypernets.model.estimator import Estimator
 from hypernets.model.hyper_model import HyperModel
-from hypernets.utils import logging, fs
-from tabular_toolbox import dask_ex as dex
-from tabular_toolbox.data_cleaner import DataCleaner
-from tabular_toolbox.metrics import calc_score
-from tabular_toolbox.persistence import read_parquet, to_parquet
-from tabular_toolbox.utils import hash_dataframe
+from hypernets.tabular import dask_ex as dex
+from hypernets.tabular.data_cleaner import DataCleaner
+from hypernets.tabular.lifelong_learning import select_valid_oof
+from hypernets.tabular.metrics import calc_score
+from hypernets.tabular.persistence import read_parquet, to_parquet
+from hypernets.utils import logging, fs, hash_dataframe
 from .estimators import HyperEstimator
 
 try:
@@ -65,7 +66,7 @@ class HyperGBMExplainer:
         self.hypergbm_estimator = hypergbm_estimator
         if data is not None:
             data = self.hypergbm_estimator.transform_data(data)
-        self.explainer = TreeExplainer(self.hypergbm_estimator.estimator, data)
+        self.explainer = TreeExplainer(self.hypergbm_estimator.gbm_model, data)
 
     @property
     def expected_value(self):
@@ -119,7 +120,7 @@ class HyperGBMEstimator(Estimator):
                           ComposeTransformer), 'The upstream node of `HyperEstimator` must be `ComposeTransformer`.'
         # next, (name, p) = pipeline_module[0].compose()
         self.data_pipeline = self.build_pipeline(space, pipeline_module[0])
-        logger.debug(f'data_pipeline:{self.data_pipeline}')
+        # logger.debug(f'data_pipeline:{self.data_pipeline}')
         self.pipeline_signature = self.get_pipeline_signature(self.data_pipeline)
         if self.data_cleaner_params is not None:
             self.data_cleaner = DataCleaner(**self.data_cleaner_params)
@@ -206,14 +207,18 @@ class HyperGBMEstimator(Estimator):
         if verbose is None:
             verbose = 0
         if verbose > 0:
-            logger.info('estimator is transforming the train set')
+            logger.info('transforming the train set')
 
         X = self.transform_data(X, y, fit=True, use_cache=use_cache, verbose=verbose)
 
-        if stratified and self.task == 'binary':
-            iterators = StratifiedKFold(n_splits=num_folds, shuffle=True, random_state=9527)
+        cross_validator = kwargs.pop('cross_validator', None)
+        if cross_validator is not None:
+            iterators = cross_validator
         else:
-            iterators = KFold(n_splits=num_folds, shuffle=True, random_state=9527)
+            if stratified and self.task == 'binary':
+                iterators = StratifiedKFold(n_splits=num_folds, shuffle=True, random_state=9527)
+            else:
+                iterators = KFold(n_splits=num_folds, shuffle=True, random_state=9527)
 
         y = np.array(y)
 
@@ -221,9 +226,13 @@ class HyperGBMEstimator(Estimator):
         if kwargs.get('verbose') is None:
             kwargs['verbose'] = verbose
 
+        if metrics is None:
+            metrics = ['accuracy']
         oof_ = None
+        oof_scores = []
         self.cv_gbm_models_ = []
-        for n_fold, (train_idx, valid_idx) in enumerate(iterators.split(X, y)):
+        for n_fold, (train_idx, valid_idx) in enumerate(
+                tqdm(iterators.split(X, y), leave=False, total=iterators.n_splits)):
             x_train_fold, y_train_fold = X.iloc[train_idx], y[train_idx]
             x_val_fold, y_val_fold = X.iloc[valid_idx], y[valid_idx]
 
@@ -234,12 +243,22 @@ class HyperGBMEstimator(Estimator):
                 if sampler is None:
                     sample_weight = self._get_sample_weight(y_train_fold)
                 else:
-                    x_train_fold, y_train_fold = sampler.fit_sample(x_train_fold, y_train_fold)
+                    x_train_fold, y_train_fold = sampler.fit_resample(x_train_fold, y_train_fold)
             kwargs['sample_weight'] = sample_weight
 
             fold_est = copy.deepcopy(self.gbm_model)
+            fold_est.group_id = f'{fold_est.__class__.__name__}_cv_{n_fold}'
             fit_kwargs = {**kwargs, 'verbose': 0}
+            if hasattr(fold_est, 'build_discriminator_callback'):
+                callback = fold_est.build_discriminator_callback(self.discriminator)
+                if callback:
+                    callbacks = fit_kwargs.get('callbacks', [])
+                    callbacks.append(callback)
+                    fit_kwargs['callbacks'] = callbacks
+
             fold_est.fit(x_train_fold, y_train_fold, **fit_kwargs)
+            # print(fold_est.__class__)
+            # print(fold_est.evals_result_)
             # print(f'fold {n_fold}, est:{fold_est.__class__},  best_n_estimators:{fold_est.best_n_estimators}')
             if self.classes_ is None and hasattr(fold_est, 'classes_'):
                 self.classes_ = fold_est.classes_
@@ -248,27 +267,53 @@ class HyperGBMEstimator(Estimator):
             else:
                 proba = fold_est.predict_proba(x_val_fold)
 
+            fold_scores = self.get_scores(y_val_fold, proba, metrics)
+            oof_scores.append(fold_scores)
             if oof_ is None:
                 if len(proba.shape) == 1:
-                    oof_ = np.zeros(y.shape, proba.dtype)
+                    oof_ = np.full(y.shape, np.nan, proba.dtype)
                 else:
-                    oof_ = np.zeros((y.shape[0], proba.shape[-1]), proba.dtype)
+                    oof_ = np.full((y.shape[0], proba.shape[-1]), np.nan, proba.dtype)
             oof_[valid_idx] = proba
             self.cv_gbm_models_.append(fold_est)
 
-        if metrics is None:
-            metrics = ['accuracy']
-        proba = oof_
-        if self.task == 'regression':
-            proba = None
-            preds = oof_
-        else:
-            preds = self.proba2predict(oof_)
-            preds = np.array(self.classes_).take(preds, axis=0)
-        scores = calc_score(y, preds, proba, metrics, self.task)
+        logger.info(f'oof_scores:{oof_scores}')
+        scores = self.get_scores(y, oof_, metrics)
         if verbose > 0:
             logger.info(f'taken {time.time() - starttime}s')
-        return scores, oof_
+        return scores, oof_, oof_scores
+
+    def get_scores(self, y, oof_, metrics):
+        y, proba = select_valid_oof(y, oof_)
+        if self.task == 'regression':
+            preds = proba
+            proba = None
+        else:
+            preds = self.proba2predict(proba)
+            preds = np.array(self.classes_).take(preds, axis=0)
+        scores = calc_score(y, preds, proba, metrics, self.task)
+        return scores
+
+    def get_iteration_scores(self):
+        iteration_scores = {}
+
+        def get_scores(gbm_model, iteration_scores, fold=None, ):
+            if hasattr(gbm_model, 'iteration_scores'):
+                if gbm_model.__dict__.get('group_id'):
+                    group_id = gbm_model.group_id
+                else:
+                    if fold is not None:
+                        group_id = f'{gbm_model.__class__.__name__}_cv_{i}'
+                    else:
+                        group_id = gbm_model.__class__.__name__
+                iteration_scores[group_id] = gbm_model.iteration_scores
+
+        if self.cv_gbm_models_:
+            for i, gbm_model in enumerate(self.cv_gbm_models_):
+                get_scores(gbm_model, iteration_scores, i)
+        else:
+            get_scores(self.gbm_model, iteration_scores)
+        return iteration_scores
 
     def fit_cross_validation_by_dask(self, X, y, use_cache=None, verbose=0, stratified=True, num_folds=3,
                                      shuffle=False, random_state=9527, metrics=None, **kwargs):
@@ -304,7 +349,7 @@ class HyperGBMEstimator(Estimator):
                 if sampler is None:
                     sample_weight = self._get_sample_weight(y_train_fold)
                 else:
-                    x_train_fold, y_train_fold = sampler.fit_sample(x_train_fold, y_train_fold)
+                    x_train_fold, y_train_fold = sampler.fit_resample(x_train_fold, y_train_fold)
 
             if valid_idx.shape[0] > eval_size_limit:
                 eval_idx = valid_idx[0:eval_size_limit]
@@ -355,7 +400,7 @@ class HyperGBMEstimator(Estimator):
         scores = calc_score(y, preds, proba, metrics, self.task)
         if verbose > 0:
             logger.info(f'taken {time.time() - starttime}s')
-        return scores, oof_
+        return scores, oof_, None
 
     def fit(self, X, y, use_cache=None, verbose=0, **kwargs):
         starttime = time.time()
@@ -399,11 +444,20 @@ class HyperGBMEstimator(Estimator):
             else:
                 if verbose > 0:
                     logger.info(f'sample balancing:{self.class_balancing}')
-                X, y = sampler.fit_sample(X, y)
+                X, y = sampler.fit_resample(X, y)
 
         if verbose > 0:
             logger.info('estimator is fitting the data')
+
         fit_kwargs = {**kwargs, 'verbose': 0}
+        self.gbm_model.group_id = f'{self.gbm_model.__class__.__name__}'
+        if hasattr(self.gbm_model, 'build_discriminator_callback'):
+            callback = self.gbm_model.build_discriminator_callback(self.discriminator)
+            if callback:
+                callbacks = fit_kwargs.get('callbacks', [])
+                callbacks.append(callback)
+                fit_kwargs['callbacks'] = callbacks
+
         self.gbm_model.fit(X, y, **fit_kwargs)
 
         if self.classes_ is None and hasattr(self.gbm_model, 'classes_'):
@@ -615,7 +669,7 @@ class HyperGBM(HyperModel):
     """
 
     def __init__(self, searcher, dispatcher=None, callbacks=None, reward_metric='accuracy', task=None,
-                 data_cleaner_params=None, cache_dir=None, clear_cache=True):
+                 discriminator=None, data_cleaner_params=None, cache_dir=None, clear_cache=True):
         """
 
         :param searcher: hypernets.searcher.Searcher
@@ -649,7 +703,7 @@ class HyperGBM(HyperModel):
         self.cache_dir = self._prepare_cache_dir(cache_dir, clear_cache)
         self.clear_cache = clear_cache
         HyperModel.__init__(self, searcher, dispatcher=dispatcher, callbacks=callbacks, reward_metric=reward_metric,
-                            task=task)
+                            task=task, discriminator=discriminator)
 
     def _get_estimator(self, space_sample):
         estimator = HyperGBMEstimator(task=self.task, space_sample=space_sample,

@@ -15,11 +15,11 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OrdinalEncoder, StandardScaler
 
 from hypergbm.feature_generators import FeatureGenerationTransformer, CrossCategorical
-from tabular_toolbox.column_selector import column_object_category_bool, column_number_exclude_timedelta
-from tabular_toolbox.dataframe_mapper import DataFrameMapper
-from tabular_toolbox.datasets import dsutils
-from tabular_toolbox.sklearn_ex import FeatureSelectionTransformer
-from tabular_toolbox.utils import logging
+from hypernets.tabular.column_selector import column_object_category_bool, column_number_exclude_timedelta
+from hypernets.tabular.dataframe_mapper import DataFrameMapper
+from hypernets.tabular.datasets import dsutils
+from hypernets.tabular.sklearn_ex import FeatureSelectionTransformer
+from hypernets.utils import logging
 
 logger = logging.getLogger(__name__)
 

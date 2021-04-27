@@ -40,7 +40,7 @@ HyperGBM中的优化算法和搜索空间表示技术由 `Hypernets <https://git
     from hypergbm.pipeline import Pipeline
     from hypergbm.sklearn.transformers import SimpleImputer, StandardScaler, MinMaxScaler, MaxAbsScaler, RobustScaler, LogStandardScaler
     from hypernets.core.ops import ModuleChoice, Optional, Choice
-    from tabular_toolbox.column_selector import  column_number_exclude_timedelta
+    from hypernets.tabular.column_selector import  column_number_exclude_timedelta
 
 
     def numeric_pipeline_complex(impute_strategy=None, seq_no=0):
@@ -124,7 +124,7 @@ HyperGBM中的优化算法和搜索空间表示技术由 `Hypernets <https://git
 | |                            | | 进化算法                                                 | | √                          | | √                          | | √                          |
 | |                            | | 随机搜索                                                 | | √                          | | √                          | | √                          |
 +------------------------------+------------------------------------------------------------+------------------------------+------------------------------+------------------------------+
-| | 类平衡                     | | Class Weight                                             | | √                          | | √                          | |                            |
+| | 类平衡                     | | Class Weight                                             | | √                          | | √                          | | √                          |
 | |                            | | 降采样(Near miss,Tomeks links,Random)                    | | √                          | |                            | |                            |
 | |                            | | 过采样(SMOTE,ADASYN,Random)                              | | √                          | |                            | |                            |
 +------------------------------+------------------------------------------------------------+------------------------------+------------------------------+------------------------------+
