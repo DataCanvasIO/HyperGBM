@@ -31,7 +31,6 @@ class Test_HyperGBM():
         rs = RandomSearcher(space_fn if space_fn else search_space_general,
                             optimize_direction=OptimizeDirection.Maximize)
         hk = HyperGBM(rs, task='binary', reward_metric='accuracy',
-                      cache_dir=f'{test_output_dir}/hypergbm_cache',
                       callbacks=[SummaryCallback(), FileLoggingCallback(rs, output_dir=f'{test_output_dir}/hyn_logs')],
                       discriminator=discriminator)
 
@@ -52,7 +51,6 @@ class Test_HyperGBM():
         df.drop(['id'], axis=1, inplace=True)
         rs = RandomSearcher(search_space_general, optimize_direction=OptimizeDirection.Maximize)
         hk = HyperGBM(rs, task='binary', reward_metric='accuracy',
-                      cache_dir=f'{test_output_dir}/hypergbm_cache',
                       callbacks=[SummaryCallback(), FileLoggingCallback(rs, output_dir=f'{test_output_dir}/hyn_logs')])
 
         X_train, X_test = train_test_split(df.head(1000), test_size=0.2, random_state=42)
@@ -80,9 +78,10 @@ class Test_HyperGBM():
             return X_train, X_test, y_train, y_test
 
         est, hypergbm = self.run_search(f)
+        fs.mkdirs(test_output_dir, exist_ok=True)
         filepath = test_output_dir + '/hypergbm_model.pkl'
         est.save(filepath)
-        assert fs.isfile(filepath) == True
+        assert fs.isfile(filepath)
         model = hypergbm.load_estimator(filepath)
         score = model.evaluate(X_test, y_test, ['AUC'])
         assert score

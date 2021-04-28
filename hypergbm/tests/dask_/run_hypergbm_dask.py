@@ -27,7 +27,6 @@ def main():
 
     rs = RandomSearcher(search_space, optimize_direction=OptimizeDirection.Maximize)
     hk = HyperGBM(rs, task='binary', reward_metric='accuracy',
-                  cache_dir=f'hypergbm_cache',
                   callbacks=[SummaryCallback(),
                              FileStorageLoggingCallback(rs, output_dir=f'{test_output_dir}/hyn_logs')])
 
@@ -53,7 +52,7 @@ def main():
     # X_train, X_test, y_train, y_test =  X_train.persist(), X_test.persist(), y_train.persist(), y_test.persist()
     X_train, X_test, y_train, y_test = client.persist([X_train, X_test, y_train, y_test])
 
-    hk.search(X_train, y_train, X_test, y_test, max_trials=200, use_cache=False, verbose=1)
+    hk.search(X_train, y_train, X_test, y_test, max_trials=200, verbose=1)
     print('-' * 30)
 
     best_trial = hk.get_best_trial()

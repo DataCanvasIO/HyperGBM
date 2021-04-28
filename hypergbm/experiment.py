@@ -11,6 +11,7 @@ from hypergbm.hyper_gbm import HyperGBM
 from hypernets.experiment import CompeteExperiment
 from hypernets.searchers import make_searcher
 from hypernets.tabular import dask_ex as dex
+from hypernets.tabular.cache import clear as _clear_cache
 from hypernets.tabular.metrics import metric_to_scoring
 from hypernets.utils import load_data, infer_task_type, hash_data, logging, const
 
@@ -103,8 +104,8 @@ def make_experiment(train_data,
         Esitmator fit early_stopping_rounds option.
     discriminator : instance of hypernets.discriminator.BaseDiscriminator, optional
         Discriminator is used to determine whether to continue training
-    use_cache : bool, optional, (default True if Dask is not enabled, else False)
-    clear_cache: bool, optional, (default True)
+    use_cache : bool, optional, (deprecated)
+    clear_cache: bool, optional, (default False)
     log_level : int, str, or None, (default=None),
         Level of logging, possible values:
             -logging.CRITICAL
@@ -268,18 +269,15 @@ def make_experiment(train_data,
         id = hash_data(dict(X_train=X_train, y_train=y_train, X_test=X_test, X_eval=X_eval, y_eval=y_eval,
                             eval_size=kwargs.get('eval_size'), target=target, task=task))
         id = f'hypergbm_{id}'
-    default_cache_dir = f'{id}/cache'
 
     hm = HyperGBM(searcher, reward_metric=reward_metric, callbacks=search_callbacks,
-                  cache_dir=kwargs.pop('cache_dir', default_cache_dir),
-                  clear_cache=clear_cache if clear_cache is not None else True,
                   discriminator=discriminator)
 
-    use_cache = not dex.exist_dask_object(X_train, X_test, X_eval) if use_cache is None else bool(use_cache)
-
     experiment = CompeteExperiment(hm, X_train, y_train, X_eval=X_eval, y_eval=y_eval, X_test=X_test,
-                                   task=task, id=id, scorer=scorer, use_cache=use_cache,
-                                   **kwargs)
+                                   task=task, id=id, scorer=scorer, **kwargs)
+
+    if clear_cache:
+        _clear_cache()
 
     if logger.is_info_enabled():
         train_shape, test_shape, eval_shape = \

@@ -17,7 +17,6 @@ from hypernets.tabular.datasets import dsutils
 def main():
     rs = RandomSearcher(search_space_general, optimize_direction=OptimizeDirection.Maximize)
     hk = HyperGBM(rs, task='binary', reward_metric='auc',
-                  cache_dir=f'{test_output_dir}/hypergbm_cache',
                   callbacks=[SummaryCallback(), FileLoggingCallback(rs, output_dir=f'{test_output_dir}/hyn_logs')])
 
     df = dsutils.load_bank()
@@ -26,7 +25,7 @@ def main():
     y_train = X_train.pop('y')
     y_test = X_test.pop('y')
 
-    hk.search(X_train, y_train, X_test, y_test, max_trials=500, use_cache=True)
+    hk.search(X_train, y_train, X_test, y_test, max_trials=500)
     best_trial = hk.get_best_trial()
     print(f'best_train:{best_trial}')
     estimator = hk.final_train(best_trial.space_sample, X_train, y_train)

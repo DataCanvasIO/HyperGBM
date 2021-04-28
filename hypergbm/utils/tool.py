@@ -167,11 +167,6 @@ def main():
         og = a.add_argument_group('Other settings')
         og.add_argument('--id', type=str, default=None,
                         help='experiment id')
-        og.add_argument('--use-cache', type=to_bool, default=None)
-        og.add_argument('-use-cache', '-use-cache+', dest='use_cache', action='store_true',
-                        help='alias of "--use-cache true"')
-        og.add_argument('-use-cache-', dest='use_cache', action='store_false',
-                        help='alias of "--use-cache false"')
 
         og.add_argument('--clear-cache', type=to_bool, default=None)
         og.add_argument('-clear-cache', '-clear-cache+', dest='clear_cache', action='store_true',
@@ -336,7 +331,6 @@ def train(args):
                                  pseudo_labeling_proba_threshold=args.pseudo_labeling_proba_threshold,
                                  pseudo_labeling_resplit=args.pseudo_labeling_resplit,
                                  feature_reselection=args.feature_reselection,
-                                 use_cache=args.use_cache,
                                  clear_cache=args.clear_cache,
                                  log_level=args.log_level,
                                  verbose=args.verbose,

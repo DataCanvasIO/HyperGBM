@@ -79,7 +79,7 @@ class Test_Experiment():
         log_callback = LogCallback(output_elapsed=True)
         rs = RandomSearcher(lambda: search_space_general(early_stopping_rounds=5, ),
                             optimize_direction='min')
-        hk = HyperGBM(rs, task='regression', reward_metric='mse', cache_dir=f'hypergbm_cache', callbacks=[])
+        hk = HyperGBM(rs, task='regression', reward_metric='mse', callbacks=[])
         experiment = CompeteExperiment(hk, X_train, y_train, X_test=X_test,
                                        callbacks=[log_callback],
                                        train_test_split_strategy=train_test_split_strategy,
@@ -94,7 +94,7 @@ class Test_Experiment():
                                        ensemble_size=10,
                                        cross_validator=cross_validator
                                        )
-        pipeline = experiment.run(use_cache=True, max_trials=max_trials)
+        pipeline = experiment.run(max_trials=max_trials)
         rmse_scorer = get_scorer('neg_root_mean_squared_error')
         rmse = rmse_scorer(pipeline, X_test, y_test)
         assert rmse
@@ -127,7 +127,7 @@ class Test_Experiment():
         rs = RandomSearcher(lambda: search_space_general(early_stopping_rounds=20, verbose=0),
                             optimize_direction=OptimizeDirection.Maximize)
         es = EarlyStoppingCallback(20, 'max')
-        hk = HyperGBM(rs, reward_metric='auc', cache_dir=f'hypergbm_cache', callbacks=[es])
+        hk = HyperGBM(rs, reward_metric='auc', callbacks=[es])
 
         log_callback = ConsoleCallback()
         experiment = CompeteExperiment(hk, X_train, y_train, X_test=X_test,
@@ -144,7 +144,7 @@ class Test_Experiment():
                                        ensemble_size=10,
                                        cross_validator=cross_validator
                                        )
-        pipeline = experiment.run(use_cache=True, max_trials=max_trials)
+        pipeline = experiment.run(max_trials=max_trials)
         acc_scorer = get_scorer('accuracy')
         acc = acc_scorer(pipeline, X_test, y_test)
         assert acc
@@ -154,7 +154,7 @@ class Test_Experiment():
 
     def test_general_exp(self):
         rs = RandomSearcher(search_space_general, optimize_direction=OptimizeDirection.Maximize)
-        hk = HyperGBM(rs, reward_metric='accuracy', cache_dir=f'hypergbm_cache', callbacks=[])
+        hk = HyperGBM(rs, reward_metric='accuracy', callbacks=[])
 
         df = dsutils.load_bank().head(1000)
         df.drop(['id'], axis=1, inplace=True)
@@ -163,7 +163,7 @@ class Test_Experiment():
         X_train, X_test, y_train, y_test = train_test_split(df, y, test_size=0.3, random_state=9527)
         log_callback = LogCallback()
         experiment = GeneralExperiment(hk, X_train, y_train, X_test=X_test, callbacks=[log_callback])
-        experiment.run(use_cache=True, max_trials=5)
+        experiment.run(max_trials=5)
         assert log_callback.logs == ['experiment start',
                                      '   step start, step:data split',
                                      "   step end, step:data split, output:dict_keys(['X_train.shape', "
@@ -180,7 +180,7 @@ class Test_Experiment():
                    cross_validator=None):
         rs = RandomSearcher(lambda: search_space_general(early_stopping_rounds=20, verbose=0),
                             optimize_direction=OptimizeDirection.Maximize)
-        hk = HyperGBM(rs, reward_metric='auc', cache_dir=f'hypergbm_cache', callbacks=[])
+        hk = HyperGBM(rs, reward_metric='auc', callbacks=[])
         df = dsutils.load_bank().head(1000)
         df.drop(['id'], axis=1, inplace=True)
         y = df.pop('y')
@@ -201,7 +201,7 @@ class Test_Experiment():
                                        ensemble_size=5,
                                        cross_validator=cross_validator
                                        )
-        pipeline = experiment.run(use_cache=True, max_trials=max_trials)
+        pipeline = experiment.run(max_trials=max_trials)
         auc_scorer = get_scorer('roc_auc_ovo')
         acc_scorer = get_scorer('accuracy')
         auc = auc_scorer(pipeline, X_test, y_test)

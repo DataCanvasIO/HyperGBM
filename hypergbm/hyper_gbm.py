@@ -12,7 +12,6 @@ import dask.array as da
 import dask.dataframe as dd
 import dask_ml.model_selection as dm_sel
 import numpy as np
-import pandas as pd
 from imblearn.over_sampling import RandomOverSampler, SMOTE, ADASYN
 from imblearn.under_sampling import RandomUnderSampler, NearMiss, TomekLinks, EditedNearestNeighbours
 from sklearn import pipeline as sk_pipeline
@@ -23,11 +22,11 @@ from hypergbm.pipeline import ComposeTransformer
 from hypernets.model.estimator import Estimator
 from hypernets.model.hyper_model import HyperModel
 from hypernets.tabular import dask_ex as dex
+from hypernets.tabular.cache import cache
 from hypernets.tabular.data_cleaner import DataCleaner
 from hypernets.tabular.lifelong_learning import select_valid_oof
 from hypernets.tabular.metrics import calc_score
-from hypernets.tabular.persistence import read_parquet, to_parquet
-from hypernets.utils import logging, fs, hash_dataframe
+from hypernets.utils import logging, fs
 from .estimators import HyperEstimator
 
 try:
@@ -88,10 +87,9 @@ class HyperGBMExplainer:
 
 
 class HyperGBMEstimator(Estimator):
-    def __init__(self, task, space_sample, data_cleaner_params=None, cache_dir=None):
+    def __init__(self, task, space_sample, data_cleaner_params=None):
         super(HyperGBMEstimator, self).__init__(space_sample=space_sample, task=task)
         self.data_pipeline = None
-        self.cache_dir = cache_dir
         self.data_cleaner_params = data_cleaner_params
         self.gbm_model = None
         self.cv_gbm_models_ = None
@@ -157,49 +155,47 @@ class HyperGBMEstimator(Estimator):
         # s = f"{self.data_pipeline.__repr__(1000000)}\r\n{self.gbm_model.__repr__()}"
         return s
 
-    def transform_data(self, X, y=None, fit=False, use_cache=None, verbose=0):
-        if use_cache is None:
-            use_cache = True
-        if use_cache:
-            data_path, pipeline_path = self._get_cache_filepath(X)
-            X_cache = self._get_X_from_cache(data_path, pipeline_path,
-                                             as_dask=not isinstance(X, (pd.DataFrame, np.ndarray)))
-        else:
-            data_path, pipeline_path = None, None
-            X_cache = None
+    @cache(arg_keys='X,y', attr_keys='data_cleaner_params,pipeline_signature',
+           attrs_to_restore='data_cleaner,data_pipeline',
+           transformer='transform_data')
+    def fit_transform_data(self, X, y=None, verbose=0):
+        starttime = time.time()
 
-        if X_cache is None:
-            starttime = time.time()
-            if fit:
-                if self.data_cleaner is not None:
-                    if verbose > 0:
-                        logger.info('clean data')
-                    X, y = self.data_cleaner.fit_transform(X, y)
-                if verbose > 0:
-                    logger.info('fit and transform')
-                X = self.data_pipeline.fit_transform(X, y)
-            else:
-                if self.data_cleaner is not None:
-                    if verbose > 0:
-                        logger.info('clean data')
-                    X = self.data_cleaner.transform(X)
-                if verbose > 0:
-                    logger.info('transform')
-                X = self.data_pipeline.transform(X)
-
+        if self.data_cleaner is not None:
             if verbose > 0:
-                logger.info(f'taken {time.time() - starttime}s')
-            if use_cache:
-                self._save_X_to_cache(X, data_path, pipeline_path)
-        else:
-            X = X_cache
+                logger.info('clean data')
+            X, y = self.data_cleaner.fit_transform(X, y)
+
+        if verbose > 0:
+            logger.info('fit and transform')
+        X = self.data_pipeline.fit_transform(X, y)
+
+        if verbose > 0:
+            logger.info(f'taken {time.time() - starttime}s')
 
         return X
 
-    def fit_cross_validation(self, X, y, use_cache=None, verbose=0, stratified=True, num_folds=3,
+    def transform_data(self, X, y=None, verbose=0):
+        starttime = time.time()
+
+        if self.data_cleaner is not None:
+            if verbose > 0:
+                logger.info('clean data')
+            X = self.data_cleaner.transform(X)
+
+        if verbose > 0:
+            logger.info('transform')
+        X = self.data_pipeline.transform(X)
+
+        if verbose > 0:
+            logger.info(f'taken {time.time() - starttime}s')
+
+        return X
+
+    def fit_cross_validation(self, X, y, verbose=0, stratified=True, num_folds=3,
                              shuffle=False, random_state=9527, metrics=None, **kwargs):
         if dex.exist_dask_object(X, y):
-            return self.fit_cross_validation_by_dask(X, y, use_cache=use_cache, verbose=verbose,
+            return self.fit_cross_validation_by_dask(X, y, verbose=verbose,
                                                      stratified=stratified, num_folds=num_folds,
                                                      shuffle=shuffle, random_state=random_state,
                                                      metrics=metrics, **kwargs)
@@ -209,7 +205,7 @@ class HyperGBMEstimator(Estimator):
         if verbose > 0:
             logger.info('transforming the train set')
 
-        X = self.transform_data(X, y, fit=True, use_cache=use_cache, verbose=verbose)
+        X = self.fit_transform_data(X, y, verbose=verbose)
 
         cross_validator = kwargs.pop('cross_validator', None)
         if cross_validator is not None:
@@ -315,7 +311,7 @@ class HyperGBMEstimator(Estimator):
             get_scores(self.gbm_model, iteration_scores)
         return iteration_scores
 
-    def fit_cross_validation_by_dask(self, X, y, use_cache=None, verbose=0, stratified=True, num_folds=3,
+    def fit_cross_validation_by_dask(self, X, y, verbose=0, stratified=True, num_folds=3,
                                      shuffle=False, random_state=9527, metrics=None, **kwargs):
         starttime = time.time()
         if verbose is None:
@@ -325,7 +321,7 @@ class HyperGBMEstimator(Estimator):
 
         eval_size_limit = kwargs.get('eval_size_limit', DEFAULT_EVAL_SIZE_LIMIT)
 
-        X = self.transform_data(X, y, fit=True, use_cache=use_cache, verbose=verbose)
+        X = self.fit_transform_data(X, y, verbose=verbose)
 
         iterators = dm_sel.KFold(n_splits=num_folds, shuffle=shuffle, random_state=random_state)
         X_values = X.to_dask_array(lengths=True)
@@ -402,13 +398,13 @@ class HyperGBMEstimator(Estimator):
             logger.info(f'taken {time.time() - starttime}s')
         return scores, oof_, None
 
-    def fit(self, X, y, use_cache=None, verbose=0, **kwargs):
+    def fit(self, X, y, verbose=0, **kwargs):
         starttime = time.time()
         if verbose is None:
             verbose = 0
         if verbose > 0:
             logger.info('estimator is transforming the train set')
-        X = self.transform_data(X, y, fit=True, use_cache=use_cache, verbose=verbose)
+        X = self.fit_transform_data(X, y, verbose=verbose)
 
         eval_set = kwargs.pop('eval_set', None)
         kwargs = self.fit_kwargs
@@ -419,7 +415,7 @@ class HyperGBMEstimator(Estimator):
                 X_eval, y_eval = eval_set
                 if verbose > 0:
                     logger.info('estimator is transforming the eval set')
-                X_eval = self.transform_data(X_eval, use_cache=use_cache, verbose=verbose)
+                X_eval = self.transform_data(X_eval, verbose=verbose)
                 kwargs['eval_set'] = [(X_eval, y_eval)]
             elif isinstance(eval_set, list):
                 es = []
@@ -427,7 +423,7 @@ class HyperGBMEstimator(Estimator):
                     X_eval, y_eval = eval_set_
                     if verbose > 0:
                         logger.info(f'estimator is transforming the eval set({i})')
-                    X_eval = self.transform_data(X_eval, use_cache=use_cache, verbose=verbose)
+                    X_eval = self.transform_data(X_eval, verbose=verbose)
                     es.append((X_eval, y_eval))
                     kwargs['eval_set'] = es
 
@@ -474,7 +470,7 @@ class HyperGBMEstimator(Estimator):
         # return sample_weight
         return dex.compute_sample_weight(y)
 
-    def predict(self, X, use_cache=None, verbose=0, **kwargs):
+    def predict(self, X, verbose=0, **kwargs):
         starttime = time.time()
         if verbose is None:
             verbose = 0
@@ -482,7 +478,7 @@ class HyperGBMEstimator(Estimator):
         if self.cv_gbm_models_ is not None:
             if self.task == 'regression':
                 pred_sum = None
-                X = self.transform_data(X, use_cache=use_cache, verbose=verbose)
+                X = self.transform_data(X, verbose=verbose)
                 for est in self.cv_gbm_models_:
                     pred = est.predict(X)
                     if pred_sum is None:
@@ -500,7 +496,7 @@ class HyperGBMEstimator(Estimator):
                 else:
                     preds = np.array(self.classes_).take(preds, axis=0)
         else:
-            X = self.transform_data(X, use_cache=use_cache, verbose=verbose)
+            X = self.transform_data(X, verbose=verbose)
             if verbose > 0:
                 logger.info('estimator is predicting the data')
             preds = self.gbm_model.predict(X, **kwargs)
@@ -509,12 +505,12 @@ class HyperGBMEstimator(Estimator):
             logger.info(f'taken {time.time() - starttime}s')
         return preds
 
-    def predict_proba(self, X, use_cache=None, verbose=0, **kwargs):
+    def predict_proba(self, X, verbose=0, **kwargs):
         starttime = time.time()
 
         if verbose is None:
             verbose = 0
-        X = self.transform_data(X, use_cache=use_cache, verbose=verbose)
+        X = self.transform_data(X, verbose=verbose)
         if verbose > 0:
             logger.info('estimator is predicting the data')
         if hasattr(self.gbm_model, 'predict_proba'):
@@ -540,105 +536,26 @@ class HyperGBMEstimator(Estimator):
             logger.info(f'taken {time.time() - starttime}s')
         return proba
 
-    def evaluate(self, X, y, metrics=None, use_cache=None, verbose=0, **kwargs):
+    def evaluate(self, X, y, metrics=None, verbose=0, **kwargs):
         if metrics is None:
             metrics = ['accuracy']
         if self.task != 'regression':
-            proba = self.predict_proba(X, use_cache=use_cache, verbose=verbose)
+            proba = self.predict_proba(X, verbose=verbose)
         else:
             proba = None
-        preds = self.predict(X, use_cache=use_cache, verbose=verbose)
+        preds = self.predict(X, verbose=verbose)
         scores = calc_score(y, preds, proba, metrics, self.task)
         return scores
 
     def save(self, model_file):
         with fs.open(f'{model_file}', 'wb') as output:
-            pickle.dump(self, output, protocol=4)
+            pickle.dump(self, output, protocol=pickle.HIGHEST_PROTOCOL)
 
     @staticmethod
     def load(model_file):
         with fs.open(f'{model_file}', 'rb') as input:
             model = pickle.load(input)
             return model
-
-    def _get_cache_filepath(self, X):
-        # file_path = f'{self.cache_dir}/{X.shape[0]}_{X.shape[1]}_{self.pipeline_signature}.h5'
-        start_at = time.time()
-        shape = self._get_dataframe_shape(X)
-        at1 = time.time()
-        logger.debug(f'get shape in {at1 - start_at} seconds, {shape}')
-        hash = hash_dataframe(X)
-        at2 = time.time()
-        logger.debug(f'calc hash in {at2 - at1} seconds, {hash}')
-
-        data_path = f'{self.cache_dir}/{shape[0]}_{shape[1]}_{hash}_{self.pipeline_signature}.parquet'
-        pipeline_path = f'{self.cache_dir}/{shape[0]}_{shape[1]}_{hash}_pipeline_{self.pipeline_signature}.pkl'
-        return data_path, pipeline_path
-
-    def _get_dataframe_shape(self, X):
-        if isinstance(X, pd.DataFrame):
-            return X.shape
-        else:
-            rows = X.reduction(lambda df: df.shape[0], np.sum).compute()
-            return rows, X.shape[1]
-
-    def _get_X_from_cache(self, data_path, pipeline_path, as_dask=False):
-        if fs.exists(data_path):
-            start_at = time.time()
-            df = self._load_df(data_path, as_dask)
-            if pipeline_path:
-                try:
-                    with fs.open(pipeline_path, 'rb') as input:
-                        self.data_pipeline, self.data_cleaner = pickle.load(input)
-                except:
-                    if fs.exists(data_path):
-                        fs.rm(data_path, recursive=True)
-                    return None
-            done_at = time.time()
-            logger.debug(f'load cache in {done_at - start_at} seconds')
-            return df
-        else:
-            return None
-
-    def _save_X_to_cache(self, X, data_path, pipeline_path):
-        start_at = time.time()
-        self._save_df(data_path, X)
-
-        if pipeline_path:
-            try:
-                with fs.open(pipeline_path, 'wb') as output:
-                    pickle.dump((self.data_pipeline, self.data_cleaner), output, protocol=4)
-            except Exception as e:
-                logger.error(e)
-                if fs.exists(pipeline_path):
-                    fs.rm(pipeline_path, recursive=True)
-        done_at = time.time()
-        logger.debug(f'save cache in {done_at - start_at} seconds')
-
-    def _load_df(self, filepath, as_dask=False):
-        try:
-            # with fs.open(filepath, 'rb') as f:
-            #     df = pd.read_parquet(f)
-            #     return df
-            df = read_parquet(filepath, delayed=as_dask, filesystem=fs)
-            return df
-        except:
-            if fs.exists(filepath):
-                fs.rm(filepath, recursive=True)
-            return None
-
-    def _save_df(self, filepath, df):
-        try:
-            # with fs.open(filepath, 'wb') as f:
-            #     df.to_parquet(f)
-            if not isinstance(df, pd.DataFrame):
-                fs.mkdirs(filepath, exist_ok=True)
-            to_parquet(df, filepath, fs)
-        except Exception as e:
-            logger.error(e)
-            # traceback.print_exc()
-            if fs.exists(filepath):
-                fs.rm(filepath, recursive=True)
 
     def get_explainer(self, data=None):
         explainer = HyperGBMExplainer(self, data=data)
@@ -669,7 +586,7 @@ class HyperGBM(HyperModel):
     """
 
     def __init__(self, searcher, dispatcher=None, callbacks=None, reward_metric='accuracy', task=None,
-                 discriminator=None, data_cleaner_params=None, cache_dir=None, clear_cache=True):
+                 discriminator=None, data_cleaner_params=None, cache_dir=None, clear_cache=None):
         """
 
         :param searcher: hypernets.searcher.Searcher
@@ -694,21 +611,17 @@ class HyperGBM(HyperModel):
         :param data_cleaner_params: dict, (default=None)
             dictionary of parameters to initialize the `DataCleaner` instance. If None, `DataCleaner` will initialized with
             default values.
-        :param cache_dir: str or None, (default=None)
-            Path of data cache. If None, uses 'working directory/tmp/cache' as cache dir
-        :param clear_cache: bool, (default=True)
-            Whether clear the cache dir before searching
+        :param cache_dir: deprecated
+        :param clear_cache: deprecated
         """
         self.data_cleaner_params = data_cleaner_params
-        self.cache_dir = self._prepare_cache_dir(cache_dir, clear_cache)
-        self.clear_cache = clear_cache
+
         HyperModel.__init__(self, searcher, dispatcher=dispatcher, callbacks=callbacks, reward_metric=reward_metric,
                             task=task, discriminator=discriminator)
 
     def _get_estimator(self, space_sample):
         estimator = HyperGBMEstimator(task=self.task, space_sample=space_sample,
-                                      data_cleaner_params=self.data_cleaner_params,
-                                      cache_dir=self.cache_dir)
+                                      data_cleaner_params=self.data_cleaner_params)
         return estimator
 
     def load_estimator(self, model_file):
@@ -717,26 +630,3 @@ class HyperGBM(HyperModel):
 
     def export_trial_configuration(self, trial):
         return '`export_trial_configuration` does not implemented'
-
-    @staticmethod
-    def _prepare_cache_dir(cache_dir, clear_cache):
-        if cache_dir is None:
-            cache_dir = 'tmp/cache'
-        if cache_dir[-1] == '/':
-            cache_dir = cache_dir[:-1]
-
-        # cache_dir = os.path.expanduser(cache_dir)
-
-        try:
-            if not fs.exists(cache_dir):
-                fs.makedirs(cache_dir, exist_ok=True)
-            else:
-                if clear_cache:
-                    fs.rm(cache_dir, recursive=True)
-                    fs.mkdirs(cache_dir, exist_ok=True)
-        except PermissionError:
-            pass  # ignore
-        except FileExistsError:
-            pass  # ignore
-
-        return cache_dir
