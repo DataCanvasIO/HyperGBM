@@ -15,7 +15,7 @@ install:
 
 # command to run tests
 script:
-  - pytest --cov=hypergbm
+  - pytest --cov=hypergbm --durations=30
 
 notifications:
   recipients:

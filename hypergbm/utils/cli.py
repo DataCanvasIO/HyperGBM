@@ -193,7 +193,7 @@ def main():
                              EarlyStoppingCallback(max_no_improvement_trials=5, mode=optimize_direction.value)])
 
     experiment = GeneralExperiment(hk, X_train, y_train, X_eval=X_eval, y_eval=y_eval, X_test=X_test)
-    estimator = experiment.run(use_cache=True, max_trails=max_trials)
+    estimator = experiment.run(max_trails=max_trials)
 
     # 5. do predict is has test data
     if X_test is not None:

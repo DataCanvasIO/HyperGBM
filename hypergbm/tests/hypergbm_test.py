@@ -6,26 +6,37 @@
 from sklearn.model_selection import train_test_split
 
 from hypergbm import HyperGBM
-from hypergbm.search_space import search_space_general
+from hypergbm.search_space import search_space_general, GeneralSearchSpaceGenerator
 from hypernets.core.callbacks import SummaryCallback, FileLoggingCallback
 from hypernets.core.searcher import OptimizeDirection
 from hypernets.searchers.random_searcher import RandomSearcher
 from hypernets.utils import fs
 from hypernets.tabular.datasets import dsutils
 from hypergbm.tests import test_output_dir
+from hypernets.discriminators import PercentileDiscriminator
+from hypernets.core import set_random_state, get_random_state
 
 
 class Test_HyperGBM():
 
-    def train_bankdata(self, data_partition, cv=False, num_folds=3):
-        rs = RandomSearcher(search_space_general, optimize_direction=OptimizeDirection.Maximize)
+    def get_data(self):
+        df = dsutils.load_bank()
+        df.drop(['id'], axis=1, inplace=True)
+        X_train, X_test = train_test_split(df.head(1000), test_size=0.2, random_state=42)
+        y_train = X_train.pop('y')
+        y_test = X_test.pop('y')
+        return X_train, X_test, y_train, y_test
+
+    def run_search(self, data_partition, cv=False, num_folds=3, discriminator=None, max_trials=3, space_fn=None):
+        rs = RandomSearcher(space_fn if space_fn else search_space_general,
+                            optimize_direction=OptimizeDirection.Maximize)
         hk = HyperGBM(rs, task='binary', reward_metric='accuracy',
-                      cache_dir=f'{test_output_dir}/hypergbm_cache',
-                      callbacks=[SummaryCallback(), FileLoggingCallback(rs, output_dir=f'{test_output_dir}/hyn_logs')])
+                      callbacks=[SummaryCallback(), FileLoggingCallback(rs, output_dir=f'{test_output_dir}/hyn_logs')],
+                      discriminator=discriminator)
 
         X_train, X_test, y_train, y_test = data_partition()
 
-        hk.search(X_train, y_train, X_test, y_test, cv=cv, num_folds=num_folds, max_trials=3)
+        hk.search(X_train, y_train, X_test, y_test, cv=cv, num_folds=num_folds, max_trials=max_trials)
         best_trial = hk.get_best_trial()
 
         estimator = hk.final_train(best_trial.space_sample, X_train, y_train)
@@ -40,7 +51,6 @@ class Test_HyperGBM():
         df.drop(['id'], axis=1, inplace=True)
         rs = RandomSearcher(search_space_general, optimize_direction=OptimizeDirection.Maximize)
         hk = HyperGBM(rs, task='binary', reward_metric='accuracy',
-                      cache_dir=f'{test_output_dir}/hypergbm_cache',
                       callbacks=[SummaryCallback(), FileLoggingCallback(rs, output_dir=f'{test_output_dir}/hyn_logs')])
 
         X_train, X_test = train_test_split(df.head(1000), test_size=0.2, random_state=42)
@@ -67,37 +77,20 @@ class Test_HyperGBM():
         def f():
             return X_train, X_test, y_train, y_test
 
-        est, hypergbm = self.train_bankdata(f)
+        est, hypergbm = self.run_search(f)
+        fs.mkdirs(test_output_dir, exist_ok=True)
         filepath = test_output_dir + '/hypergbm_model.pkl'
         est.save(filepath)
-        assert fs.isfile(filepath) == True
+        assert fs.isfile(filepath)
         model = hypergbm.load_estimator(filepath)
         score = model.evaluate(X_test, y_test, ['AUC'])
         assert score
 
     def test_model(self):
-        df = dsutils.load_bank()
-        df.drop(['id'], axis=1, inplace=True)
-        X_train, X_test = train_test_split(df.head(1000), test_size=0.2, random_state=42)
-        y_train = X_train.pop('y')
-        y_test = X_test.pop('y')
-
-        def f():
-            return X_train, X_test, y_train, y_test
-
-        self.train_bankdata(f)
+        self.run_search(self.get_data)
 
     def test_cv(self):
-        df = dsutils.load_bank()
-        df.drop(['id'], axis=1, inplace=True)
-        X_train, X_test = train_test_split(df.head(1000), test_size=0.2, random_state=42)
-        y_train = X_train.pop('y')
-        y_test = X_test.pop('y')
-
-        def f():
-            return X_train, X_test, y_train, y_test
-
-        self.train_bankdata(f, cv=True)
+        self.run_search(self.get_data, cv=True)
 
     def test_no_categorical(self):
         df = dsutils.load_bank()
@@ -112,7 +105,7 @@ class Test_HyperGBM():
         def f():
             return X_train, X_test, y_train, y_test
 
-        self.train_bankdata(f)
+        self.run_search(f)
 
     def test_no_continuous(self):
         df = dsutils.load_bank()
@@ -127,16 +120,25 @@ class Test_HyperGBM():
         def f():
             return X_train, X_test, y_train, y_test
 
-        self.train_bankdata(f)
+        self.run_search(f)
 
-    # def test_onehot_handle_unknown(self):
-    #     import sklearn, pandas as pd
-    #     from sklearn_pandas import DataFrameMapper
-    #     dfm = DataFrameMapper([(['name'], sklearn.preprocessing.OneHotEncoder(handle_unknown='ignore'))], df_out=True)
-    #
-    #     df_train = pd.DataFrame(data={"name": ["a", "b", "c"]})
-    #     df_test = pd.DataFrame(data={"name": ["a", "b", "d"]})
-    #     dfm.fit(df_train)
-    #     ret = dfm.transform(df_test)
-    #     assert ret is not None
-    #     assert ret.shape == (3, 3)
+    def test_discriminator_cv(self):
+        discriminator = PercentileDiscriminator(0, min_trials=3, min_steps=5, stride=1)
+        space_fn = GeneralSearchSpaceGenerator(enable_catboost=False, enable_xgb=False)
+        _, hk = self.run_search(self.get_data, cv=True, discriminator=discriminator, max_trials=10, space_fn=space_fn)
+        broken_trials = [t for t in hk.history.trials if not t.succeeded]
+        assert len(broken_trials) > 0
+
+    def test_discriminator(self):
+        discriminator = PercentileDiscriminator(0, min_trials=3, min_steps=5, stride=1)
+        space_fn = GeneralSearchSpaceGenerator(enable_catboost=False, enable_xgb=False)
+        _, hk = self.run_search(self.get_data, cv=True, discriminator=discriminator, max_trials=10, space_fn=space_fn)
+        broken_trials = [t for t in hk.history.trials if not t.succeeded]
+        assert len(broken_trials) > 0
+
+    def test_set_random_state(self):
+        set_random_state(9527)
+        _, hk = self.run_search(self.get_data, cv=False, max_trials=5)
+        vectors = [t.space_sample.vectors for t in hk.history.trials]
+        assert vectors == [[0, 0, 1, 0, 30, 0, 0, 0, 4, 0], [1, 3, 1, 0, 3, 1, 2, 1, 0, 0, 4],
+                           [0, 0, 1, 1, 180, 2, 3, 5, 1, 0], [1, 1, 0, 1, 0, 0, 4, 1, 4, 1], [2, 3, 1, 3, 2, 4, 1]]

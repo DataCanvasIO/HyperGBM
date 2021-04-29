@@ -18,8 +18,7 @@ from hypernets.core.search_space import HyperSpace, Real
 from hypernets.tabular.column_selector import column_object, column_exclude_datetime, column_number_exclude_timedelta, \
     column_object_category_bool
 from hypernets.tabular.datasets import dsutils
-from hypernets.tabular.drift_detection import general_preprocessor
-from hypergbm.tests import test_output_dir
+from hypernets.tabular.general import general_preprocessor
 
 
 def get_space_multi_dataframemapper(default=False):
@@ -159,7 +158,7 @@ class Test_Estimator():
     def test_build_pipeline(self):
         space = search_space_general()
         space.random_sample()
-        estimator = HyperGBMEstimator('binary', space, cache_dir=f'{test_output_dir}/hypergbm_cache')
+        estimator = HyperGBMEstimator('binary', space)
         X, y = get_df()
         num_cols = column_number_exclude_timedelta(X)
         cat_cols = column_object_category_bool(X)
@@ -169,7 +168,7 @@ class Test_Estimator():
 
         space = get_space_multi_dataframemapper()
         space.random_sample()
-        estimator = HyperGBMEstimator('binary', space, cache_dir=f'{test_output_dir}/hypergbm_cache')
+        estimator = HyperGBMEstimator('binary', space)
         X, y = get_df()
         df_1 = estimator.data_pipeline.fit_transform(X, y)
         assert list(df_1.columns) == ['a', 'e', 'f', 'b', 'c', 'd', 'l']
@@ -178,7 +177,7 @@ class Test_Estimator():
     def test_build_pipeline_feature_gen(self):
         space = search_space_feature_gen()
         space.random_sample()
-        estimator = HyperGBMEstimator('binary', space, cache_dir=f'{test_output_dir}/hypergbm_cache')
+        estimator = HyperGBMEstimator('binary', space)
         X, y = get_df()
         X = X[column_exclude_datetime(X)]
         # X = dsutils.load_bank().head(100)
