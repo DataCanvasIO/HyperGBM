@@ -3,17 +3,17 @@ __author__ = 'yangjian'
 """
 
 """
+from datetime import datetime
+
 from sklearn.metrics import get_scorer
 from sklearn.model_selection import train_test_split
 
-from hypergbm import HyperGBM, CompeteExperiment
+from hypergbm import HyperGBM, CompeteExperiment, make_experiment
 from hypergbm.search_space import search_space_general
 from hypernets.core import OptimizeDirection, EarlyStoppingCallback
 from hypernets.experiment import GeneralExperiment, ExperimentCallback, ConsoleCallback
 from hypernets.searchers import RandomSearcher
 from hypernets.tabular.datasets import dsutils
-import numpy as np
-import pandas as pd
 
 
 class LogCallback(ExperimentCallback):
@@ -225,3 +225,15 @@ class Test_Experiment():
         from hypernets.tabular.lifelong_learning import PrequentialSplit
         preq_split = PrequentialSplit(PrequentialSplit.STRATEGY_PREQ_BLS, n_splits=3)
         self.run_binary(cv=True, cross_validator=preq_split)
+
+    def test_text_datetime_encoder(self):
+        df = dsutils.load_movielens()
+        df['genres'] = df['genres'].apply(lambda s: s.replace('|', ' '))
+        df['timestamp'] = df['timestamp'].apply(datetime.fromtimestamp)
+
+        experiment = make_experiment(df, target='rating', cv=False, ensemble_size=0)
+        estimator = experiment.run(max_trials=3)
+        assert estimator is not None
+
+        hgbm = estimator.steps[-1][1]
+        assert len(hgbm.data_pipeline.fitted_features_) == 4  # text+category+datetime+numeric

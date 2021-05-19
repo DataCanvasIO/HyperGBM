@@ -4,11 +4,13 @@ __author__ = 'yangjian'
 
 """
 
+from hypergbm.cfg import HyperGBMCfg as cfg
 from hypergbm.estimators import LightGBMEstimator, XGBoostEstimator, CatBoostEstimator, HistGBEstimator
 from hypergbm.feature_generators import CrossCategorical
 from hypergbm.pipeline import DataFrameMapper, Pipeline
 from hypergbm.sklearn.sklearn_ops import numeric_pipeline_simple, numeric_pipeline_complex, \
-    categorical_pipeline_simple, categorical_pipeline_complex
+    categorical_pipeline_simple, categorical_pipeline_complex, \
+    datetime_pipeline_simple, text_pipeline_simple
 from hypergbm.sklearn.transformers import FeatureGenerationTransformer
 from hypernets.core.ops import ModuleChoice, HyperInput
 from hypernets.core.search_space import Choice, Real, Int
@@ -70,17 +72,34 @@ class BaseSearchSpaceGenerator(SearchSpaceGenerator):
         raise NotImplementedError()
 
     def create_preprocessor(self, hyper_input, options):
-        cat_pipeline_mode = options.pop('cat_pipeline_mode', 'simple')
+        cat_pipeline_mode = options.pop('cat_pipeline_mode', cfg.category_pipeline_mode)
+        num_pipeline_mode = options.pop('num_pipeline_mode', cfg.numeric_pipeline_mode)
         dataframe_mapper_default = options.pop('dataframe_mapper_default', False)
 
-        num_pipeline = numeric_pipeline_complex()(hyper_input)
-        if cat_pipeline_mode == 'simple':
-            cat_pipeline = categorical_pipeline_simple()(hyper_input)
+        pipelines = []
+        # text
+        if cfg.text_pipeline_enabled:
+            pipelines.append(text_pipeline_simple()(hyper_input))
+
+        # category
+        if cfg.category_pipeline_enabled:
+            if cat_pipeline_mode == 'simple':
+                pipelines.append(categorical_pipeline_simple()(hyper_input))
+            else:
+                pipelines.append(categorical_pipeline_complex()(hyper_input))
+
+        # datetime
+        if cfg.datetime_pipeline_enabled:
+            pipelines.append(datetime_pipeline_simple()(hyper_input))
+
+        # numeric
+        if num_pipeline_mode == 'simple':
+            pipelines.append(numeric_pipeline_simple()(hyper_input))
         else:
-            cat_pipeline = categorical_pipeline_complex()(hyper_input)
+            pipelines.append(numeric_pipeline_complex()(hyper_input))
 
         preprocessor = DataFrameMapper(default=dataframe_mapper_default, input_df=True, df_out=True,
-                                       df_out_dtype_transforms=[(column_object, 'int')])([num_pipeline, cat_pipeline])
+                                       df_out_dtype_transforms=[(column_object, 'int')])(pipelines)
 
         return preprocessor
 

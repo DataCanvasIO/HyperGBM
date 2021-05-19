@@ -178,6 +178,18 @@ class MultiLabelBinarizer(HyperTransformer):
         HyperTransformer.__init__(self, sk_pre.MultiLabelBinarizer, space, name, **kwargs)
 
 
+class DatetimeEncoder(HyperTransformer):
+    def __init__(self, space=None, name=None, **kwargs):
+        HyperTransformer.__init__(self, sklearn_ex.DatetimeEncoder, space, name, **kwargs)
+
+
+class TfidfEncoder(HyperTransformer):
+    def __init__(self, flatten=None, space=None, name=None, **kwargs):
+        kwargs['flatten'] = True if flatten is None else flatten
+
+        HyperTransformer.__init__(self, sklearn_ex.TfidfEncoder, space, name, **kwargs)
+
+
 class FunctionTransformer(HyperTransformer):
     def __init__(self, func=None, inverse_func=None, validate=False,
                  accept_sparse=False, check_inverse=True, kw_args=None,
