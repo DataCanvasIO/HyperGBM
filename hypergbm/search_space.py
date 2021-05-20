@@ -6,7 +6,6 @@ __author__ = 'yangjian'
 
 from hypergbm.cfg import HyperGBMCfg as cfg
 from hypergbm.estimators import LightGBMEstimator, XGBoostEstimator, CatBoostEstimator, HistGBEstimator
-from hypergbm.feature_generators import CrossCategorical
 from hypergbm.pipeline import DataFrameMapper, Pipeline
 from hypergbm.sklearn.sklearn_ops import numeric_pipeline_simple, numeric_pipeline_complex, \
     categorical_pipeline_simple, categorical_pipeline_complex, \
@@ -16,6 +15,7 @@ from hypernets.core.ops import ModuleChoice, HyperInput
 from hypernets.core.search_space import Choice, Real, Int
 from hypernets.core.search_space import HyperSpace
 from hypernets.tabular.column_selector import column_object, column_exclude_datetime
+from hypernets.tabular.feature_generators import CrossCategorical
 from hypernets.utils import logging
 
 logger = logging.get_logger(__name__)

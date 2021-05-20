@@ -7,9 +7,8 @@ import numpy as np
 from sklearn import impute, preprocessing as sk_pre, decomposition
 
 from hypergbm.pipeline import HyperTransformer
+from hypernets.tabular import feature_generators
 from hypernets.tabular import sklearn_ex
-from hypernets.tabular.sklearn_ex import FloatOutputImputer
-from .. import feature_generators
 
 
 class LogStandardScaler(HyperTransformer):
@@ -284,7 +283,7 @@ class SimpleImputer(HyperTransformer):
             kwargs['add_indicator'] = add_indicator
 
         if force_output_as_float is True:
-            HyperTransformer.__init__(self, FloatOutputImputer, space, name, **kwargs)
+            HyperTransformer.__init__(self, sklearn_ex.FloatOutputImputer, space, name, **kwargs)
         else:
             HyperTransformer.__init__(self, impute.SimpleImputer, space, name, **kwargs)
 
