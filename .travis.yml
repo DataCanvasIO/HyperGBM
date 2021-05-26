@@ -3,10 +3,12 @@ language: python
 python:
   - "3.6"
   - "3.7"
+  - "3.8"
 
 cache: pip
 # command to install dependencies
 install:
+  - pip install dask==2021.1.1 distributed==2021.1.1 dask-ml featuretools python-geohash nlp-primitives
   - pip install git+https://github.com/DataCanvasIO/Hypernets
   - pip install -r requirements.txt
   - pip install -q pytest-cov==2.4.0
