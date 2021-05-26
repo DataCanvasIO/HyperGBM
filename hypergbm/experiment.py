@@ -5,19 +5,9 @@ __author__ = 'yangjian'
 
 """
 
-from sklearn.metrics import get_scorer
-
 from hypergbm.hyper_gbm import HyperGBM
-from hypernets.experiment import CompeteExperiment
-from hypernets.searchers import make_searcher
+from hypernets.experiment import make_experiment as _make_experiment
 from hypernets.tabular import dask_ex as dex
-from hypernets.tabular.cache import clear as _clear_cache
-from hypernets.tabular.metrics import metric_to_scoring
-from hypernets.utils import load_data, infer_task_type, hash_data, logging, const
-
-logger = logging.get_logger(__name__)
-
-DEFAULT_TARGET_SET = {'y', 'target'}
 
 
 def make_experiment(train_data,
@@ -26,6 +16,7 @@ def make_experiment(train_data,
                     test_data=None,
                     task=None,
                     id=None,
+                    callbacks=None,
                     searcher=None,
                     search_space=None,
                     search_callbacks=None,
@@ -63,6 +54,8 @@ def make_experiment(train_data,
         If None, inference the type of task automatically
     id : str or None, (default=None)
         The experiment id.
+    callbacks: list of ExperimentCallback, optional
+        ExperimentCallback list.
     searcher : str, searcher class, search object, optional
         The hypernets Searcher instance to explore search space, default is EvolutionSearcher instance.
         For str, should be one of 'evolution', 'mcts', 'random'.
@@ -151,22 +144,6 @@ def make_experiment(train_data,
 
     """
 
-    assert train_data is not None, 'train data is required.'
-
-    kwargs = kwargs.copy()
-    dask_enable = dex.exist_dask_object(train_data, test_data, eval_data) or dex.dask_enabled()
-
-    if log_level is None:
-        log_level = logging.WARN
-    logging.set_level(log_level)
-
-    def find_target(df):
-        columns = df.columns.to_list()
-        for col in columns:
-            if col.lower() in DEFAULT_TARGET_SET:
-                return col
-        raise ValueError(f'Not found one of {DEFAULT_TARGET_SET} from your data, implicit target must be specified.')
-
     def default_search_space():
         args = {}
         if estimator_early_stopping_rounds is not None:
@@ -182,6 +159,7 @@ def make_experiment(train_data,
             if key in kwargs.keys():
                 args[key] = kwargs.get(key)
 
+        dask_enable = dex.exist_dask_object(train_data, test_data, eval_data) or dex.dask_enabled()
         if dask_enable:
             from hypergbm.dask.search_space import search_space_general as dask_search_space
             return lambda: dask_search_space(**args)
@@ -189,103 +167,27 @@ def make_experiment(train_data,
             from hypergbm.search_space import search_space_general as sk_search_space
             return lambda: sk_search_space(**args)
 
-    def default_searcher(cls):
-        search_space_fn = search_space if search_space is not None \
-            else default_search_space()
-        op = optimize_direction if optimize_direction is not None \
-            else 'max' if scorer._sign > 0 else 'min'
+    if (searcher is None or isinstance(searcher, str)) and search_space is None:
+        search_space = default_search_space()
 
-        s = make_searcher(cls, search_space_fn, optimize_direction=op)
-
-        return s
-
-    def to_search_object(sch):
-        from hypernets.core.searcher import Searcher as SearcherSpec
-        from hypernets.searchers import EvolutionSearcher
-
-        if sch is None:
-            sch = default_searcher(EvolutionSearcher)
-        elif isinstance(sch, (type, str)):
-            sch = default_searcher(sch)
-        elif not isinstance(sch, SearcherSpec):
-            logger.warning(f'Unrecognized searcher "{sch}".')
-
-        return sch
-
-    def default_search_callbacks():
-        from hypernets.core.callbacks import SummaryCallback
-        if logging.get_level() < logging.WARN:
-            callbacks = [SummaryCallback()]
-        else:
-            callbacks = []
-        return callbacks
-
-    def append_early_stopping_callbacks(callbacks):
-        from hypernets.core.callbacks import EarlyStoppingCallback
-
-        assert isinstance(callbacks, (tuple, list))
-        if any([isinstance(cb, EarlyStoppingCallback) for cb in callbacks]):
-            return callbacks
-
-        op = optimize_direction if optimize_direction is not None \
-            else 'max' if scorer._sign > 0 else 'min'
-        es = EarlyStoppingCallback(early_stopping_rounds, op,
-                                   time_limit=early_stopping_time_limit,
-                                   expected_reward=early_stopping_reward)
-
-        return [es] + callbacks
-
-    X_train, X_eval, X_test = [load_data(data) if data is not None else None
-                               for data in (train_data, eval_data, test_data)]
-
-    X_train, X_eval, X_test = [dex.reset_index(x) if dex.is_dask_dataframe(x) else x
-                               for x in (X_train, X_eval, X_test)]
-
-    if target is None:
-        target = find_target(X_train)
-
-    y_train = X_train.pop(target)
-    y_eval = X_eval.pop(target) if X_eval is not None else None
-
-    if task is None:
-        task, _ = infer_task_type(y_train)
-
-    if reward_metric is None:
-        reward_metric = 'rmse' if task == const.TASK_REGRESSION else 'accuracy'
-        logger.info(f'no reward metric specified, use "{reward_metric}" for {task} task by default.')
-
-    scorer = metric_to_scoring(reward_metric) if kwargs.get('scorer') is None else kwargs.pop('scorer')
-
-    if isinstance(scorer, str):
-        scorer = get_scorer(scorer)
-
-    searcher = to_search_object(searcher)
-
-    if search_callbacks is None:
-        search_callbacks = default_search_callbacks()
-    search_callbacks = append_early_stopping_callbacks(search_callbacks)
-
-    if id is None:
-        id = hash_data(dict(X_train=X_train, y_train=y_train, X_test=X_test, X_eval=X_eval, y_eval=y_eval,
-                            eval_size=kwargs.get('eval_size'), target=target, task=task))
-        id = f'hypergbm_{id}'
-
-    hm = HyperGBM(searcher, reward_metric=reward_metric, callbacks=search_callbacks,
-                  discriminator=discriminator)
-
-    experiment = CompeteExperiment(hm, X_train, y_train, X_eval=X_eval, y_eval=y_eval, X_test=X_test,
-                                   task=task, id=id, scorer=scorer, **kwargs)
-
-    if clear_cache:
-        _clear_cache()
-
-    if logger.is_info_enabled():
-        train_shape, test_shape, eval_shape = \
-            dex.compute(X_train.shape,
-                        X_test.shape if X_test is not None else None,
-                        X_eval.shape if X_eval is not None else None,
-                        traverse=True)
-        logger.info(f'make_experiment with train data:{train_shape}, '
-                    f'test data:{test_shape}, eval data:{eval_shape}, target:{target}')
-
+    experiment = _make_experiment(HyperGBM, train_data,
+                                  target=target,
+                                  eval_data=eval_data,
+                                  test_data=test_data,
+                                  task=task,
+                                  id=id,
+                                  callbacks=callbacks,
+                                  searcher=searcher,
+                                  search_space=search_space,
+                                  search_callbacks=search_callbacks,
+                                  early_stopping_rounds=early_stopping_rounds,
+                                  early_stopping_time_limit=early_stopping_time_limit,
+                                  early_stopping_reward=early_stopping_reward,
+                                  reward_metric=reward_metric,
+                                  optimize_direction=optimize_direction,
+                                  clear_cache=clear_cache,
+                                  discriminator=discriminator,
+                                  log_level=log_level,
+                                  **kwargs
+                                  )
     return experiment
