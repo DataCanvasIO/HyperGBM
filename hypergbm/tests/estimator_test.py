@@ -10,12 +10,12 @@ from sklearn.model_selection import train_test_split
 from hypergbm import HyperGBMEstimator
 from hypergbm.estimators import LightGBMEstimator, XGBoostEstimator
 from hypergbm.pipeline import DataFrameMapper
-from hypergbm.search_space import search_space_general, search_space_feature_gen
+from hypergbm.search_space import search_space_general
 from hypergbm.sklearn.sklearn_ops import categorical_pipeline_simple, numeric_pipeline_simple, \
     categorical_pipeline_complex, numeric_pipeline_complex
 from hypernets.core.ops import HyperInput, Choice, ModuleChoice
 from hypernets.core.search_space import HyperSpace, Real
-from hypernets.tabular.column_selector import column_object, column_exclude_datetime, column_number_exclude_timedelta, \
+from hypernets.tabular.column_selector import column_object, column_number_exclude_timedelta, \
     column_object_category_bool
 from hypernets.tabular.datasets import dsutils
 from hypernets.tabular.general import general_preprocessor
@@ -178,21 +178,3 @@ class Test_Estimator():
         df_1 = estimator.data_pipeline.fit_transform(X, y)
         assert list(df_1.columns) == ['a', 'e', 'f', 'b', 'c', 'd', 'l']
         assert df_1.shape == (3, 7)
-
-    def test_build_pipeline_feature_gen(self):
-        space = search_space_feature_gen()
-        space.random_sample()
-        estimator = HyperGBMEstimator('binary', space)
-        X, y = get_df()
-        X = X[column_exclude_datetime(X)]
-        # X = dsutils.load_bank().head(100)
-        # y = X.pop('y')
-        df_1 = estimator.data_pipeline.fit_transform(X, y)
-        assert len(set(df_1.columns.to_list()) - {'a', 'e', 'f', 'a__f', 'b', 'c', 'd', 'l', 'd / c', 'l / b', 'd / l',
-                                                  'b / d', 'c / b', 'b / l', 'l / d', 'c / d', 'c / l', 'd / b',
-                                                  'b / c',
-                                                  'l / c'}) == 0
-        assert df_1.shape == (3, 20)
-
-        df_2 = estimator.data_pipeline.transform(X)
-        assert df_2.shape == (3, 20)
