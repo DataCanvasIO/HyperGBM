@@ -8,6 +8,7 @@ __author__ = 'yangjian'
 from hypergbm.hyper_gbm import HyperGBM
 from hypernets.experiment import make_experiment as _make_experiment
 from hypernets.tabular import dask_ex as dex
+from hypernets.utils import DocLens
 
 
 def make_experiment(train_data,
@@ -32,85 +33,11 @@ def make_experiment(train_data,
                     log_level=None,
                     **kwargs):
     """
+    Ulitily to make CompeteExperiment instance with HyperGBM.
 
     Parameters
     ----------
-    train_data : str, Pandas or Dask DataFrame
-        Feature data for training with target column.
-        For str, it's should be the data path in file system,
-        we'll detect data format from this path (only .csv and .parquet are supported now) and read it.
-    target : str, optional
-        Target feature name for training, which must be one of the drain_data columns, default is 'y'.
-    eval_data : str, Pandas or Dask DataFrame, optional
-        Feature data for evaluation with target column.
-        For str, it's should be the data path in file system,
-        we'll detect data format from this path (only .csv and .parquet are supported now) and read it.
-    test_data : str, Pandas or Dask DataFrame, optional
-        Feature data for testing without target column.
-        For str, it's should be the data path in file system,
-        we'll detect data format from this path (only .csv and .parquet are supported now) and read it.
-    task : str or None, (default=None)
-        Task type(*binary*, *multiclass* or *regression*).
-        If None, inference the type of task automatically
-    id : str or None, (default=None)
-        The experiment id.
-    callbacks: list of ExperimentCallback, optional
-        ExperimentCallback list.
-    searcher : str, searcher class, search object, optional
-        The hypernets Searcher instance to explore search space, default is EvolutionSearcher instance.
-        For str, should be one of 'evolution', 'mcts', 'random'.
-        For class, should be one of EvolutionSearcher, MCTSSearcher, RandomSearcher, or subclass of hypernets Searcher.
-        For other, should be instance of hypernets Searcher.
-    search_space : callable, optional
-        Used to initialize searcher instance (if searcher is None, str or class),
-        default is hypergbm.search_space.search_space_general (if Dask isn't enabled)
-        or hypergbm.dask.search_space.search_space_general (if Dask is enabled) .
-    search_callbacks
-        Hypernets search callbacks, used to initialize searcher instance (if searcher is None, str or class).
-        If log_level >= WARNNING, default is EarlyStoppingCallback only.
-        If log_level < WARNNING, defalult is EarlyStoppingCallback plus SummaryCallback.
-    early_stopping_rounds :　int, optional
-        Setting of EarlyStoppingCallback, is used if EarlyStoppingCallback instance not found from search_callbacks.
-        Set zero or None to disable it, default is 10.
-    early_stopping_time_limit : int, optional
-        Setting of EarlyStoppingCallback, is used if EarlyStoppingCallback instance not found from search_callbacks.
-        Set zero or None to disable it, default is 3600 seconds.
-    early_stopping_reward : float, optional
-        Setting of EarlyStoppingCallback, is used if EarlyStoppingCallback instance not found from search_callbacks.
-        Set zero or None to disable it, default is None.
-    reward_metric : str, callable, optional, (default 'accuracy' for binary/multicalss task, 'rmse' for regression task)
-        Hypernets search reward metric name or callable. Possible values:
-            - accuracy
-            - auc
-            - f1
-            - logloss
-            - mse
-            - mae
-            - msle
-            - precision
-            - rmse
-            - r2
-            - recall
-    optimize_direction : str, optional
-        Hypernets search reward metric direction, default is detected from reward_metric.
-    estimator_early_stopping_rounds : int or None, optional
-        Esitmator fit early_stopping_rounds option.
-    discriminator : instance of hypernets.discriminator.BaseDiscriminator, optional
-        Discriminator is used to determine whether to continue training
-    use_cache : bool, optional, (deprecated)
-    clear_cache: bool, optional, (default False)
-    log_level : int, str, or None, (default=None),
-        Level of logging, possible values:
-            -logging.CRITICAL
-            -logging.FATAL
-            -logging.ERROR
-            -logging.WARNING
-            -logging.WARN
-            -logging.INFO
-            -logging.DEBUG
-            -logging.NOTSET
-    kwargs:
-        Parameters to initialize experiment instance, refrence CompeteExperiment for more details.
+
     Returns
     -------
     Runnable experiment object
@@ -191,3 +118,21 @@ def make_experiment(train_data,
                                   **kwargs
                                   )
     return experiment
+
+
+_search_space_doc = """
+    default is hypergbm.search_space.search_space_general (if Dask isn't enabled)
+    or hypergbm.dask.search_space.search_space_general (if Dask is enabled)."""
+
+
+def _merge_doc():
+    my_doc = DocLens(make_experiment.__doc__)
+    params = DocLens(_make_experiment.__doc__).parameters
+    params.pop('hyper_model_cls')
+    params['search_space'] += _search_space_doc
+    my_doc.parameters = params
+
+    make_experiment.__doc__ = my_doc.render()
+
+
+_merge_doc()
