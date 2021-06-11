@@ -33,7 +33,7 @@ def make_experiment(train_data,
                     log_level=None,
                     **kwargs):
     """
-    Ulitily to make CompeteExperiment instance with HyperGBM.
+    Utility to make CompeteExperiment instance with HyperGBM.
 
     Parameters
     ----------
