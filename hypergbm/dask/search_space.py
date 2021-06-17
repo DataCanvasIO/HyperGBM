@@ -16,7 +16,7 @@ from hypernets.utils import logging
 logger = logging.get_logger(__name__)
 
 
-def _transformer_decorater(cache, cache_key, remove_keys, transformer):
+def _transformer_decorator(cache, cache_key, remove_keys, transformer):
     persister = tf.DataCacher(cache,
                               name=f'{transformer.name}_persister',
                               cache_key=cache_key,
@@ -28,7 +28,7 @@ def _transformer_decorater(cache, cache_key, remove_keys, transformer):
     return transformer
 
 
-def _dfm_decorater(cache, cache_key, remove_keys, dfm):
+def _dfm_decorator(cache, cache_key, remove_keys, dfm):
     persister = tf.DataCacher(cache,
                               name=f'dfm_persister',
                               cache_key=cache_key,
@@ -78,20 +78,20 @@ class DaskGeneralSearchSpaceGenerator(GeneralSearchSpaceGenerator):
 
             cache = {}
             setattr(space, 'cache_', cache)
-            dfm_decorater = partial(_dfm_decorater, cache, 'dfm', 'num,cat')
-            num_transformer_decorater = partial(_transformer_decorater, cache, 'num', 'dfm')
-            cat_transformer_decorater = partial(_transformer_decorater, cache, 'cat', 'dfm')
+            dfm_decorator = partial(_dfm_decorator, cache, 'dfm', 'num,cat')
+            num_transformer_decorator = partial(_transformer_decorator, cache, 'num', 'dfm')
+            cat_transformer_decorator = partial(_transformer_decorator, cache, 'cat', 'dfm')
         else:
-            dfm_decorater = ops.default_transformer_decorator
-            num_transformer_decorater = ops.default_transformer_decorator
-            cat_transformer_decorater = ops.default_transformer_decorator
+            dfm_decorator = ops.default_transformer_decorator
+            num_transformer_decorator = ops.default_transformer_decorator
+            cat_transformer_decorator = ops.default_transformer_decorator
 
-        num_pipeline = ops.numeric_pipeline_complex(decorate=num_transformer_decorater)(hyper_input)
-        cat_pipeline = ops.categorical_pipeline_complex(decorate=cat_transformer_decorater)(hyper_input)
+        num_pipeline = ops.numeric_pipeline_complex(decorate=num_transformer_decorator)(hyper_input)
+        cat_pipeline = ops.categorical_pipeline_complex(decorate=cat_transformer_decorator)(hyper_input)
 
         dfm = DataFrameMapper(default=dataframe_mapper_default, input_df=True, df_out=True,
                               df_out_dtype_transforms=[(column_object, 'int')])([num_pipeline, cat_pipeline])
-        preprocessor = dfm_decorater(dfm)
+        preprocessor = dfm_decorator(dfm)
 
         return preprocessor
 
