@@ -3,7 +3,7 @@ fsspec>=0.8.0
 dask
 dask-ml
 dask-xgboost
-lightgbm
+lightgbm>=3.2.0
 xgboost
 catboost>=0.21
 imbalanced-learn>=0.7.0
