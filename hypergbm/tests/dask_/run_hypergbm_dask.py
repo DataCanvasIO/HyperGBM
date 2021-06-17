@@ -3,66 +3,46 @@
 
 """
 from dask.distributed import Client
-from dask_ml import preprocessing as dm_pre
-from dask_ml.model_selection import train_test_split
 
-from hypergbm import HyperGBM
-from hypergbm.dask.search_space import search_space_general
-from hypergbm.tests import test_output_dir
-from hypernets.core.callbacks import *
-from hypernets.core.searcher import OptimizeDirection
-from hypernets.searchers.random_searcher import RandomSearcher
+from hypergbm import make_experiment
+from hypernets.tabular import dask_ex as dex
 from hypernets.tabular.datasets import dsutils
+from hypernets.tabular.metrics import calc_score
 
 
 def main():
+    # setup Dask cluster
     # client = Client("tcp://127.0.0.1:64958")
-    client = Client(processes=False, threads_per_worker=2, n_workers=1, memory_limit='4GB')
-    # client = Client(processes=True, threads_per_worker=4, n_workers=30, memory_limit='20GB')
+    # client = Client(processes=False, threads_per_worker=2, n_workers=1, memory_limit='4GB')
+    client = Client(processes=True, threads_per_worker=4, n_workers=2, memory_limit='10GB')
+    worker_count = len(client.ncores())
     print(client)
 
-    def search_space():
-        return search_space_general(lightgbm_init_kwargs={'n_jobs': 4},
-                                    xgb_init_kwargs={'n_jobs': 4})
-
-    rs = RandomSearcher(search_space, optimize_direction=OptimizeDirection.Maximize)
-    hk = HyperGBM(rs, task='binary', reward_metric='accuracy',
-                  callbacks=[SummaryCallback(),
-                             FileStorageLoggingCallback(rs, output_dir=f'{test_output_dir}/hyn_logs')])
-
+    # prepare data
     target_name = 'y'
     df = dsutils.load_bank_by_dask()
-    df.drop(['id'], axis=1)
-    df[target_name] = dm_pre.LabelEncoder().fit_transform(df['y'])
     # df = df.sample(frac=0.1)
-
-    worker_count = len(client.ncores())
     df = df.repartition(npartitions=worker_count)
 
-    # df.repartition(npartitions=6)
-    # object_columns = [i for i, v in df.dtypes.items() if v == 'object']
-    # for c in object_columns:
-    #     df[c] = df[c].astype('category')
-    # df = df.categorize(object_columns)
+    df_train, df_test = dex.train_test_split(df, test_size=0.5, random_state=42, shuffle=False)
+    df_train, df_test = client.persist([df_train, df_test])
 
-    X_train, X_test = train_test_split(df, test_size=0.5, random_state=42, shuffle=False)
-    y_train = X_train.pop(target_name)
+    # make experiment and run it
+    experiment = make_experiment(df_train, target=target_name, log_level='info', down_sample_search=False)
+    estimator = experiment.run(max_trials=30)
+    best_trial = experiment.hyper_model.get_best_trial()
+    print(f'best_trial: {best_trial}')
+
+    # evaluate the trained estimator
+    X_test = df_test.copy()
     y_test = X_test.pop(target_name)
-
-    # X_train, X_test, y_train, y_test =  X_train.persist(), X_test.persist(), y_train.persist(), y_test.persist()
-    X_train, X_test, y_train, y_test = client.persist([X_train, X_test, y_train, y_test])
-
-    hk.search(X_train, y_train, X_test, y_test, max_trials=200, verbose=1)
-    print('-' * 30)
-
-    best_trial = hk.get_best_trial()
-    print(f'best_train:{best_trial}')
-
-    estimator = hk.final_train(best_trial.space_sample, X_train, y_train)
-    # score = estimator.predict(X_test)
-
-    result = estimator.evaluate(X_test, y_test, metrics=['accuracy', 'auc', 'logloss'])
-    print(f'final result:{result}')
+    X_test, y_test = client.persist([X_test, y_test])
+    y_pred = estimator.predict(X_test)
+    y_proba = estimator.predict_proba(X_test)
+    result = calc_score(y_test, y_pred, y_proba,
+                        metrics=['accuracy', 'auc', 'logloss', 'f1', 'recall', 'precision'],
+                        pos_label='yes')
+    print(f'final result: {result}')
 
 
 if __name__ == '__main__':
