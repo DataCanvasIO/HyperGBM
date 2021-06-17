@@ -42,11 +42,8 @@ def _dfm_decorater(cache, cache_key, remove_keys, dfm):
 class DaskGeneralSearchSpaceGenerator(GeneralSearchSpaceGenerator):
 
     def __init__(self, enable_lightgbm=True, enable_xgb=True, enable_catboost=True, enable_persist=True, **kwargs):
-        super().__init__(**kwargs)
-
-        self.enable_lightgbm = enable_lightgbm
-        self.enable_xgb = enable_xgb
-        self.enable_catboost = enable_catboost
+        super().__init__(enable_lightgbm=enable_lightgbm, enable_xgb=enable_xgb, enable_catboost=enable_catboost,
+                         enable_histgb=False, **kwargs)
 
         self.enable_persist = enable_persist
 
@@ -61,10 +58,10 @@ class DaskGeneralSearchSpaceGenerator(GeneralSearchSpaceGenerator):
         if self.enable_xgb:
             r['xgb'] = (XGBoostDaskEstimator, self.default_xgb_init_kwargs, self.default_xgb_fit_kwargs)
 
+        if self.enable_lightgbm:
+            r['lightgbm'] = (LightGBMDaskEstimator, self.default_lightgbm_init_kwargs, self.default_lightgbm_fit_kwargs)
+
         if dex.is_local_dask():
-            if self.enable_lightgbm:
-                r['lightgbm'] = \
-                    (LightGBMDaskEstimator, self.default_lightgbm_init_kwargs, self.default_lightgbm_fit_kwargs)
             if self.enable_catboost:
                 r['catboost'] = \
                     (CatBoostDaskEstimator, self.default_catboost_init_kwargs, self.default_catboost_fit_kwargs)
