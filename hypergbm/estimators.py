@@ -8,12 +8,13 @@ import dask_xgboost
 import lightgbm
 import numpy as np
 import xgboost
-from sklearn.experimental import enable_hist_gradient_boosting
-from sklearn.ensemble import HistGradientBoostingRegressor, HistGradientBoostingClassifier
+from sklearn.experimental.enable_hist_gradient_boosting import \
+    HistGradientBoostingRegressor, HistGradientBoostingClassifier
 
 from hypernets.core.search_space import ModuleSpace
 from hypernets.tabular import dask_ex as dex
 from hypernets.tabular.column_selector import column_object_category_bool, column_zero_or_positive_int32
+from hypernets.utils import const
 from .gbm_callbacks import LightGBMDiscriminationCallback, XGBoostDiscriminationCallback
 
 
@@ -60,30 +61,27 @@ class HyperEstimator(ModuleSpace):
         pass
 
 
-class HistGradientBoostingClassifierWrapper(HistGradientBoostingClassifier):
+class HyperEstimatorMixin:
+    # @property
+    # def best_n_estimators(self):
+    #     return NotImplementedError()
+    #
+    # @property
+    # def iteration_scores(self):
+    #     raise NotImplementedError()
+
+    def build_discriminator_callback(self, discriminator):
+        return None
+
+
+class HistGradientBoostingClassifierWrapper(HistGradientBoostingClassifier, HyperEstimatorMixin):
     def fit(self, X, y, sample_weight=None, **kwargs):
         return super(HistGradientBoostingClassifierWrapper, self).fit(X, y, sample_weight)
 
-    # TODO: Implementation iteration_scores
-    @property
-    def iteration_scores(self):
-        raise NotImplementedError
 
-    def build_discriminator_callback(self, discriminator):
-        raise NotImplementedError
-
-
-class HistGradientBoostingRegressorWrapper(HistGradientBoostingRegressor):
+class HistGradientBoostingRegressorWrapper(HistGradientBoostingRegressor, HyperEstimatorMixin):
     def fit(self, X, y, sample_weight=None, **kwargs):
         return super(HistGradientBoostingRegressorWrapper, self).fit(X, y, sample_weight)
-
-    # TODO: Implementation iteration_scores
-    @property
-    def iteration_scores(self):
-        raise NotImplementedError
-
-    def build_discriminator_callback(self, discriminator):
-        raise NotImplementedError
 
 
 class HistGBEstimator(HyperEstimator):
@@ -109,79 +107,81 @@ class HistGBEstimator(HyperEstimator):
         HyperEstimator.__init__(self, fit_kwargs, space, name, **kwargs)
 
     def _build_estimator(self, task, kwargs):
-        if task == 'regression':
+        if task == const.TASK_REGRESSION:
             hgboost = HistGradientBoostingRegressorWrapper(**kwargs)
         else:
             hgboost = HistGradientBoostingClassifierWrapper(**kwargs)
         return hgboost
 
 
-class LGBMClassifierWrapper(lightgbm.LGBMClassifier):
-    def fit(self, X, y, sample_weight=None, **kwargs):
+class LGBMEstimatorMixin:
+    @property
+    def best_n_estimators(self):
+        if self.best_iteration_ is None or self.best_iteration_ <= 0:
+            return self.n_estimators
+        else:
+            return self.best_iteration_
+
+    @property
+    def iteration_scores(self):
+        scores = []
+        if self.evals_result_:
+            valid = self.evals_result_.get('valid_0')
+            if valid:
+                scores = list(valid.values())[0]
+        return scores
+
+    def build_discriminator_callback(self, discriminator):
+        if discriminator is None:
+            return None
+        callback = LightGBMDiscriminationCallback(discriminator=discriminator, group_id=self.group_id)
+        return callback
+
+    def prepare_fit_kwargs(self, X, y, kwargs):
         if not kwargs.__contains__('categorical_feature'):
             cat_cols = get_categorical_features(X)
             kwargs['categorical_feature'] = cat_cols
         if kwargs.get('early_stopping_rounds') is None and kwargs.get('eval_set') is not None:
             kwargs['early_stopping_rounds'] = _default_early_stopping_rounds(self)
+        return kwargs
+
+    def prepare_predict_X(self, X):
+        if hasattr(self, 'feature_name_'):
+            X = X[self.feature_name_]
+        return X
+
+
+class LGBMClassifierWrapper(lightgbm.LGBMClassifier, LGBMEstimatorMixin):
+    def fit(self, X, y, sample_weight=None, **kwargs):
+        kwargs = self.prepare_fit_kwargs(X, y, kwargs)
         super(LGBMClassifierWrapper, self).fit(X, y, sample_weight=sample_weight, **kwargs)
 
-    @property
-    def best_n_estimators(self):
-        if self.best_iteration_ is None or self.best_iteration_ <= 0:
-            return self.n_estimators
-        else:
-            return self.best_iteration_
+    def predict(self, X, raw_score=False, start_iteration=0, num_iteration=None,
+                pred_leaf=False, pred_contrib=False, **kwargs):
+        X = self.prepare_predict_X(X)
+        return super().predict(X, raw_score=raw_score, start_iteration=start_iteration,
+                               num_iteration=num_iteration, pred_leaf=pred_leaf,
+                               pred_contrib=pred_contrib, **kwargs)
 
-    @property
-    def iteration_scores(self):
-        scores = []
-        if self.evals_result_:
-            valid = self.evals_result_.get('valid_0')
-            if valid:
-                scores = list(valid.values())[0]
-        return scores
-
-    def build_discriminator_callback(self, discriminator):
-        if discriminator is None:
-            return None
-        callback = LightGBMDiscriminationCallback(discriminator=discriminator, group_id=self.group_id)
-        return callback
+    def predict_proba(self, X, raw_score=False, start_iteration=0, num_iteration=None,
+                      pred_leaf=False, pred_contrib=False, **kwargs):
+        X = self.prepare_predict_X(X)
+        return super().predict_proba(X, raw_score=raw_score, start_iteration=start_iteration,
+                                     num_iteration=num_iteration, pred_leaf=pred_leaf,
+                                     pred_contrib=pred_contrib, **kwargs)
 
 
-class LGBMRegressorWrapper(lightgbm.LGBMRegressor):
+class LGBMRegressorWrapper(lightgbm.LGBMRegressor, LGBMEstimatorMixin):
     def fit(self, X, y, sample_weight=None, **kwargs):
-        if not kwargs.__contains__('categorical_feature'):
-            cat_cols = get_categorical_features(X)
-            kwargs['categorical_feature'] = cat_cols
-        if kwargs.get('early_stopping_rounds') is None and kwargs.get('eval_set') is not None:
-            kwargs['early_stopping_rounds'] = _default_early_stopping_rounds(self)
-        super(LGBMRegressorWrapper, self).fit(X, y, sample_weight=sample_weight, **kwargs)
+        kwargs = self.prepare_fit_kwargs(X, y, kwargs)
+        super().fit(X, y, sample_weight=sample_weight, **kwargs)
 
-    @property
-    def best_n_estimators(self):
-        if self.best_iteration_ is None or self.best_iteration_ <= 0:
-            return self.n_estimators
-        else:
-            return self.best_iteration_
-
-    def predict(self, X, **kwargs):
-        pred = super(LGBMRegressorWrapper, self).predict(X, **kwargs)
-        return pred
-
-    @property
-    def iteration_scores(self):
-        scores = []
-        if self.evals_result_:
-            valid = self.evals_result_.get('valid_0')
-            if valid:
-                scores = list(valid.values())[0]
-        return scores
-
-    def build_discriminator_callback(self, discriminator):
-        if discriminator is None:
-            return None
-        callback = LightGBMDiscriminationCallback(discriminator=discriminator, group_id=self.group_id)
-        return callback
+    def predict(self, X, raw_score=False, start_iteration=0, num_iteration=None,
+                pred_leaf=False, pred_contrib=False, **kwargs):
+        X = self.prepare_predict_X(X)
+        return super().predict(X, raw_score=raw_score, start_iteration=start_iteration,
+                               num_iteration=num_iteration, pred_leaf=pred_leaf,
+                               pred_contrib=pred_contrib, **kwargs)
 
 
 class LightGBMEstimator(HyperEstimator):
@@ -237,132 +237,116 @@ class LightGBMEstimator(HyperEstimator):
         HyperEstimator.__init__(self, fit_kwargs, space, name, **kwargs)
 
     def _build_estimator(self, task, kwargs):
-        if task == 'regression':
+        if task == const.TASK_REGRESSION:
             lgbm = LGBMRegressorWrapper(**kwargs)
         else:
             lgbm = LGBMClassifierWrapper(**kwargs)
         return lgbm
 
 
-class LGBMClassifierDaskWrapper(LGBMClassifierWrapper):
-    def fit(self, *args, **kwargs):
-        return dex.compute_and_call(super().fit, *args, **kwargs)
-
-    def predict(self, *args, **kwargs):
-        return dex.compute_and_call(super().predict, *args, **kwargs)
-
-    def predict_proba(self, *args, **kwargs):
-        return dex.compute_and_call(super().predict_proba, *args, **kwargs)
-
-    # TODO: Implementation iteration_scores
-    @property
-    def iteration_scores(self):
-        raise NotImplementedError
+class LGBMEstimatorDaskMixin(LGBMEstimatorMixin):
+    def prepare_fit_kwargs(self, X, y, kwargs):
+        if self.boosting_type != 'dart':
+            if kwargs.get('early_stopping_rounds') is None and kwargs.get('eval_set') is not None:
+                kwargs['early_stopping_rounds'] = _default_early_stopping_rounds(self)
+        return kwargs
 
 
-class LGBMRegressorDaskWrapper(LGBMRegressorWrapper):
-    def fit(self, *args, **kwargs):
-        return dex.compute_and_call(super().fit, *args, **kwargs)
+class LGBMClassifierDaskWrapper(lightgbm.DaskLGBMClassifier, LGBMEstimatorDaskMixin):
+    def fit(self, X, y, sample_weight=None, **kwargs):
+        kwargs = self.prepare_fit_kwargs(X, y, kwargs)
+        super(LGBMClassifierDaskWrapper, self).fit(X, y, sample_weight=sample_weight, **kwargs)
 
-    def predict(self, *args, **kwargs):
-        return dex.compute_and_call(super().predict, *args, **kwargs)
+    def predict(self, X, **kwargs):
+        X = self.prepare_predict_X(X)
+        return super().predict(X, **kwargs)
 
-    # def predict_proba(self, *args, **kwargs):
-    #     return dex.compute_and_call(super().predict_proba, *args, **kwargs)
+    def predict_proba(self, X, **kwargs):
+        X = self.prepare_predict_X(X)
+        return super().predict_proba(X, **kwargs)
 
-    # TODO: Implementation iteration_scores
-    @property
-    def iteration_scores(self):
-        raise NotImplementedError
+
+class LGBMRegressorDaskWrapper(lightgbm.DaskLGBMRegressor, LGBMEstimatorDaskMixin):
+    def fit(self, X, y, sample_weight=None, **kwargs):
+        kwargs = self.prepare_fit_kwargs(X, y, kwargs)
+        super().fit(X, y, sample_weight=sample_weight, **kwargs)
+
+    def predict(self, X, **kwargs):
+        X = self.prepare_predict_X(X)
+        return super().predict(X, **kwargs)
 
 
 class LightGBMDaskEstimator(LightGBMEstimator):
     def _build_estimator(self, task, kwargs):
-        if task == 'regression':
+        if task == const.TASK_REGRESSION:
             lgbm = LGBMRegressorDaskWrapper(**kwargs)
         else:
             lgbm = LGBMClassifierDaskWrapper(**kwargs)
         return lgbm
 
 
-class XGBClassifierWrapper(xgboost.XGBClassifier):
-    def fit(self, X, y, **kwargs):
+class XGBEstimatorMixin:
+    @property
+    def best_n_estimators(self):
+        booster = self.get_booster()
+        if booster is not None:
+            return booster.best_ntree_limit
+        else:
+            return None
+
+    @property
+    def iteration_scores(self):
+        scores = []
+        if hasattr(self, 'evals_result_'):
+            valid = self.evals_result_.get('validation_0')
+            if valid:
+                scores = list(valid.values())[0]
+        return scores
+
+    def build_discriminator_callback(self, discriminator):
+        if discriminator is None:
+            return None
+        callback = XGBoostDiscriminationCallback(discriminator=discriminator, group_id=self.group_id)
+        return callback
+
+    def prepare_fit_kwargs(self, X, y, kwargs):
         task = self.__dict__.get('task')
         if kwargs.get('eval_metric') is None:
-            if task is not None and task == 'multiclass':
+            if task is not None and task == const.TASK_MULTICLASS:
                 kwargs['eval_metric'] = 'mlogloss'
             else:
                 kwargs['eval_metric'] = 'logloss'
         if kwargs.get('early_stopping_rounds') is None and kwargs.get('eval_set') is not None:
             kwargs['early_stopping_rounds'] = _default_early_stopping_rounds(self)
-        super(XGBClassifierWrapper, self).fit(X, y, **kwargs)
+        return kwargs
 
-    @property
-    def best_n_estimators(self):
-        booster = self.get_booster()
-        if booster is not None:
-            return booster.best_ntree_limit
-        else:
-            return None
-
-    def predict_proba(self, data, **kwargs):
-        data = data[self.get_booster().feature_names]
-        return super(XGBClassifierWrapper, self).predict_proba(data, **kwargs)
-
-    def predict(self, data, **kwargs):
-        data = data[self.get_booster().feature_names]
-        return super(XGBClassifierWrapper, self).predict(data, **kwargs)
-
-    @property
-    def iteration_scores(self):
-        scores = []
-        if hasattr(self, 'evals_result_'):
-            valid = self.evals_result_.get('validation_0')
-            if valid:
-                scores = list(valid.values())[0]
-        return scores
-
-    def build_discriminator_callback(self, discriminator):
-        if discriminator is None:
-            return None
-        callback = XGBoostDiscriminationCallback(discriminator=discriminator, group_id=self.group_id)
-        return callback
+    def prepare_predict_X(self, X):
+        X = X[self.get_booster().feature_names]
+        return X
 
 
-class XGBRegressorWrapper(xgboost.XGBRegressor):
+class XGBClassifierWrapper(xgboost.XGBClassifier, XGBEstimatorMixin):
     def fit(self, X, y, **kwargs):
-        if kwargs.get('eval_metric') is None:
-            kwargs['eval_metric'] = 'logloss'
-        if kwargs.get('early_stopping_rounds') is None and kwargs.get('eval_set') is not None:
-            kwargs['early_stopping_rounds'] = _default_early_stopping_rounds(self)
-        super(XGBRegressorWrapper, self).fit(X, y, **kwargs)
+        kwargs = self.prepare_fit_kwargs(X, y, kwargs)
+        super().fit(X, y, **kwargs)
 
-    @property
-    def best_n_estimators(self):
-        booster = self.get_booster()
-        if booster is not None:
-            return booster.best_ntree_limit
-        else:
-            return None
+    def predict(self, X, **kwargs):
+        X = self.prepare_predict_X(X)
+        return super().predict(X, **kwargs)
 
-    def predict(self, data, **kwargs):
-        data = data[self.get_booster().feature_names]
-        return super(XGBRegressorWrapper, self).predict(data, **kwargs)
+    def predict_proba(self, X, **kwargs):
+        X = self.prepare_predict_X(X)
+        return super().predict_proba(X, **kwargs)
 
-    @property
-    def iteration_scores(self):
-        scores = []
-        if hasattr(self, 'evals_result_'):
-            valid = self.evals_result_.get('validation_0')
-            if valid:
-                scores = list(valid.values())[0]
-        return scores
 
-    def build_discriminator_callback(self, discriminator):
-        if discriminator is None:
-            return None
-        callback = XGBoostDiscriminationCallback(discriminator=discriminator, group_id=self.group_id)
-        return callback
+class XGBRegressorWrapper(xgboost.XGBRegressor, XGBEstimatorMixin):
+    def fit(self, X, y, **kwargs):
+        kwargs = self.prepare_fit_kwargs(X, y, kwargs)
+        super().fit(X, y, **kwargs)
+
+    def predict(self, X, **kwargs):
+        X = self.prepare_predict_X(X)
+        return super().predict(X, **kwargs)
 
 
 class XGBoostEstimator(HyperEstimator):
@@ -435,7 +419,7 @@ class XGBoostEstimator(HyperEstimator):
         HyperEstimator.__init__(self, fit_kwargs, space, name, **kwargs)
 
     def _build_estimator(self, task, kwargs):
-        if task == 'regression':
+        if task == const.TASK_REGRESSION:
             xgb = XGBRegressorWrapper(**kwargs)
         else:
             xgb = XGBClassifierWrapper(**kwargs)
@@ -443,55 +427,70 @@ class XGBoostEstimator(HyperEstimator):
         return xgb
 
 
-class XGBClassifierDaskWrapper(dask_xgboost.XGBClassifier):
-    def fit(self, X, y=None, classes=None, eval_set=None,
-            sample_weight=None, sample_weight_eval_set=None,
-            eval_metric=None, early_stopping_rounds=None, **kwargs):
+class XGBEstimatorDaskMixin(XGBEstimatorMixin):
+    def build_discriminator_callback(self, discriminator):
+        return None  # dask_xgboost doesn't support callbacks
 
-        if y is not None and y.dtype == np.object:
-            from dask_ml.preprocessing import LabelEncoder as DaskLabelEncoder
-            le = DaskLabelEncoder()
-            y = le.fit_transform(y)
+    def prepare_fit_kwargs(self, X, y, kwargs):
+        allow_keys = {'classes',
+                      'eval_set',
+                      'sample_weight',
+                      'sample_weight_eval_set',
+                      'eval_metric',
+                      'early_stopping_rounds'}
+        kwargs = super().prepare_fit_kwargs(X, y, kwargs)
+        kwargs = {k: v for k, v in kwargs.items() if k in allow_keys}
 
-            if dex.is_dask_object(le.classes_):
-                le.classes_ = le.classes_.compute()
+        eval_set = kwargs.get('eval_set')
+        task = self.__dict__.get('task')
+        if task is not None and task in {const.TASK_MULTICLASS, const.TASK_BINARY}:
+            if y is not None and y.dtype == np.object:
+                from dask_ml.preprocessing import LabelEncoder as DaskLabelEncoder
+                le = DaskLabelEncoder()
+                # y = le.fit_transform(y)
+                le.fit(y)
 
-            if eval_set is not None:
-                eval_set = [(ex, le.transform(ey)) for ex, ey in eval_set]
+                if dex.is_dask_object(le.classes_):
+                    le.classes_ = le.classes_.compute()
 
-            self.y_encoder_ = le
+                if eval_set is not None:
+                    eval_set = [(ex, le.transform(ey)) for ex, ey in eval_set]
 
+                self.y_encoder_ = le
+
+        if eval_set is not None:
+            kwargs['eval_set'] = dex.compute(*eval_set)  # dask_xgboost don't support dask object as eval_set
+
+        sample_weight = kwargs.get('sample_weight')
         if sample_weight is not None and sample_weight.npartitions > 1:
-            sample_weight = None  # fixme, dask_xgboost bug
+            kwargs['sample_weight'] = None  # fixme, dask_xgboost bug
 
-        return super(XGBClassifierDaskWrapper, self) \
-            .fit(X, y, classes=classes, eval_set=eval_set, eval_metric=eval_metric,
-                 sample_weight=sample_weight, sample_weight_eval_set=sample_weight_eval_set,
-                 early_stopping_rounds=early_stopping_rounds if eval_set is not None else None)
+        return kwargs
 
-    @property
-    def best_n_estimators(self):
-        booster = self.get_booster()
-        if booster is not None:
-            return booster.best_ntree_limit
-        else:
-            return None
 
-    def predict_proba(self, data, ntree_limit=None, **kwargs):
-        data = data[self.get_booster().feature_names]
-        proba = super(XGBClassifierDaskWrapper, self).predict_proba(data, ntree_limit=ntree_limit)
+class XGBClassifierDaskWrapper(dask_xgboost.XGBClassifier, XGBEstimatorDaskMixin):
+    def fit(self, X, y=None, **kwargs):
+        kwargs = self.prepare_fit_kwargs(X, y, kwargs)
+        encoder = getattr(self, 'y_encoder_', None)
+        if encoder is not None:
+            y = encoder.transform(y)
+        return super().fit(X, y, **kwargs)
+
+    def predict_proba(self, X, ntree_limit=None, **kwargs):
+        X = self.prepare_predict_X(X)
+        proba = super().predict_proba(X, ntree_limit=ntree_limit)
 
         if self.n_classes_ == 2:
             proba = dex.fix_binary_predict_proba_result(proba)
 
         return proba
 
-    def predict(self, data, **kwargs):
-        data = data[self.get_booster().feature_names]
-        pred = super(XGBClassifierDaskWrapper, self).predict(data)
+    def predict(self, X, **kwargs):
+        X = self.prepare_predict_X(X)
+        pred = super().predict(X)
 
-        if hasattr(self, 'y_encoder_'):
-            encoder = getattr(self, 'y_encoder_')
+        encoder = getattr(self, 'y_encoder_', None)
+        if encoder is not None:
             pred = encoder.inverse_transform(pred)
 
         return pred
@@ -505,41 +504,15 @@ class XGBClassifierDaskWrapper(dask_xgboost.XGBClassifier):
 
         return attr
 
-    # TODO: Implementation iteration_scores
-    @property
-    def iteration_scores(self):
-        raise NotImplementedError
 
+class XGBRegressorDaskWrapper(dask_xgboost.XGBRegressor, XGBEstimatorDaskMixin):
+    def fit(self, X, y=None, **kwargs):
+        kwargs = self.prepare_fit_kwargs(X, y, kwargs)
+        return super().fit(X, y, **kwargs)
 
-class XGBRegressorDaskWrapper(dask_xgboost.XGBRegressor):
-    def fit(self, X, y=None, eval_set=None,
-            sample_weight=None, sample_weight_eval_set=None,
-            eval_metric=None, early_stopping_rounds=None, **kwargs):
-
-        if sample_weight is not None and sample_weight.npartitions > 1:
-            sample_weight = None  # fixme, dask_xgboost bug
-
-        return super(XGBRegressorDaskWrapper, self) \
-            .fit(X, y, eval_set=eval_set, eval_metric=eval_metric,
-                 sample_weight=sample_weight, sample_weight_eval_set=sample_weight_eval_set,
-                 early_stopping_rounds=early_stopping_rounds if eval_set is not None else None)
-
-    @property
-    def best_n_estimators(self):
-        booster = self.get_booster()
-        if booster is not None:
-            return booster.best_ntree_limit
-        else:
-            return None
-
-    def predict(self, data, **kwargs):
-        data = data[self.get_booster().feature_names]
-        return super(XGBRegressorDaskWrapper, self).predict(data)
-
-    # TODO: Implementation iteration_scores
-    @property
-    def iteration_scores(self):
-        raise NotImplementedError
+    def predict(self, X, **kwargs):
+        X = self.prepare_predict_X(X)
+        return super(XGBRegressorDaskWrapper, self).predict(X)
 
 
 class XGBoostDaskEstimator(XGBoostEstimator):
@@ -547,33 +520,18 @@ class XGBoostDaskEstimator(XGBoostEstimator):
         if 'task' in kwargs:
             kwargs.pop('task')
 
-        if task == 'regression':
+        if task == const.TASK_REGRESSION:
             xgb = XGBRegressorDaskWrapper(**kwargs)
         else:
             xgb = XGBClassifierDaskWrapper(**kwargs)
+        xgb.__dict__['task'] = task
         return xgb
 
 
-class CatBoostClassifierWrapper(catboost.CatBoostClassifier):
-    def fit(self, X, y=None, **kwargs):
-        if not kwargs.__contains__('cat_features'):
-            cat_cols = get_categorical_features(X)
-            kwargs['cat_features'] = cat_cols
-        if kwargs.get('early_stopping_rounds') is None and kwargs.get('eval_set') is not None:
-            kwargs['early_stopping_rounds'] = _default_early_stopping_rounds(self)
-        super(CatBoostClassifierWrapper, self).fit(X, y, **kwargs)
-
+class CatBoostEstimatorMixin:
     @property
     def best_n_estimators(self):
         return self.best_iteration_
-
-    def predict(self, data, **kwargs):
-        data = data[self.feature_names_]
-        return super(CatBoostClassifierWrapper, self).predict(data, **kwargs)
-
-    def predict_proba(self, data, **kwargs):
-        data = data[self.feature_names_]
-        return super(CatBoostClassifierWrapper, self).predict_proba(data, **kwargs)
 
     @property
     def iteration_scores(self):
@@ -591,39 +549,41 @@ class CatBoostClassifierWrapper(catboost.CatBoostClassifier):
     def build_discriminator_callback(self, discriminator):
         return None
 
-
-class CatBoostRegressionWrapper(catboost.CatBoostRegressor):
-    def fit(self, X, y=None, **kwargs):
+    def prepare_fit_kwargs(self, X, y, kwargs):
         if not kwargs.__contains__('cat_features'):
             cat_cols = get_categorical_features(X)
             kwargs['cat_features'] = cat_cols
         if kwargs.get('early_stopping_rounds') is None and kwargs.get('eval_set') is not None:
             kwargs['early_stopping_rounds'] = _default_early_stopping_rounds(self)
-        super(CatBoostRegressionWrapper, self).fit(X, y, **kwargs)
+        return kwargs
 
-    @property
-    def best_n_estimators(self):
-        return self.best_iteration_
+    def prepare_predict_X(self, X):
+        X = X[self.feature_names_]
+        return X
 
-    def predict(self, data, **kwargs):
-        data = data[self.feature_names_]
-        return super(CatBoostRegressionWrapper, self).predict(data, **kwargs)
 
-    @property
-    def iteration_scores(self):
-        scores = []
-        if self.evals_result_:
-            valid = self.evals_result_.get('validation')
-            if valid:
-                scores = list(valid.values())[0]
-            else:
-                learn = self.evals_result_.get('learn')
-                if learn:
-                    scores = list(learn.values())[0]
-        return scores
+class CatBoostClassifierWrapper(catboost.CatBoostClassifier, CatBoostEstimatorMixin):
+    def fit(self, X, y=None, **kwargs):
+        kwargs = self.prepare_fit_kwargs(X, y, kwargs)
+        super().fit(X, y, **kwargs)
 
-    def build_discriminator_callback(self, discriminator):
-        return None
+    def predict(self, X, **kwargs):
+        X = self.prepare_predict_X(X)
+        return super().predict(X, **kwargs)
+
+    def predict_proba(self, X, **kwargs):
+        X = self.prepare_predict_X(X)
+        return super().predict_proba(X, **kwargs)
+
+
+class CatBoostRegressionWrapper(catboost.CatBoostRegressor, CatBoostEstimatorMixin):
+    def fit(self, X, y=None, **kwargs):
+        kwargs = self.prepare_fit_kwargs(X, y, kwargs)
+        super().fit(X, y, **kwargs)
+
+    def predict(self, X, **kwargs):
+        X = self.prepare_predict_X(X)
+        return super().predict(X, **kwargs)
 
 
 class CatBoostEstimator(HyperEstimator):
@@ -659,7 +619,7 @@ class CatBoostEstimator(HyperEstimator):
         HyperEstimator.__init__(self, fit_kwargs, space, name, **kwargs)
 
     def _build_estimator(self, task, kwargs):
-        if task == 'regression':
+        if task == const.TASK_REGRESSION:
             cat = CatBoostRegressionWrapper(**kwargs)
         else:
             cat = CatBoostClassifierWrapper(**kwargs)
@@ -667,7 +627,6 @@ class CatBoostEstimator(HyperEstimator):
 
 
 class CatBoostClassifierDaskWrapper(CatBoostClassifierWrapper):
-
     def fit(self, *args, **kwargs):
         return dex.compute_and_call(super().fit, *args, **kwargs)
 
@@ -677,11 +636,6 @@ class CatBoostClassifierDaskWrapper(CatBoostClassifierWrapper):
     def predict_proba(self, *args, **kwargs):
         return dex.compute_and_call(super().predict_proba, *args, **kwargs)
 
-    # TODO: Implementation iteration_scores
-    @property
-    def iteration_scores(self):
-        raise NotImplementedError
-
 
 class CatBoostRegressionDaskWrapper(CatBoostRegressionWrapper):
     def fit(self, *args, **kwargs):
@@ -690,18 +644,10 @@ class CatBoostRegressionDaskWrapper(CatBoostRegressionWrapper):
     def predict(self, *args, **kwargs):
         return dex.compute_and_call(super().predict, *args, **kwargs)
 
-    # def predict_proba(self, *args, **kwargs):
-    #     return dex.compute_and_call(super().predict_proba, *args, **kwargs)
-
-    # TODO: Implementation iteration_scores
-    @property
-    def iteration_scores(self):
-        raise NotImplementedError
-
 
 class CatBoostDaskEstimator(CatBoostEstimator):
     def _build_estimator(self, task, kwargs):
-        if task == 'regression':
+        if task == const.TASK_REGRESSION:
             cat = CatBoostRegressionDaskWrapper(**kwargs)
         else:
             cat = CatBoostClassifierDaskWrapper(**kwargs)
