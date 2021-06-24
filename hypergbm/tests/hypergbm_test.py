@@ -136,6 +136,13 @@ class Test_HyperGBM():
         broken_trials = [t for t in hk.history.trials if not t.succeeded]
         assert len(broken_trials) > 0
 
+    def test_discriminator_catboost(self):
+        discriminator = PercentileDiscriminator(0, min_trials=3, min_steps=5, stride=1)
+        space_fn = GeneralSearchSpaceGenerator(enable_catboost=True, enable_lightgbm=False, enable_xgb=False)
+        _, hk = self.run_search(self.get_data, cv=True, discriminator=discriminator, max_trials=10, space_fn=space_fn)
+        broken_trials = [t for t in hk.history.trials if not t.succeeded]
+        assert len(broken_trials) > 0
+
     def test_set_random_state(self):
         set_random_state(9527)
         _, hk = self.run_search(self.get_data, cv=False, max_trials=5)
