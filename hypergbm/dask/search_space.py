@@ -4,6 +4,8 @@
 """
 from functools import partial
 
+import lightgbm
+
 from hypergbm.dask import dask_transformers as tf, dask_ops as ops
 from hypergbm.estimators import LightGBMDaskEstimator, CatBoostDaskEstimator, XGBoostDaskEstimator
 from hypergbm.pipeline import Pipeline, DataFrameMapper
@@ -54,17 +56,16 @@ class DaskGeneralSearchSpaceGenerator(GeneralSearchSpaceGenerator):
     @property
     def estimators(self):
         r = {}
+        is_local = dex.is_local_dask()
 
         if self.enable_xgb:
             r['xgb'] = (XGBoostDaskEstimator, self.default_xgb_init_kwargs, self.default_xgb_fit_kwargs)
 
-        if self.enable_lightgbm:
+        if self.enable_lightgbm and (is_local or hasattr(lightgbm, 'dask')):
             r['lightgbm'] = (LightGBMDaskEstimator, self.default_lightgbm_init_kwargs, self.default_lightgbm_fit_kwargs)
 
-        if dex.is_local_dask():
-            if self.enable_catboost:
-                r['catboost'] = \
-                    (CatBoostDaskEstimator, self.default_catboost_init_kwargs, self.default_catboost_fit_kwargs)
+        if self.enable_catboost and is_local:
+            r['catboost'] = (CatBoostDaskEstimator, self.default_catboost_init_kwargs, self.default_catboost_fit_kwargs)
 
         return r
 

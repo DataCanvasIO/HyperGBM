@@ -14,9 +14,8 @@ from sklearn.experimental.enable_hist_gradient_boosting import \
 from hypernets.core.search_space import ModuleSpace
 from hypernets.tabular import dask_ex as dex
 from hypernets.tabular.column_selector import column_object_category_bool, column_zero_or_positive_int32
-from hypernets.utils import const
+from hypernets.utils import const, logging
 from .gbm_callbacks import LightGBMDiscriminationCallback, XGBoostDiscriminationCallback, CatboostDiscriminationCallback
-from hypernets.utils import logging
 
 logger = logging.get_logger(__name__)
 
@@ -247,36 +246,56 @@ class LightGBMEstimator(HyperEstimator):
         return lgbm
 
 
-class LGBMEstimatorDaskMixin(LGBMEstimatorMixin):
-    def prepare_fit_kwargs(self, X, y, kwargs):
-        if self.boosting_type != 'dart':
-            if kwargs.get('early_stopping_rounds') is None and kwargs.get('eval_set') is not None:
-                kwargs['early_stopping_rounds'] = _default_early_stopping_rounds(self)
-        return kwargs
+if hasattr(lightgbm, 'dask'):
+    class LGBMEstimatorDaskMixin(LGBMEstimatorMixin):
+        def prepare_fit_kwargs(self, X, y, kwargs):
+            if self.boosting_type != 'dart':
+                if kwargs.get('early_stopping_rounds') is None and kwargs.get('eval_set') is not None:
+                    kwargs['early_stopping_rounds'] = _default_early_stopping_rounds(self)
+            return kwargs
 
 
-class LGBMClassifierDaskWrapper(lightgbm.DaskLGBMClassifier, LGBMEstimatorDaskMixin):
-    def fit(self, X, y, sample_weight=None, **kwargs):
-        kwargs = self.prepare_fit_kwargs(X, y, kwargs)
-        super(LGBMClassifierDaskWrapper, self).fit(X, y, sample_weight=sample_weight, **kwargs)
+    class LGBMClassifierDaskWrapper(lightgbm.DaskLGBMClassifier, LGBMEstimatorDaskMixin):
+        def fit(self, X, y, sample_weight=None, **kwargs):
+            kwargs = self.prepare_fit_kwargs(X, y, kwargs)
+            super(LGBMClassifierDaskWrapper, self).fit(X, y, sample_weight=sample_weight, **kwargs)
 
-    def predict(self, X, **kwargs):
-        X = self.prepare_predict_X(X)
-        return super().predict(X, **kwargs)
+        def predict(self, X, **kwargs):
+            X = self.prepare_predict_X(X)
+            return super().predict(X, **kwargs)
 
-    def predict_proba(self, X, **kwargs):
-        X = self.prepare_predict_X(X)
-        return super().predict_proba(X, **kwargs)
+        def predict_proba(self, X, **kwargs):
+            X = self.prepare_predict_X(X)
+            return super().predict_proba(X, **kwargs)
 
 
-class LGBMRegressorDaskWrapper(lightgbm.DaskLGBMRegressor, LGBMEstimatorDaskMixin):
-    def fit(self, X, y, sample_weight=None, **kwargs):
-        kwargs = self.prepare_fit_kwargs(X, y, kwargs)
-        super().fit(X, y, sample_weight=sample_weight, **kwargs)
+    class LGBMRegressorDaskWrapper(lightgbm.DaskLGBMRegressor, LGBMEstimatorDaskMixin):
+        def fit(self, X, y, sample_weight=None, **kwargs):
+            kwargs = self.prepare_fit_kwargs(X, y, kwargs)
+            super().fit(X, y, sample_weight=sample_weight, **kwargs)
 
-    def predict(self, X, **kwargs):
-        X = self.prepare_predict_X(X)
-        return super().predict(X, **kwargs)
+        def predict(self, X, **kwargs):
+            X = self.prepare_predict_X(X)
+            return super().predict(X, **kwargs)
+
+else:
+    class LGBMClassifierDaskWrapper(LGBMClassifierWrapper):
+        def fit(self, *args, **kwargs):
+            return dex.compute_and_call(super().fit, *args, **kwargs)
+
+        def predict(self, *args, **kwargs):
+            return dex.compute_and_call(super().predict, *args, **kwargs)
+
+        def predict_proba(self, *args, **kwargs):
+            return dex.compute_and_call(super().predict_proba, *args, **kwargs)
+
+
+    class LGBMRegressorDaskWrapper(LGBMRegressorWrapper):
+        def fit(self, *args, **kwargs):
+            return dex.compute_and_call(super().fit, *args, **kwargs)
+
+        def predict(self, *args, **kwargs):
+            return dex.compute_and_call(super().predict, *args, **kwargs)
 
 
 class LightGBMDaskEstimator(LightGBMEstimator):
@@ -552,7 +571,7 @@ class CatBoostEstimatorMixin:
     def build_discriminator_callback(self, discriminator):
         if discriminator is None:
             return None
-        if int(catboost.__version__.split('.')[1])>=26:
+        if int(catboost.__version__.split('.')[1]) >= 26:
             callback = CatboostDiscriminationCallback(discriminator=discriminator, group_id=self.group_id)
             return callback
         else:
