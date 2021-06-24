@@ -5,6 +5,6 @@ dask-ml
 dask-xgboost
 lightgbm>=3.2.0
 xgboost
-catboost>=0.21
+catboost>=0.26
 imbalanced-learn>=0.7.0
 tqdm
