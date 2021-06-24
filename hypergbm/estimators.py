@@ -15,7 +15,10 @@ from hypernets.core.search_space import ModuleSpace
 from hypernets.tabular import dask_ex as dex
 from hypernets.tabular.column_selector import column_object_category_bool, column_zero_or_positive_int32
 from hypernets.utils import const
-from .gbm_callbacks import LightGBMDiscriminationCallback, XGBoostDiscriminationCallback
+from .gbm_callbacks import LightGBMDiscriminationCallback, XGBoostDiscriminationCallback, CatboostDiscriminationCallback
+from hypernets.utils import logging
+
+logger = logging.get_logger(__name__)
 
 
 def get_categorical_features(X):
@@ -547,7 +550,14 @@ class CatBoostEstimatorMixin:
         return scores
 
     def build_discriminator_callback(self, discriminator):
-        return None
+        if discriminator is None:
+            return None
+        if int(catboost.__version__.split('.')[1])>=26:
+            callback = CatboostDiscriminationCallback(discriminator=discriminator, group_id=self.group_id)
+            return callback
+        else:
+            logger.warn('Please upgrade `Catboost` to a version above 0.26 to support pruning.')
+            return None
 
     def prepare_fit_kwargs(self, X, y, kwargs):
         if not kwargs.__contains__('cat_features'):
