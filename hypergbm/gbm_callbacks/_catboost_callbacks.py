@@ -9,10 +9,12 @@ from hypernets.discriminators import UnPromisingTrial
 
 
 class CatboostDiscriminationCallback(BaseDiscriminationCallback):
+
     def after_iteration(self, info):
         score = self._get_score(info)
-        self.iteration(score)
-        return True
+        self.iteration_trajectory.append(score)
+        self.is_promising_ = self.discriminator.is_promising(self.iteration_trajectory, self.group_id)
+        return self.is_promising_
 
     def _get_score(self, info):
         if len(list(info.metrics['validation'].items())) > 0:

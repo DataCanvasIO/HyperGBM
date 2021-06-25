@@ -16,6 +16,7 @@ from hypernets.tabular import dask_ex as dex
 from hypernets.tabular.column_selector import column_object_category_bool, column_zero_or_positive_int32
 from hypernets.utils import const, logging
 from .gbm_callbacks import LightGBMDiscriminationCallback, XGBoostDiscriminationCallback, CatboostDiscriminationCallback
+from hypernets.discriminators import UnPromisingTrial
 
 logger = logging.get_logger(__name__)
 
@@ -573,6 +574,7 @@ class CatBoostEstimatorMixin:
             return None
         if int(catboost.__version__.split('.')[1]) >= 26:
             callback = CatboostDiscriminationCallback(discriminator=discriminator, group_id=self.group_id)
+            self.discriminator_callback = callback
             return callback
         else:
             logger.warn('Please upgrade `Catboost` to a version above 0.26 to support pruning.')
@@ -595,6 +597,9 @@ class CatBoostClassifierWrapper(catboost.CatBoostClassifier, CatBoostEstimatorMi
     def fit(self, X, y=None, **kwargs):
         kwargs = self.prepare_fit_kwargs(X, y, kwargs)
         super().fit(X, y, **kwargs)
+        discriminator_callback = self.__dict__.get('discriminator_callback')
+        if discriminator_callback is not None and not discriminator_callback.is_promising_:
+            raise UnPromisingTrial('unpromising trial')
 
     def predict(self, X, **kwargs):
         X = self.prepare_predict_X(X)
@@ -609,6 +614,9 @@ class CatBoostRegressionWrapper(catboost.CatBoostRegressor, CatBoostEstimatorMix
     def fit(self, X, y=None, **kwargs):
         kwargs = self.prepare_fit_kwargs(X, y, kwargs)
         super().fit(X, y, **kwargs)
+        discriminator_callback = self.__dict__.get('discriminator_callback')
+        if discriminator_callback is not None and not discriminator_callback.is_promising_:
+            raise UnPromisingTrial('unpromising trial')
 
     def predict(self, X, **kwargs):
         X = self.prepare_predict_X(X)
