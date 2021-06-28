@@ -10,9 +10,9 @@ from hypergbm.pipeline import DataFrameMapper
 from hypergbm.sklearn.sklearn_ops import numeric_pipeline_simple, numeric_pipeline_complex, \
     categorical_pipeline_simple, categorical_pipeline_complex, \
     datetime_pipeline_simple, text_pipeline_simple
+from hypernets.core import randint
 from hypernets.core.ops import ModuleChoice, HyperInput
-from hypernets.core.search_space import Choice, Int
-from hypernets.core.search_space import HyperSpace
+from hypernets.core.search_space import HyperSpace, Choice, Int
 from hypernets.tabular.column_selector import column_object
 from hypernets.utils import logging
 
@@ -152,7 +152,7 @@ class GeneralSearchSpaceGenerator(BaseSearchSpaceGenerator):
             'gamma': Choice([0.5, 1, 1.5, 2, 5]),
             'reg_alpha': Choice([0.001, 0.01, 0.1, 1, 10, 100]),
             'reg_lambda': Choice([0.001, 0.01, 0.1, 0.5, 1]),
-            'random_state': 9527,
+            'random_state': randint(),
             'class_balancing': None,
         }
 
@@ -170,7 +170,7 @@ class GeneralSearchSpaceGenerator(BaseSearchSpaceGenerator):
             'max_depth': Choice([3, 5, 7, 10]),
             'reg_alpha': Choice([0.001, 0.01, 0.1, 1, 10, 100]),
             'reg_lambda': Choice([0.001, 0.01, 0.1, 0.5, 1]),
-            'random_state': 9527,
+            'random_state': randint(),
             'class_balancing': None,
         }
 
@@ -186,7 +186,7 @@ class GeneralSearchSpaceGenerator(BaseSearchSpaceGenerator):
             'depth': Choice([3, 5, 7, 10]),
             'learning_rate': Choice([0.001, 0.01, 0.5, 0.1]),
             'l2_leaf_reg': Choice([None, 2, 10, 20, 30]),
-            'random_state': 9527,
+            'random_state': randint(),
             'class_balancing': None,
         }
 
@@ -201,7 +201,7 @@ class GeneralSearchSpaceGenerator(BaseSearchSpaceGenerator):
             'min_samples_leaf': Choice([10, 20, 50, 80, 100, 150, 180, 200]),
             'max_leaf_nodes': Int(15, 513, 5),
             'l2_regularization': Choice([1e-10, 1e-8, 1e-6, 1e-5, 1e-3, 0.01, 0.1, 1]),
-            'random_state': 9527,
+            'random_state': randint(),
         }
 
     @property

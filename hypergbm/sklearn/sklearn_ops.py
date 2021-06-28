@@ -8,26 +8,25 @@ from hypergbm.cfg import HyperGBMCfg as cfg
 from hypergbm.pipeline import Pipeline
 from hypergbm.sklearn.transformers import SimpleImputer, SafeOneHotEncoder, TruncatedSVD, \
     StandardScaler, MinMaxScaler, MaxAbsScaler, RobustScaler, SafeOrdinalEncoder, \
-    LogStandardScaler, DatetimeEncoder, TfidfEncoder
+    LogStandardScaler, DatetimeEncoder, TfidfEncoder, AsTypeTransformer
 from hypernets.core.ops import ModuleChoice, Optional, Choice
 from hypernets.tabular import column_selector
 
 
 def categorical_pipeline_simple(impute_strategy='constant', seq_no=0):
+    steps = [
+        SimpleImputer(missing_values=np.nan, strategy=impute_strategy, name=f'categorical_imputer_{seq_no}'),
+        SafeOrdinalEncoder(name=f'categorical_label_encoder_{seq_no}', dtype='int32')
+    ]
     if cfg.category_pipeline_auto_detect:
         cs = column_selector.AutoCategoryColumnSelector(
             dtype_include=column_selector.column_object_category_bool.dtype_include,
             cat_exponent=cfg.category_pipeline_auto_detect_exponent)
+        steps.insert(0, AsTypeTransformer(dtype='str', name=f'categorical_as_object_{seq_no}'))
     else:
         cs = column_selector.column_object_category_bool
-    pipeline = Pipeline([
-        SimpleImputer(missing_values=np.nan, strategy=impute_strategy, name=f'categorical_imputer_{seq_no}'),
-        SafeOrdinalEncoder(name=f'categorical_label_encoder_{seq_no}', dtype='int32')
-        # MultiLabelEncoder(name=f'categorical_label_encoder_{seq_no}')
-    ],
-        columns=cs,
-        name=f'categorical_pipeline_simple_{seq_no}',
-    )
+
+    pipeline = Pipeline(steps, columns=cs, name=f'categorical_pipeline_simple_{seq_no}')
     return pipeline
 
 
@@ -50,16 +49,17 @@ def categorical_pipeline_complex(impute_strategy=None, svd_components=3, seq_no=
     label_encoder = SafeOrdinalEncoder(name=f'categorical_label_encoder_{seq_no}')
     onehot = onehot_svd()
     le_or_onehot_pca = ModuleChoice([label_encoder, onehot], name=f'categorical_le_or_onehot_pca_{seq_no}')
+    steps = [imputer, le_or_onehot_pca]
 
     if cfg.category_pipeline_auto_detect:
         cs = column_selector.AutoCategoryColumnSelector(
             dtype_include=column_selector.column_object_category_bool.dtype_include,
             cat_exponent=cfg.category_pipeline_auto_detect_exponent)
+        steps.insert(0, AsTypeTransformer(dtype='str', name=f'categorical_as_object_{seq_no}'))
     else:
         cs = column_selector.column_object_category_bool
-    pipeline = Pipeline([imputer, le_or_onehot_pca],
-                        name=f'categorical_pipeline_complex_{seq_no}',
-                        columns=cs)
+
+    pipeline = Pipeline(steps, columns=cs, name=f'categorical_pipeline_complex_{seq_no}')
     return pipeline
 
 

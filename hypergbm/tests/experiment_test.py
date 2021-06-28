@@ -11,7 +11,7 @@ from sklearn.model_selection import train_test_split
 from hypergbm import HyperGBM, CompeteExperiment, make_experiment
 from hypergbm.search_space import search_space_general
 from hypernets.core import OptimizeDirection, EarlyStoppingCallback
-from hypernets.experiment import GeneralExperiment, ExperimentCallback, ConsoleCallback
+from hypernets.experiment import GeneralExperiment, ExperimentCallback, ConsoleCallback, StepNames
 from hypernets.searchers import RandomSearcher
 from hypernets.tabular.datasets import dsutils
 
@@ -226,14 +226,22 @@ class Test_Experiment():
         preq_split = PrequentialSplit(PrequentialSplit.STRATEGY_PREQ_BLS, n_splits=3)
         self.run_binary(cv=True, cross_validator=preq_split)
 
-    def test_text_datetime_encoder(self):
+    def test_feature_generation(self):
         df = dsutils.load_movielens()
         df['genres'] = df['genres'].apply(lambda s: s.replace('|', ' '))
         df['timestamp'] = df['timestamp'].apply(datetime.fromtimestamp)
 
-        experiment = make_experiment(df, target='rating', cv=False, ensemble_size=0)
+        experiment = make_experiment(df, target='rating', cv=False, ensemble_size=0,
+                                     feature_generation=True,
+                                     feature_generation_text_cols=['title', 'genres'],
+                                     )
+        assert isinstance(experiment, CompeteExperiment)
+
         estimator = experiment.run(max_trials=3)
         assert estimator is not None
 
-        hgbm = estimator.steps[-1][1]
-        assert len(hgbm.data_pipeline.fitted_features_) == 4  # text+category+datetime+numeric
+        step = experiment.get_step(StepNames.FEATURE_GENERATION)
+        assert step is not None
+
+        feature_names = step.get_fitted_params()['output_feature_names']
+        assert all([c in feature_names for c in ['TFIDF__title____0__', 'TFIDF__genres____0__', 'DAY__timestamp__']])

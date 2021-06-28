@@ -25,7 +25,7 @@ class HyperGBMCfg(Configurable):
                   'complex (search in SafeOrdinalEncoder and SafeOneHot+Optional(SVD)).'
              )
     category_pipeline_auto_detect = \
-        Bool(True,
+        Bool(False,
              config=True,
              help='detect category feature from numeric and datetime columns or not.'
              )
@@ -37,7 +37,7 @@ class HyperGBMCfg(Configurable):
 
     # datetime
     datetime_pipeline_enabled = \
-        Bool(True,
+        Bool(False,
              config=True,
              help='detect and encode datetime feature from training data or not.'
              )
@@ -51,7 +51,7 @@ class HyperGBMCfg(Configurable):
 
     # text
     text_pipeline_enabled = \
-        Bool(True,
+        Bool(False,
              config=True,
              help='detect and encode text feature from training data or not.'
              )

@@ -163,13 +163,13 @@ class Test_Estimator():
         num_cols = column_number_exclude_timedelta(X)
         cat_cols = column_object_category_bool(X)
         df_1 = estimator.data_pipeline.fit_transform(X, y)
-        # assert list(df_1.columns) == ['a', 'e', 'f', 'b', 'c', 'd', 'l']
-        # assert df_1.shape == (3, 7)
-        assert list(df_1.columns) == ['a', 'e', 'f',
-                                      'g_h_i_0', 'g_h_i_1', 'g_h_i_2', 'g_h_i_3', 'g_h_i_4',
-                                      'g_h_i_5', 'g_h_i_6', 'g_h_i_7', 'g_h_i_8',
-                                      'b', 'c', 'd', 'l']
-        assert df_1.shape == (3, 16)
+        assert list(df_1.columns) == ['a', 'e', 'f', 'b', 'c', 'd', 'l']
+        assert df_1.shape == (3, 7)
+        # assert list(df_1.columns) == ['a', 'e', 'f',
+        #                               'g_h_i_0', 'g_h_i_1', 'g_h_i_2', 'g_h_i_3', 'g_h_i_4',
+        #                               'g_h_i_5', 'g_h_i_6', 'g_h_i_7', 'g_h_i_8',
+        #                               'b', 'c', 'd', 'l']
+        # assert df_1.shape == (3, 16)
 
         space = get_space_multi_dataframemapper()
         space.random_sample()
