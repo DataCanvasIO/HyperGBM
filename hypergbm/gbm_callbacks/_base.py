@@ -11,10 +11,12 @@ class BaseDiscriminationCallback(object):
         self.discriminator = discriminator
         self.group_id = group_id
         self.iteration_trajectory = []
+        self.is_promising_ = True
 
     def iteration(self, score):
         self.iteration_trajectory.append(score)
         promising = self.discriminator.is_promising(self.iteration_trajectory, self.group_id)
+        self.is_promising_ = promising
         if not promising:
             raise UnPromisingTrial(f'unpromising trial:{self.iteration_trajectory}')
 
