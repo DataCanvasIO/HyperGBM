@@ -12,11 +12,11 @@ from sklearn.experimental.enable_hist_gradient_boosting import \
     HistGradientBoostingRegressor, HistGradientBoostingClassifier
 
 from hypernets.core.search_space import ModuleSpace
+from hypernets.discriminators import UnPromisingTrial
 from hypernets.tabular import dask_ex as dex
 from hypernets.tabular.column_selector import column_object_category_bool, column_zero_or_positive_int32
 from hypernets.utils import const, logging
 from .gbm_callbacks import LightGBMDiscriminationCallback, XGBoostDiscriminationCallback, CatboostDiscriminationCallback
-from hypernets.discriminators import UnPromisingTrial
 
 logger = logging.get_logger(__name__)
 
@@ -599,7 +599,7 @@ class CatBoostClassifierWrapper(catboost.CatBoostClassifier, CatBoostEstimatorMi
         super().fit(X, y, **kwargs)
         discriminator_callback = self.__dict__.get('discriminator_callback')
         if discriminator_callback is not None and not discriminator_callback.is_promising_:
-            raise UnPromisingTrial('unpromising trial')
+            raise UnPromisingTrial(f'unpromising trial:{discriminator_callback.iteration_trajectory}')
 
     def predict(self, X, **kwargs):
         X = self.prepare_predict_X(X)
@@ -616,7 +616,7 @@ class CatBoostRegressionWrapper(catboost.CatBoostRegressor, CatBoostEstimatorMix
         super().fit(X, y, **kwargs)
         discriminator_callback = self.__dict__.get('discriminator_callback')
         if discriminator_callback is not None and not discriminator_callback.is_promising_:
-            raise UnPromisingTrial('unpromising trial')
+            raise UnPromisingTrial(f'unpromising trial:{discriminator_callback.iteration_trajectory}')
 
     def predict(self, X, **kwargs):
         X = self.prepare_predict_X(X)
