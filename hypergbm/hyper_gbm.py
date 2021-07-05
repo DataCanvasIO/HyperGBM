@@ -16,8 +16,8 @@ from imblearn.over_sampling import RandomOverSampler, SMOTE, ADASYN
 from imblearn.under_sampling import RandomUnderSampler, NearMiss, TomekLinks, EditedNearestNeighbours
 from sklearn import pipeline as sk_pipeline
 from sklearn.model_selection import KFold, StratifiedKFold
-from tqdm import tqdm
-
+from tqdm.auto import tqdm
+from hypernets.core import Callback, ProgressiveCallback
 from hypergbm.pipeline import ComposeTransformer
 from hypernets.model.estimator import Estimator
 from hypernets.model.hyper_model import HyperModel
@@ -56,6 +56,27 @@ def get_sampler(sampler):
         return sampler_cls()
     else:
         return None
+
+
+class FitCrossValidationCallback(Callback):
+    def __init__(self):
+        super(FitCrossValidationCallback, self).__init__()
+
+        self.pbar = None
+
+    def on_search_start(self, hyper_model, X, y, X_eval, y_eval, cv, num_folds, max_trials, dataset_id, trial_store,
+                        **fit_kwargs):
+        if cv and num_folds > 1:
+            self.pbar = tqdm(total=num_folds, leave=False, desc='fit_cross_validation')
+
+    def on_search_end(self, hyper_model):
+        if self.pbar is not None:
+            self.pbar.update(self.pbar.total)
+            self.pbar.close()
+            self.pbar = None
+
+    def on_search_error(self, hyper_model):
+        self.on_search_end(hyper_model)
 
 
 class HyperGBMExplainer:
@@ -98,6 +119,8 @@ class HyperGBMEstimator(Estimator):
         self.fit_kwargs = None
         self.class_balancing = None
         self.classes_ = None
+        self.transients_ = {}
+
         self._build_model(space_sample)
 
     def _build_model(self, space_sample):
@@ -205,7 +228,13 @@ class HyperGBMEstimator(Estimator):
         if verbose > 0:
             logger.info('transforming the train set')
 
+        pbar = self.transients_.get('pbar')
+        if pbar is not None:
+            pbar.reset()
+            pbar.set_description('fit_transform_data')
+
         X = self.fit_transform_data(X, y, verbose=verbose)
+        y = np.array(y)
 
         cross_validator = kwargs.pop('cross_validator', None)
         if cross_validator is not None:
@@ -216,8 +245,6 @@ class HyperGBMEstimator(Estimator):
             else:
                 iterators = KFold(n_splits=num_folds, shuffle=True, random_state=9527)
 
-        y = np.array(y)
-
         kwargs = self.fit_kwargs
         if kwargs.get('verbose') is None:
             kwargs['verbose'] = verbose
@@ -227,8 +254,9 @@ class HyperGBMEstimator(Estimator):
         oof_ = None
         oof_scores = []
         self.cv_gbm_models_ = []
-        for n_fold, (train_idx, valid_idx) in enumerate(
-                tqdm(iterators.split(X, y), leave=False, total=iterators.n_splits)):
+        if pbar is not None:
+            pbar.set_description('cross_validation')
+        for n_fold, (train_idx, valid_idx) in enumerate(iterators.split(X, y)):
             x_train_fold, y_train_fold = X.iloc[train_idx], y[train_idx]
             x_val_fold, y_val_fold = X.iloc[valid_idx], y[valid_idx]
 
@@ -272,6 +300,9 @@ class HyperGBMEstimator(Estimator):
                     oof_ = np.full((y.shape[0], proba.shape[-1]), np.nan, proba.dtype)
             oof_[valid_idx] = proba
             self.cv_gbm_models_.append(fold_est)
+
+            if pbar is not None:
+                pbar.update(1)
 
         logger.info(f'oof_scores:{oof_scores}')
         scores = self.get_scores(y, oof_, metrics)
@@ -319,6 +350,11 @@ class HyperGBMEstimator(Estimator):
         if verbose > 0:
             logger.info('estimator is transforming the train set')
 
+        pbar = self.transients_.get('pbar')
+        if pbar is not None:
+            pbar.reset()
+            pbar.set_description('fit_transform_data')
+
         eval_size_limit = kwargs.get('eval_size_limit', DEFAULT_EVAL_SIZE_LIMIT)
 
         X = self.fit_transform_data(X, y, verbose=verbose)
@@ -333,6 +369,8 @@ class HyperGBMEstimator(Estimator):
 
         oof_ = []
         models = []
+        if pbar is not None:
+            pbar.set_description('cross_validation')
         for n_fold, (train_idx, valid_idx) in enumerate(iterators.split(X_values, y_values)):
             x_train_fold, y_train_fold = X_values[train_idx], y_values[train_idx]
             x_val_fold, y_val_fold = X_values[valid_idx], y_values[valid_idx]
@@ -377,6 +415,9 @@ class HyperGBMEstimator(Estimator):
             index = valid_idx.copy().reshape((valid_idx.shape[0], 1))
             oof_.append(dex.hstack_array([index, proba]))
             models.append(fold_est)
+
+            if pbar is not None:
+                pbar.update(1)
 
         oof_ = dex.vstack_array(oof_)
         oof_df = dd.from_dask_array(oof_).set_index(0)
@@ -567,6 +608,8 @@ class HyperGBMEstimator(Estimator):
         except AttributeError:
             state = self.__dict__.copy()
         # Don't pickle eval_set and sample_weight
+        state['transients_'] = {}
+
         fit_kwargs = state.get('fit_kwargs')
         if fit_kwargs is not None and 'eval_set' in fit_kwargs.keys():
             fit_kwargs = fit_kwargs.copy()
@@ -616,12 +659,20 @@ class HyperGBM(HyperModel):
         """
         self.data_cleaner_params = data_cleaner_params
 
+        if callbacks is not None and any([isinstance(cb, ProgressiveCallback) for cb in callbacks]):
+            callbacks = list(callbacks) + [FitCrossValidationCallback()]
+
         HyperModel.__init__(self, searcher, dispatcher=dispatcher, callbacks=callbacks, reward_metric=reward_metric,
                             task=task, discriminator=discriminator)
 
     def _get_estimator(self, space_sample):
         estimator = HyperGBMEstimator(task=self.task, space_sample=space_sample,
                                       data_cleaner_params=self.data_cleaner_params)
+
+        cbs = self.callbacks
+        if isinstance(cbs, list) and len(cbs) > 0 and isinstance(cbs[-1], FitCrossValidationCallback):
+            estimator.transients_['pbar'] = cbs[-1].pbar
+
         return estimator
 
     def load_estimator(self, model_file):
