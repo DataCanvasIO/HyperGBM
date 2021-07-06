@@ -149,8 +149,11 @@ class LGBMEstimatorMixin:
         return kwargs
 
     def prepare_predict_X(self, X):
-        if hasattr(self, 'feature_name_'):
-            X = X[self.feature_name_]
+        try:
+            if hasattr(self, 'feature_name_'):
+                X = X[self.feature_name_]
+        except:
+            pass
         return X
 
 
