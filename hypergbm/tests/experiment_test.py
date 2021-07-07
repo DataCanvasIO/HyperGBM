@@ -92,7 +92,8 @@ class Test_Experiment():
                                        feature_reselection_estimator_size=5,
                                        feature_reselection_threshold=1e-5,
                                        ensemble_size=10,
-                                       cross_validator=cross_validator
+                                       cross_validator=cross_validator,
+                                       random_state=12345,
                                        )
         pipeline = experiment.run(max_trials=max_trials)
         rmse_scorer = get_scorer('neg_root_mean_squared_error')
@@ -142,7 +143,8 @@ class Test_Experiment():
                                        feature_reselection_estimator_size=5,
                                        feature_reselection_threshold=1e-5,
                                        ensemble_size=10,
-                                       cross_validator=cross_validator
+                                       cross_validator=cross_validator,
+                                       random_state=12345
                                        )
         pipeline = experiment.run(max_trials=max_trials)
         acc_scorer = get_scorer('accuracy')
@@ -199,7 +201,8 @@ class Test_Experiment():
                                        feature_reselection_estimator_size=5,
                                        feature_reselection_threshold=1e-5,
                                        ensemble_size=5,
-                                       cross_validator=cross_validator
+                                       cross_validator=cross_validator,
+                                       random_state=12345,
                                        )
         pipeline = experiment.run(max_trials=max_trials)
         auc_scorer = get_scorer('roc_auc_ovo')

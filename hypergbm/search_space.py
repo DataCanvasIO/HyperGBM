@@ -14,7 +14,7 @@ from hypernets.core import randint
 from hypernets.core.ops import ModuleChoice, HyperInput
 from hypernets.core.search_space import HyperSpace, Choice, Int
 from hypernets.tabular.column_selector import column_object
-from hypernets.utils import logging
+from hypernets.utils import logging, get_params
 
 logger = logging.get_logger(__name__)
 
@@ -61,6 +61,12 @@ class SearchSpaceGenerator(object):
             space.set_inputs(hyper_input)
 
         return space
+
+    def __repr__(self):
+        params = get_params(self)
+        params.update(self.options)
+        repr_ = ', '.join(['%s=%r' % (k, v) for k, v in params.items()])
+        return f'{type(self).__name__}({repr_})'
 
 
 class BaseSearchSpaceGenerator(SearchSpaceGenerator):

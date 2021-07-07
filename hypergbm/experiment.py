@@ -4,6 +4,7 @@ __author__ = 'yangjian'
 """
 
 """
+import copy
 
 from hypergbm.hyper_gbm import HyperGBM
 from hypernets.experiment import make_experiment as _make_experiment
@@ -89,10 +90,14 @@ def make_experiment(train_data,
         dask_enable = dex.exist_dask_object(train_data, test_data, eval_data) or dex.dask_enabled()
         if dask_enable:
             from hypergbm.dask.search_space import search_space_general as dask_search_space
-            return lambda: dask_search_space(**args)
+            result = copy.deepcopy(dask_search_space)
         else:
             from hypergbm.search_space import search_space_general as sk_search_space
-            return lambda: sk_search_space(**args)
+            result = copy.deepcopy(sk_search_space)
+
+        if args:
+            result.options.update(args)
+        return result
 
     if (searcher is None or isinstance(searcher, str)) and search_space is None:
         search_space = default_search_space()
