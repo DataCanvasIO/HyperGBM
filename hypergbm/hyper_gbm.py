@@ -17,8 +17,9 @@ from imblearn.under_sampling import RandomUnderSampler, NearMiss, TomekLinks, Ed
 from sklearn import pipeline as sk_pipeline
 from sklearn.model_selection import KFold, StratifiedKFold
 from tqdm.auto import tqdm
-from hypernets.core import Callback, ProgressiveCallback
+
 from hypergbm.pipeline import ComposeTransformer
+from hypernets.core import Callback, ProgressiveCallback
 from hypernets.model.estimator import Estimator
 from hypernets.model.hyper_model import HyperModel
 from hypernets.tabular import dask_ex as dex
@@ -119,6 +120,7 @@ class HyperGBMEstimator(Estimator):
         self.fit_kwargs = None
         self.class_balancing = None
         self.classes_ = None
+        self.pos_label = None
         self.transients_ = {}
 
         self._build_model(space_sample)
@@ -215,7 +217,7 @@ class HyperGBMEstimator(Estimator):
 
         return X
 
-    def fit_cross_validation(self, X, y, verbose=0, stratified=True, num_folds=3,
+    def fit_cross_validation(self, X, y, verbose=0, stratified=True, num_folds=3, pos_label=None,
                              shuffle=False, random_state=9527, metrics=None, **kwargs):
         if dex.exist_dask_object(X, y):
             return self.fit_cross_validation_by_dask(X, y, verbose=verbose,
@@ -253,6 +255,7 @@ class HyperGBMEstimator(Estimator):
             metrics = ['accuracy']
         oof_ = None
         oof_scores = []
+        self.pos_label = pos_label
         self.cv_gbm_models_ = []
         if pbar is not None:
             pbar.set_description('cross_validation')
@@ -318,7 +321,8 @@ class HyperGBMEstimator(Estimator):
         else:
             preds = self.proba2predict(proba)
             preds = np.array(self.classes_).take(preds, axis=0)
-        scores = calc_score(y, preds, proba, metrics, self.task)
+        scores = calc_score(y, preds, proba, metrics=metrics, task=self.task,
+                            classes=self.classes_, pos_label=self.pos_label)
         return scores
 
     def get_iteration_scores(self):
@@ -342,7 +346,7 @@ class HyperGBMEstimator(Estimator):
             get_scores(self.gbm_model, iteration_scores)
         return iteration_scores
 
-    def fit_cross_validation_by_dask(self, X, y, verbose=0, stratified=True, num_folds=3,
+    def fit_cross_validation_by_dask(self, X, y, verbose=0, stratified=True, num_folds=3, pos_label=None,
                                      shuffle=False, random_state=9527, metrics=None, **kwargs):
         starttime = time.time()
         if verbose is None:
@@ -424,6 +428,7 @@ class HyperGBMEstimator(Estimator):
         oof_ = oof_df.to_dask_array(lengths=True)
 
         self.cv_gbm_models_ = models
+        self.pos_label = pos_label
 
         if metrics is None:
             metrics = ['accuracy']
@@ -434,12 +439,13 @@ class HyperGBMEstimator(Estimator):
             proba = oof_
             preds = self.proba2predict(oof_)
             preds = da.take(np.array(self.classes_), preds, axis=0)
-        scores = calc_score(y, preds, proba, metrics, self.task)
+        scores = calc_score(y, preds, proba, metrics=metrics, task=self.task,
+                            classes=self.classes_, pos_label=pos_label)
         if verbose > 0:
             logger.info(f'taken {time.time() - starttime}s')
         return scores, oof_, None
 
-    def fit(self, X, y, verbose=0, **kwargs):
+    def fit(self, X, y, pos_label=None, verbose=0, **kwargs):
         starttime = time.time()
         if verbose is None:
             verbose = 0
@@ -499,6 +505,8 @@ class HyperGBMEstimator(Estimator):
 
         if self.classes_ is None and hasattr(self.gbm_model, 'classes_'):
             self.classes_ = self.gbm_model.classes_
+        self.pos_label = pos_label
+
         if verbose > 0:
             logger.info(f'taken {time.time() - starttime}s')
 
@@ -585,7 +593,8 @@ class HyperGBMEstimator(Estimator):
         else:
             proba = None
         preds = self.predict(X, verbose=verbose)
-        scores = calc_score(y, preds, proba, metrics, self.task)
+        scores = calc_score(y, preds, proba, metrics=metrics, task=self.task,
+                            pos_label=self.pos_label, classes=self.classes_)
         return scores
 
     def save(self, model_file):
