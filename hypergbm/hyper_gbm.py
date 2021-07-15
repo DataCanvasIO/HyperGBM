@@ -220,7 +220,7 @@ class HyperGBMEstimator(Estimator):
     def fit_cross_validation(self, X, y, verbose=0, stratified=True, num_folds=3, pos_label=None,
                              shuffle=False, random_state=9527, metrics=None, **kwargs):
         if dex.exist_dask_object(X, y):
-            return self.fit_cross_validation_by_dask(X, y, verbose=verbose,
+            return self.fit_cross_validation_by_dask(X, y, verbose=verbose, pos_label=pos_label,
                                                      stratified=stratified, num_folds=num_folds,
                                                      shuffle=shuffle, random_state=random_state,
                                                      metrics=metrics, **kwargs)
