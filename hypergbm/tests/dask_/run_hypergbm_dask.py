@@ -7,7 +7,7 @@ from dask.distributed import Client
 from hypergbm import make_experiment
 from hypernets.tabular import dask_ex as dex
 from hypernets.tabular.datasets import dsutils
-from hypernets.tabular.metrics import calc_score
+from hypernets.tabular.metrics import evaluate
 
 
 def main():
@@ -28,20 +28,28 @@ def main():
     df_train, df_test = client.persist([df_train, df_test])
 
     # make experiment and run it
-    experiment = make_experiment(df_train, target=target_name, log_level='info', down_sample_search=False)
-    estimator = experiment.run(max_trials=30)
-    best_trial = experiment.hyper_model.get_best_trial()
+    experiment = make_experiment(df_train, target=target_name, log_level='info', down_sample_search=False, cv=False,
+                                 early_stopping_rounds=0, class_balancing=True, )
+    estimator = experiment.run(max_trials=3)
+    print(estimator)
+
+    best_trial = experiment.hyper_model_.get_best_trial()
     print(f'best_trial: {best_trial}')
+
+    # import pickle
+    # with open('/tmp/model.pkl', 'wb') as f:
+    #     pickle.dump(estimator, f, protocol=pickle.HIGHEST_PROTOCOL)
+
+    # with open('/tmp/model.pkl', 'rb') as f:
+    #     estimator = pickle.load(f)
 
     # evaluate the trained estimator
     X_test = df_test.copy()
     y_test = X_test.pop(target_name)
     X_test, y_test = client.persist([X_test, y_test])
-    y_pred = estimator.predict(X_test)
-    y_proba = estimator.predict_proba(X_test)
-    result = calc_score(y_test, y_pred, y_proba,
-                        metrics=['accuracy', 'auc', 'logloss', 'f1', 'recall', 'precision'],
-                        pos_label='yes')
+    result = evaluate(estimator, X_test, y_test,
+                      metrics=['accuracy', 'auc', 'logloss', 'f1', 'recall', 'precision'],
+                      pos_label='yes')
     print(f'final result: {result}')
 
 

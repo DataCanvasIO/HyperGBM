@@ -40,8 +40,6 @@ except:
 
 logger = logging.get_logger(__name__)
 
-DEFAULT_EVAL_SIZE_LIMIT = 10000
-
 
 def get_sampler(sampler):
     samplers = {'RandomOverSampler': RandomOverSampler,
@@ -359,8 +357,6 @@ class HyperGBMEstimator(Estimator):
             pbar.reset()
             pbar.set_description('fit_transform_data')
 
-        eval_size_limit = kwargs.get('eval_size_limit', DEFAULT_EVAL_SIZE_LIMIT)
-
         X = self.fit_transform_data(X, y, verbose=verbose)
 
         iterators = dm_sel.KFold(n_splits=num_folds, shuffle=shuffle, random_state=random_state)
@@ -389,23 +385,22 @@ class HyperGBMEstimator(Estimator):
                 else:
                     x_train_fold, y_train_fold = sampler.fit_resample(x_train_fold, y_train_fold)
 
-            if valid_idx.shape[0] > eval_size_limit:
-                eval_idx = valid_idx[0:eval_size_limit]
-                x_eval, y_eval = X_values[eval_idx], y_values[eval_idx]
-                x_eval = dex.array_to_df(x_eval, meta=X)
-            else:
-                x_eval, y_eval = x_val_fold, y_val_fold
-
+            eval_set = [(x_val_fold, y_val_fold)]
             if self.task != 'regression' and \
-                    len(da.unique(y_eval).compute()) != len(da.unique(y_train_fold).compute()):
+                    len(da.unique(y_val_fold).compute()) != len(da.unique(y_train_fold).compute()):
                 eval_set = None
-            else:
-                eval_set = [dex.compute(x_eval, y_eval)]
 
             fold_est = copy.deepcopy(self.gbm_model)
             fit_kwargs = {**kwargs, 'sample_weight': sample_weight, 'eval_set': eval_set, 'verbose': 0,
                           'early_stopping_rounds': kwargs.get('early_stopping_rounds')
                           if eval_set is not None else None}
+            fold_est.group_id = f'{fold_est.__class__.__name__}_cv_{n_fold}'
+            if hasattr(fold_est, 'build_discriminator_callback'):
+                callback = fold_est.build_discriminator_callback(self.discriminator)
+                if callback:
+                    callbacks = fit_kwargs.get('callbacks', [])
+                    callbacks.append(callback)
+                    fit_kwargs['callbacks'] = callbacks
             fold_est.fit(x_train_fold, y_train_fold, **fit_kwargs)
 
             # print(f'fold {n_fold}, est:{fold_est.__class__},  best_n_estimators:{fold_est.best_n_estimators}')
@@ -531,11 +526,9 @@ class HyperGBMEstimator(Estimator):
                 for est in self.cv_gbm_models_:
                     pred = est.predict(X)
                     if pred_sum is None:
-                        if dex.is_dask_object(X):
-                            pred_sum = da.zeros_like(pred)
-                        else:
-                            pred_sum = np.zeros_like(pred)
-                    pred_sum += pred
+                        pred_sum = pred
+                    else:
+                        pred_sum += pred
                 preds = pred_sum / len(self.cv_gbm_models_)
             else:
                 proba = self.predict_proba(X)
@@ -572,11 +565,9 @@ class HyperGBMEstimator(Estimator):
             for est in self.cv_gbm_models_:
                 proba = getattr(est, method)(X)
                 if proba_sum is None:
-                    if dex.exist_dask_object(X):
-                        proba_sum = da.zeros_like(proba)
-                    else:
-                        proba_sum = np.zeros_like(proba)
-                proba_sum += proba
+                    proba_sum = proba
+                else:
+                    proba_sum += proba
             proba = proba_sum / len(self.cv_gbm_models_)
         else:
             proba = getattr(self.gbm_model, method)(X)
