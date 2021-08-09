@@ -1,4 +1,4 @@
-Overview
+HyperGBM
 =====================
 
 
@@ -7,24 +7,22 @@ DataCanvas
 HyperGBM is an open source project created by `DataCanvas <https://www.datacanvas.com>`_ .
 
 
+内容:
+------
 
-.. toctree::
-   :maxdepth: 2
-   :caption: Home:
+..  toctree::
+    :maxdepth: 2
 
-   概览<overview.rst>
-   安装教程<installation.md>
-   快速开始<quick_start.md>
-   HyperGBM<hypergbm.md>
-   Searchers<searchers.md>
-   Search Space<search_space.md>
-   CompeteExperiment<compete_experiment.md>
-   使用示例<example.rst>
-   How-To<how_to.rst>
-   Release Note<release_note.rst>
+    概览<overview.rst>
+    安装<installation.md>
+    快速开始<quick_start.rst>
+    使用示例<example.rst>
+    How-To<how_to.rst>
+    Release Notes<release_note.rst>
 
 
-Indices and tables
+		
+ces and tables
 ==================
 
 * :ref:`genindex`

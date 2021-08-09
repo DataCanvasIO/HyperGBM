@@ -1,21 +1,44 @@
-## 安装教程
-可以使用Docker或者pip来安装HyperGBM。
+## 安装HyperGBM
+推荐使用`pip`命令来安装HyperGBM；如果您有Docker环境，也可以在Docker容器中安装并运行HyperGBM。
+
+
 
 ### 使用pip
-它需要`Python3.6`或以上版本, 使用pip安装HyperGBM：
-```shell script
-pip install --upgrade pip setuptools # (optional)
-pip install hypergbm 
+安装HyperGBM之前，您需要准备`Python3.6`或以上版本的运行环境并保证 `pip` 命令可正常运行。 使用pip安装HyperGBM：
+```bash
+pip install hypergbm
 ```
 
-**安装shap(可选)**
+此时会安装HyperGBM及必要的依赖包，如果您希望安装HyperGBM以及所有依赖包（如：shap)，则可通过如下形式安装：
 
-HyperGBM提供了基于[shap](https://github.com/slundberg/shap) 模型解释功能，如果需要请参照[文档](how_to/install_shap.md)安装。
+```bash
+pip install hypergbm[all]
+```
+
+
 
 ### 使用Docker
-您也可以通过我们提供的Docker镜像内置的Jupyter来使用HyperGBM:
-```shell script
-docker run -ti -e NotebookToken="your-token" -p 8888:8888 datacanvas/hypergbm:0.2.0
+
+HyperGBM支持在Docker容器中运行，您可在Dockerfile中通过 `pip` 安装HyperGBM，然后使用。
+
+我们在Docker Hub中发布了一个参考镜像，可直接下载使用，该镜像中包括：
+
+* Python3.7
+* HyperGBM及其依赖包
+* JupyterLab
+
+
+
+下载镜像：
+```bash
+docker pull datacanvas/hypergbm
 ```
 
-打开浏览器，访问`http://<your-ip>:8888`，所需要的Token即为您设置的"your-token"，如果没设置则为空。
+运行镜像:
+
+```bash
+docker run -ti -e NotebookToken="your-token" -p 8888:8888 datacanvas/hypergbm
+```
+
+打开浏览器，访问`http://<your-ip>:8888`，输入您设置的token即可开始使用。
+

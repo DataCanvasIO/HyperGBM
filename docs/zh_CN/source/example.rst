@@ -1,9 +1,11 @@
-Examples
+使用示例
 =====================
 
 .. toctree::
    :maxdepth: 2
-   :caption: Examples:
 
-   使用Experiment接口<example_by_experiment.md>
-   使用HyperGBM接口<example_by_hyper_gbm.md>
+   基础应用<example_basic.md>
+   高级应用<example_advanced.md>
+   处理不平衡数据<example_imbalance.md>
+   自定义SearchSpace<example_customize.md>
+   分布式训练<example_dask.md>

@@ -17,19 +17,29 @@
 
 # -- Project information -----------------------------------------------------
 
-import os, sys
+import os
+import sys
+from datetime import datetime
+
 sys.path.insert(0, os.path.abspath('../..'))
 
+
+def setup(app):
+    app.add_css_file('css/my_theme.css')
+
+
+now = datetime.now()
 project = 'HyperGBM'
-copyright = '2020, Zetyun.com'
+copyright = f'{now.year}, Zetyun.com'
 author = 'Zetyun.com'
 
 # The full version, including alpha/beta/rc tags
-release = '0.2.2'
+release = '0.3.0'
 extensions = ['recommonmark',
+              # 'nbsphinx',
               'sphinx.ext.autodoc',
               'sphinx.ext.napoleon',
-              'sphinx.ext.viewcode'
+              'sphinx.ext.viewcode',
               # 'sphinx.ext.autodoc',
               # 'sphinx.ext.mathjax',
               # 'sphinx.ext.ifconfig',
@@ -37,7 +47,7 @@ extensions = ['recommonmark',
               # 'sphinx.ext.githubpages',
               ]
 exclude_patterns = []
-#html_theme = 'alabaster'
+# html_theme = 'alabaster'
 html_theme = 'sphinx_rtd_theme'
 pygments_style = 'sphinx'
 templates_path = ['_templates']
