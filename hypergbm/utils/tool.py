@@ -4,19 +4,13 @@ import os
 import pickle
 import re
 import sys
-from functools import partial
 
-import numpy as np
 import psutil
 
-from hypernets.utils.const import TASK_BINARY, TASK_MULTICLASS
-
-# from hypernets.utils import logging
-#
-# logger = logging.get_logger(__name__)
-
+from hypernets.utils import const, logging
 
 metric_choices = ['accuracy', 'auc', 'f1', 'logloss', 'mse', 'mae', 'msle', 'precision', 'rmse', 'r2', 'recall']
+strategy_choices = ['threshold', 'quantile', 'number']
 
 is_os_windows = sys.platform.find('win') >= 0
 
@@ -29,7 +23,7 @@ def to_bool(v):
     elif v.lower() in ('no', 'false', 'f', 'n', '0'):
         return False
     else:
-        raise argparse.ArgumentTypeError('Boolean value expected.')
+        raise argparse.ArgumentTypeError(f'Unexpected boolean value: {v}.')
 
 
 def setup_dask(overload):
@@ -66,7 +60,7 @@ def setup_dask(overload):
 def main():
     def setup_train_args(a):
         tg = a.add_argument_group('Training settings')
-        tg.add_argument('--train-data', '--train-file', '--train', type=str, default=None,
+        tg.add_argument('--train-data', '--train-file', '--train', type=str, default=None, required=True,
                         help='the file path of training data, .csv and .parquet files are supported.')
         tg.add_argument('--eval-data', '--eval-file', '--eval', type=str, default=None,
                         help='the file path of evaluation data, .csv and .parquet files are supported.')
@@ -76,7 +70,7 @@ def main():
                         choices=[None, 'adversarial_validation'],
                         help=None)
         tg.add_argument('--target', '--y', type=str, default=None,
-                        help='training target feature name, default is "y"')
+                        help='training target feature name, default is %(default)s')
         tg.add_argument('--task', type=str, default=None, choices=['binary', 'multiclass', 'regression'],
                         help='train task type, will be detected from target by default')
         tg.add_argument('--max-trials', '--trials', '--n', type=int, default=10,
@@ -92,8 +86,20 @@ def main():
                         help='alias of "--cv false"')
         tg.add_argument('--cv-num-folds', '--num-folds', dest='num_folds', type=int, default=3,
                         help='fold number of cv, default %(default)s')
+        tg.add_argument('--pos-label', type=str, default=None,
+                        help='pos label')
+        tg.add_argument('--down_sample_search', type=to_bool, default=False,
+                        help='enable down_sample_search, default %(default)s')
+        tg.add_argument('--down_sample_search_size', type=float, default=0.1,
+                        help='down_sample_search_size, default %(default)s')
+        tg.add_argument('--down_sample_search_time_limit', type=int, default=None,
+                        help='down_sample_search_time_limit, default %(default)s')
+        tg.add_argument('--down_sample_search_max_trials', type=int, default=None,
+                        help='down_sample_search_max_trials, default %(default)s')
         tg.add_argument('--ensemble-size', '--ensemble', type=int, default=20,
                         help='how many estimators are involved, set "0" to disable ensemble, default %(default)s')
+        tg.add_argument('--random-state', type=int, default=None,
+                        help='random state seed (int), default %(default)s')
         tg.add_argument('--model-file', '--model', type=str, default='model.pkl',
                         help='the output pickle file name for trained model, default %(default)s')
 
@@ -114,6 +120,28 @@ def main():
         eg.add_argument('--early-stopping-rounds', '--es-rounds', type=int, default=10,
                         help='default %(default)s ')
         eg.add_argument('--early-stopping-reward', '--es-reward', type=float, default=0.0)
+
+        fg = a.add_argument_group('Feature generation')
+        fg.add_argument('--feature-generation', type=to_bool, default=False)
+        fg.add_argument('-fg', '-fg+', dest='feature_generation', action='store_true',
+                        help='alias of "--feature_generation true"')
+        fg.add_argument('-fg-', dest='feature_generation', action='store_false',
+                        help='alias of "--feature_generation false"')
+        fg.add_argument('--feature-generation-categories-cols', '--fg-categories-cols',
+                        type=str, default=None, nargs='*',
+                        help='generate features as category column, default %(default)s')
+        fg.add_argument('--feature-generation-continuous-cols', '--fg-continuous-cols',
+                        type=str, default=None, nargs='*',
+                        help='generate features as continuous column, default %(default)s')
+        fg.add_argument('--feature-generation-datetime-cols', '--fg-datetime-cols',
+                        type=str, default=None, nargs='*',
+                        help='generate features as datetime column, default %(default)s')
+        fg.add_argument('--feature-generation-latlong-cols', '--fg-latlong-cols',
+                        type=str, default=None, nargs='*',
+                        help='generate features as latlong column, default %(default)s')
+        fg.add_argument('--feature-generation-text-cols', '--fg-text-cols',
+                        type=str, default=None, nargs='*',
+                        help='generate features as text column, default %(default)s')
 
         dg = a.add_argument_group('Drift detection')
         dg.add_argument('--drift-detection', type=to_bool, default=True,
@@ -144,23 +172,69 @@ def main():
         cg.add_argument('-cd-', dest='collinearity_detection', action='store_false',
                         help='alias of "--collinearity-detection false"')
 
-        s2g = a.add_argument_group('Two stage searching')
-        s2g.add_argument('--feature-reselection', type=to_bool, default=False,
+        fsg = a.add_argument_group('Feature selection')
+        fsg.add_argument('--feature-selection', type=to_bool, default=False,
                          help='default %(default)s')
-        s2g.add_argument('-re', '-re+', '-pi', '-pi+', dest='feature_reselection', action='store_true',
-                         help='alias of "--feature-reselection true"')
-        s2g.add_argument('-re-', '-pi-', dest='feature_reselection', action='store_false',
-                         help='alias of "--feature-reselection false"')
+        fsg.add_argument('-fs', '-fs+', dest='feature_selection', action='store_true',
+                         help='alias of "--feature-selection true"')
+        fsg.add_argument('-fs-', dest='feature_selection', action='store_false',
+                         help='alias of "--feature-selection false"')
+        fsg.add_argument('--feature-selection-strategy', '--fs-strategy',
+                         type=str, default=strategy_choices[0], choices=strategy_choices,
+                         help='default %(default)s')
+        fsg.add_argument('--feature-selection-threshold', '--fs-threshold',
+                         type=float, default=0.1,
+                         help='default %(default)s')
+        fsg.add_argument('--feature-selection-quantile', '--fs-quantile',
+                         type=float, default=0.2,
+                         help='default %(default)s')
+        fsg.add_argument('--feature-selection-number', '--fs-number',
+                         type=float, default=0.8,
+                         help='default %(default)s')
 
-        s2g.add_argument('--pseudo-labeling', type=to_bool, default=False,
+        fs2g = a.add_argument_group('Feature selection (the 2nd stage)')
+        fs2g.add_argument('--feature-reselection', type=to_bool, default=False,
+                          help='default %(default)s')
+        fs2g.add_argument('-fs2', '-fs2+', '-pi', '-pi+', dest='feature_reselection', action='store_true',
+                          help='alias of "--feature-reselection true"')
+        fs2g.add_argument('-fs2-', '-fs2-', '-pi-', dest='feature_reselection', action='store_false',
+                          help='alias of "--feature-reselection false"')
+        fs2g.add_argument('--feature-reselection-estimator-size', '--fs2-estimator-size', '--pi-estimator-size',
+                          type=int, default=10,
+                          help='default %(default)s')
+        fs2g.add_argument('--feature-reselection-strategy', '--fs2-strategy', '--pi-strategy',
+                          type=str, default=strategy_choices[0], choices=strategy_choices,
+                          help='default %(default)s')
+        fs2g.add_argument('--feature-reselection-threshold', '--fs2-threshold', '--pi-threshold',
+                          type=float, default=0.1,
+                          help='default %(default)s')
+        fs2g.add_argument('--feature-reselection-quantile', '--fs2-quantile', '--pi-quantile',
+                          type=float, default=0.2,
+                          help='default %(default)s')
+        fs2g.add_argument('--feature-reselection-number', '--fs2-number', '--pi-number',
+                          type=float, default=0.8,
+                          help='default %(default)s')
+
+        plg = a.add_argument_group('Pseudo labeling (the 2nd stage)')
+        plg.add_argument('--pseudo-labeling', type=to_bool, default=False,
                          help='default %(default)s')
-        s2g.add_argument('-pl', '-pl+', dest='pseudo_labeling', action='store_true',
+        plg.add_argument('-pl', '-pl+', dest='pseudo_labeling', action='store_true',
                          help='alias of "--pseudo-labeling true"')
-        s2g.add_argument('-pl-', dest='pseudo_labeling', action='store_false',
+        plg.add_argument('-pl-', dest='pseudo_labeling', action='store_false',
                          help='alias of "--pseudo-labeling false"')
-        s2g.add_argument('--pseudo-labeling-proba-threshold', '--pl-threshold', type=float, default=0.8,
+        plg.add_argument('--pseudo-labeling-strategy', '--pl-strategy',
+                         type=str, default=strategy_choices[0], choices=strategy_choices,
                          help='default %(default)s')
-        s2g.add_argument('--pseudo-labeling-resplit', '--pl-resplit', type=to_bool, default=False,
+        plg.add_argument('--pseudo-labeling-proba-threshold', '--pl-threshold',
+                         type=float, default=0.8,
+                         help='default %(default)s')
+        plg.add_argument('--pseudo-labeling-proba-quantile', '--pl-quantile',
+                         type=float, default=0.8,
+                         help='default %(default)s')
+        plg.add_argument('--pseudo-labeling-sample-number', '--pl-number',
+                         type=float, default=0.2,
+                         help='default %(default)s')
+        plg.add_argument('--pseudo-labeling-resplit', '--pl-resplit', type=to_bool, default=False,
                          help='default %(default)s')
 
         # others
@@ -182,31 +256,34 @@ def main():
                        help='target feature name, default is %(default)s')
         a.add_argument('--model-file', '--model', default='model.pkl',
                        help='the pickle file name for trained model, default %(default)s')
-        a.add_argument('--metric', type=str, default=['accuracy'], nargs='*', metavar='METRIC',
+        a.add_argument('--metric', '--metrics', type=str, default=['accuracy'], nargs='*', metavar='METRIC',
                        choices=metric_choices,
                        help='metric name list, one or more of [%(choices)s], default %(default)s')
         a.add_argument('--threshold', type=float, default=0.5,
                        help=f'probability threshold to detect pos label, '
-                            f'use when task="{TASK_BINARY}" only, default %(default)s')
+                            f'use when task="{const.TASK_BINARY}" only, default %(default)s')
         a.add_argument('--pos-label', type=str, default=None,
                        help='pos label')
-        a.add_argument('--jobs', type=int, default=1,
+        a.add_argument('--jobs', type=int, default=-1,
                        help='job process count, default %(default)s')
 
     def setup_predict_args(a):
         a.add_argument('--data', '--data-file', type=str, required=True,
                        help='the data path of to predict, .csv and .parquet files are supported.')
-        a.add_argument('--target', '--y', type=str, default='y',
-                       help='target feature name, default is %(default)s')
         a.add_argument('--model-file', '--model', default='model.pkl',
                        help='the pickle file name for trained model, default %(default)s')
         a.add_argument('--proba', type=to_bool, default=False,
                        help='predict probability instead of target, default %(default)s')
-        a.add_argument('-proba', dest='proba', action='store_true',
+        a.add_argument('-proba', '-proba+', dest='proba', action='store_true',
                        help='alias of "--proba true"')
-        a.add_argument('--jobs', type=int, default=1,
+        a.add_argument('--threshold', type=float, default=0.5,
+                       help=f'probability threshold to detect pos label, '
+                            f'use when task="{const.TASK_BINARY}" only, default %(default)s')
+        a.add_argument('--jobs', type=int, default=-1,
                        help='job process count, default %(default)s')
 
+        a.add_argument('--target', '--y', type=str, default='y',
+                       help='target feature name for output, default is %(default)s')
         a.add_argument('--output', '--output-file', type=str, default='prediction.csv',
                        help='the output file name, default is %(default)s')
         a.add_argument('--output-with-data', '--with-data', type=str, default=None, nargs='*',
@@ -220,7 +297,7 @@ def main():
         # console output
         logging_group = a.add_argument_group('Console outputs')
 
-        logging_group.add_argument('--log-level', '--log', type=str, default=None,
+        logging_group.add_argument('--log-level', '--log', type=str, default='warn',
                                    help='logging level, default is %(default)s')
         logging_group.add_argument('-error', dest='log_level', action='store_const', const='error',
                                    help='alias of "--log-level error"')
@@ -269,6 +346,9 @@ def main():
     if args.command is None:
         p.parse_args(['--help'])
 
+    if args.log_level is not None:
+        logging.set_level(args.log_level)
+
     # setup dask if enabled
     if os.environ.get('DASK_SCHEDULER_ADDRESS') is not None:
         args.enable_dask = True
@@ -285,63 +365,21 @@ def main():
 
 def train(args):
     from hypergbm import make_experiment
-    from hypernets.tabular.datasets import dsutils
-    from hypernets.tabular import dask_ex as dex
 
-    if args.train_data is None or len(args.train_data) == 0:
-        if dex.dask_enabled():
-            df = dsutils.load_bank_by_dask()
-            # import dask_ml.preprocessing as dm_pre
-            # df['y'] = dm_pre.LabelEncoder().fit_transform(df['y'])
-        else:
-            df = dsutils.load_bank()
-        df.drop(['id'], axis=1)
-        target = 'y'
-        train_data = df.sample(frac=0.1)
-        print('>>> Not train-data found, make experiment with tabular bank data.', file=sys.stderr)
-    else:
-        train_data = args.train_data
-        target = args.target
-        if args.verbose:
-            print(f'>>> make experiment with train data {train_data}, '
-                  f'eval data: {args.eval_data}, test data: {args.test_data}.')
+    train_data = args.train_data
+    reversed_keys = ['command', 'enable_dask', 'overload',
+                     'train_data', 'model_file']
+    kwargs = {k: v for k, v in args.__dict__.items() if k not in reversed_keys and not k.startswith('_')}
 
-    experiment = make_experiment(train_data, target=target, test_data=args.test_data, eval_data=args.eval_data,
-                                 task=args.task,
-                                 id=args.id,
-                                 max_trials=args.max_trials,
-                                 ensemble_size=args.ensemble_size,
-                                 reward_metric=args.reward_metric,
-                                 train_test_split_strategy=args.train_test_split_strategy,  # 'adversarial_validation'
-                                 searcher=args.searcher,
-                                 early_stopping_time_limit=args.early_stopping_time_limit,
-                                 early_stopping_rounds=args.early_stopping_rounds,
-                                 early_stopping_reward=args.early_stopping_reward,
-                                 cv=args.cv,
-                                 num_folds=args.num_folds,
-                                 drift_detection=args.drift_detection,
-                                 drift_detection_remove_shift_variable=args.drift_detection_remove_shift_variable,
-                                 drift_detection_variable_shift_threshold=args.drift_detection_variable_shift_threshold,
-                                 drift_detection_threshold=args.drift_detection_threshold,
-                                 drift_detection_remove_size=args.drift_detection_remove_size,
-                                 drift_detection_min_features=args.drift_detection_min_features,
-                                 drift_detection_num_folds=args.drift_detection_num_folds,
-                                 collinearity_detection=args.collinearity_detection,
-                                 pseudo_labeling=args.pseudo_labeling,
-                                 pseudo_labeling_proba_threshold=args.pseudo_labeling_proba_threshold,
-                                 pseudo_labeling_resplit=args.pseudo_labeling_resplit,
-                                 feature_reselection=args.feature_reselection,
-                                 clear_cache=args.clear_cache,
-                                 log_level=args.log_level,
-                                 verbose=args.verbose,
-                                 )
+    experiment = make_experiment(train_data, **kwargs)
 
     if args.verbose:
-        print('>>> running experiment ...')
+        print('>>> running experiment with train data {train_data}, '
+              f'eval data: {args.eval_data}, test data: {args.test_data}.')
 
     estimator = experiment.run()
     with open(args.model_file, 'wb') as f:
-        pickle.dump(estimator, f, protocol=4)
+        pickle.dump(estimator, f, protocol=pickle.HIGHEST_PROTOCOL)
 
     if args.verbose:
         print(f'>>> model saved to {args.model_file}')
@@ -349,7 +387,7 @@ def train(args):
 
 def evaluate(args):
     from hypernets.utils import load_data
-    from hypernets.tabular.metrics import calc_score
+    from hypernets.tabular.metrics import evaluate
 
     eval_data = args.eval_data
     target = args.target
@@ -361,60 +399,21 @@ def evaluate(args):
     assert not (args.enable_dask and args.jobs > 1)
 
     if args.verbose:
-        print(f'>>> load model {model_file}')
-    with open(model_file, 'rb') as f:
-        estimator = pickle.load(f)
-
-    if hasattr(estimator, 'task'):
-        task = getattr(estimator, 'task', None)
-    elif type(estimator).__name__.find('Pipeline') >= 0 and hasattr(estimator, 'steps'):
-        task = getattr(estimator.steps[-1][1], 'task', None)
-    else:
-        task = None
-
-    if args.verbose:
-        print(f'>>> model task type: {task}')
-
-    if args.verbose:
         print(f'>>> load data {eval_data}')
-
     X = load_data(eval_data)
     y = X.pop(target)
 
-    fn_predict_proba = partial(load_and_predict, model_file, True) if args.jobs > 1 else estimator.predict_proba
-    fn_predict = partial(load_and_predict, model_file, False) if args.jobs > 1 else estimator.predict
-
-    kwargs = {}
-    if task == TASK_BINARY:
-        if args.verbose:
-            print(f'>>> run predict_proba')
-        proba = call_predict(fn_predict_proba, X, n_jobs=args.jobs)
-        pred = (proba[:, 1] > args.threshold).astype(np.int)
-        if args.pos_label is not None:
-            kwargs['pos_label'] = args.pos_label
-    elif task == TASK_MULTICLASS:
-        if args.verbose:
-            print(f'>>> run predict')
-        pred = call_predict(fn_predict, X, n_jobs=args.jobs)
-        if args.verbose:
-            print(f'>>> run predict_proba')
-        proba = call_predict(fn_predict_proba, X, n_jobs=args.jobs)
-    else:
-        if args.verbose:
-            print(f'>>> run predict')
-        pred = call_predict(fn_predict, X, n_jobs=args.jobs)
-        proba = None
-
     if args.verbose:
-        print(f'>>> calc scores: {metrics}')
-    scores = calc_score(y_true=y, y_preds=pred, y_proba=proba, metrics=metrics, **kwargs)
+        print(f'>>> evaluate {model_file} with {metrics}')
+    scores = evaluate(model_file, X, y, metrics,
+                      pos_label=args.pos_label, threshold=args.threshold, n_jobs=args.jobs)
 
     print(scores)
 
 
 def predict(args):
     from hypernets.utils import load_data
-    from hypernets.tabular import dask_ex as dex
+    from hypernets.tabular import dask_ex as dex, metrics
     import pandas as pd
 
     data_file = args.data
@@ -426,11 +425,6 @@ def predict(args):
     assert os.path.exists(model_file), f'Not found {model_file}'
     assert os.path.exists(data_file), f'Not found {data_file}'
     assert not (args.enable_dask and args.jobs > 1)
-
-    if args.verbose:
-        print(f'>>> load model {model_file}')
-    with open(model_file, 'rb') as f:
-        estimator = pickle.load(f)
 
     if args.verbose:
         print(f'>>> load data {data_file}')
@@ -451,13 +445,11 @@ def predict(args):
     if args.proba:
         if args.verbose:
             print(f'>>> run predict_proba')
-        fn = partial(load_and_predict, model_file, True) if args.jobs > 1 else estimator.predict_proba
+        pred = metrics.predict_proba(model_file, X, n_jobs=args.jobs)
     else:
         if args.verbose:
             print(f'>>> run predict')
-        fn = partial(load_and_predict, model_file, False) if args.jobs > 1 else estimator.predict
-
-    pred = call_predict(fn, X, n_jobs=args.jobs)
+        pred = metrics.predict(model_file, X, n_jobs=args.jobs, threshold=args.threshold)
 
     if args.verbose:
         print(f'>>> save prediction to {output_file}')
@@ -486,38 +478,6 @@ def predict(args):
 
     if args.verbose:
         print('>>> done')
-
-
-def load_and_predict(model_file, proba, df):
-    with open(model_file, 'rb') as f:
-        estimator = pickle.load(f)
-
-    if proba:
-        result = estimator.predict_proba(df)
-    else:
-        result = estimator.predict(df)
-
-    return result
-
-
-def call_predict(fn, df, n_jobs=1):
-    if n_jobs > 1:
-        from joblib import Parallel, delayed
-        import math
-
-        batch_size = math.ceil(df.shape[0] / n_jobs)
-        df_parts = [df[i:i + batch_size].copy() for i in range(df.index.start, df.index.stop, batch_size)]
-        options = dict(backend='multiprocessing') if is_os_windows else dict(prefer='processes')
-        pss = Parallel(n_jobs=n_jobs, **options)(delayed(fn)(x) for x in df_parts)
-
-        if len(pss[0].shape) > 1:
-            result = np.vstack(pss)
-        else:
-            result = np.hstack(pss)
-    else:
-        result = fn(df)
-
-    return result
 
 
 if __name__ == '__main__':
