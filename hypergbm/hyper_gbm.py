@@ -18,7 +18,7 @@ from sklearn import pipeline as sk_pipeline
 from sklearn.model_selection import KFold, StratifiedKFold
 from tqdm.auto import tqdm
 
-from hypernets.core.random_state import _hypernets_random_seed
+from hypernets.core import get_random_state
 from hypergbm.pipeline import ComposeTransformer
 from hypernets.core import Callback, ProgressiveCallback
 from hypernets.model.estimator import Estimator
@@ -219,7 +219,7 @@ class HyperGBMEstimator(Estimator):
     def fit_cross_validation(self, X, y, verbose=0, stratified=True, num_folds=3, pos_label=None,
                              shuffle=False, random_state=9527, metrics=None, **kwargs):
 
-        random_state = _hypernets_random_seed
+        random_state = get_random_state().get_state()[1][0]
         if dex.exist_dask_object(X, y):
             return self.fit_cross_validation_by_dask(X, y, verbose=verbose, pos_label=pos_label,
                                                      stratified=stratified, num_folds=num_folds,
