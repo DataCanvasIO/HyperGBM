@@ -29,7 +29,7 @@ from hypergbm import make_experiment
 
 train_data = ...
 experiment = make_experiment(train_data, target='...', 
-                            data_cleaner_args={'nan_chars':'\\N'})
+                            data_cleaner_args={'nan_chars': r'\N'})
 ...
 
 ```
@@ -94,7 +94,7 @@ experiment = make_experiment(train_data, target='...', collinearity_detection=Tr
 
 数据漂移是建模过程中的一个主要挑战。当数据的分布随着时间在不断的发现变化时，模型的表现会越来越差，*CompeteExeriment* 中引入了对抗验证的方法专门处理数据漂移问题。这个方法会自动的检测是否发生漂移，并且找出发生漂移的特征并删除他们，以保证模型在真实数据上保持良好的状态。
 
-为了开启飘逸检测，使用`make_experiment`创建实验时需要设置`drift_detection=True`（缺省）并提供测试集`test_data`。
+为了开启漂移检测，使用`make_experiment`创建实验时需要设置`drift_detection=True`（缺省）并提供测试集`test_data`。
 
 漂移检测相关的参数包括：
 

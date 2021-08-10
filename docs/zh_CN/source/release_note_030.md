@@ -12,7 +12,7 @@ Version 0.3.0
   - 增加对分布式的支持
 
 * 建模算法
-  - XGBoost：分布式建模从dask_xgboost迁移到xgboost.dask，与xgboost官网保值一致
+  - XGBoost：分布式建模从 `dask_xgboost` 迁移到 `xgboost.dask` ，与XGBoost官网保值一致
   - LightGBM：增加对多机分布式的支持
 
 * 模型训练

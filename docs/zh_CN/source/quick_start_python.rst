@@ -31,7 +31,7 @@ HyperGBM基于Python开发，推荐利用Python工具 *make_experiment* 创建�
        
 
  
-其中 *train_ddata* 用于模型训练（包括目标列），*X_test* 和 *y_test* 用于模型评价。
+其中 *train_data* 用于模型训练（包括目标列），*X_test* 和 *y_test* 用于模型评价。
 
 
 创建实验并进行训练
@@ -61,7 +61,7 @@ HyperGBM基于Python开发，推荐利用Python工具 *make_experiment* 创建�
 
   import pickle
   with open('model.pkl','wb') as f:
-    pickle.dump( estimator,f)
+    pickle.dump(estimator, f)
 
 
 

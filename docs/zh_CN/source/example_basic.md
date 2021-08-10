@@ -45,7 +45,7 @@ Pipeline(steps=[('data_clean',
 
 
 
-如果您的训练数据是cvs或parquet格式，而且数据文件的扩展名是“.csv”或“.parquet”的话，可以直接使用文件路径创建实验，make_experiment回自动将数据加载为DataFrame，如：
+如果您的训练数据是csv或parquet格式，而且数据文件的扩展名是“.csv”或“.parquet”的话，可以直接使用文件路径创建实验，make_experiment回自动将数据加载为DataFrame，如：
 
 ```python
 from hypergbm import make_experiment
@@ -186,7 +186,7 @@ print(estimator)
 
 ### 模型融合
 
-未了获取较好的模型效果，`make_experiment`创建实验时默认开启了模型融合的特性，并使用效果最好的20个模型进行融合，可通过参数`ensemble_size`指定参与融合的模型的数量。当`ensemble_size`设置为`0`时则表示禁用模型融合。
+为了获取较好的模型效果，`make_experiment`创建实验时默认开启了模型融合的特性，并使用效果最好的20个模型进行融合，可通过参数`ensemble_size`指定参与融合的模型的数量。当`ensemble_size`设置为`0`时则表示禁用模型融合。
 
 调整参与融合的模型数量的示例代码：
 ```python
