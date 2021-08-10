@@ -21,11 +21,12 @@ import os
 import sys
 from datetime import datetime
 
-sys.path.insert(0, os.path.abspath('../..'))
+sys.path.insert(0, os.path.abspath('../../..'))
 
 
 def setup(app):
     app.add_css_file('css/my_theme.css')
+    app.add_js_file('js/mermaid.min.js')
 
 
 now = datetime.now()
@@ -33,10 +34,12 @@ project = 'HyperGBM'
 copyright = f'{now.year}, Zetyun.com'
 author = 'Zetyun.com'
 
+mermaid_version = ''
+
 # The full version, including alpha/beta/rc tags
 release = '0.3.0'
 extensions = ['recommonmark',
-              # 'nbsphinx',
+              'sphinxcontrib.mermaid',
               'sphinx.ext.autodoc',
               'sphinx.ext.napoleon',
               'sphinx.ext.viewcode',
