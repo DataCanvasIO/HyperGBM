@@ -103,7 +103,7 @@ hypergbm predict --model model.pkl --data bank_to_pred.csv --output bank_output.
 
 ```bash
 hypergbm predict --model model.pkl --data bank_to_pred.csv --output bank_output.csv --with-data id
-head bak_output.csv
+head bank_output.csv
 
 id,y
 1563,no
@@ -119,7 +119,7 @@ id,y
 
 ```bash
 hypergbm predict --model model.pkl --data bank_to_pred.csv --output bank_output.csv --with-data '*'
-head bak_output.csv
+head bank_output.csv
 
 id,age,job,marital,education,default,balance,housing,loan,contact,day,month,duration,campaign,pdays,previous,poutcome,y
 1563,55,entrepreneur,married,secondary,no,204,no,no,cellular,14,jul,455,13,-1,0,unknown,no
