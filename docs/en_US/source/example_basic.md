@@ -195,9 +195,7 @@ experiment = make_experiment(train_data, ensemble_size=10, ...)
 
 The progress message during training can be shown by setting 'log_level' ('str' or 'int') to change the log level. Please refer the 'logging' package of python for further details. Besides, more thorough messages will show  when 'verobs' is set as '1'.
 
-Set the log level to 'INFO':
-
-将日志级别设置为`INFO`的示例代码如下：
+The following codes sets the log level to 'INFO':
 ```python
 from hypergbm import make_experiment
 from hypernets.tabular.datasets import dsutils
