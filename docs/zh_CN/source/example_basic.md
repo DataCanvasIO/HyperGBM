@@ -45,7 +45,7 @@ Pipeline(steps=[('data_clean',
 
 
 
-如果您的训练数据是csv或parquet格式，而且数据文件的扩展名是“.csv”或“.parquet”的话，可以直接使用文件路径创建实验，make_experiment回自动将数据加载为DataFrame，如：
+如果您的训练数据是csv或parquet格式，而且数据文件的扩展名是“.csv”或“.parquet”的话，可以直接使用文件路径创建实验，make_experiment会自动将数据加载为DataFrame，如：
 
 ```python
 from hypergbm import make_experiment
