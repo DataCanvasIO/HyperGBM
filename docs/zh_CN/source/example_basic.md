@@ -199,7 +199,7 @@ experiment = make_experiment(train_data, ensemble_size=10, ...)
 
 ### 调整日志级别
 
-如果希望对在训练过程中看到使用进度信息的话，可通过log_level指定日志级别，可以就`str`或`int`。关于日志级别的详细定义可参考python的`logging`包。 另外，如果将`verbose`设置为`1`的话，可以得到更详细的信息。
+如果希望在训练过程中看到使用进度信息的话，可通过log_level指定日志级别，可以是`str`或`int`。关于日志级别的详细定义可参考python的`logging`包。 另外，如果将`verbose`设置为`1`的话，可以得到更详细的信息。
 
 
 将日志级别设置为`INFO`的示例代码如下：
