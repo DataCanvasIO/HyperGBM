@@ -11,7 +11,7 @@ search_space_general = GeneralSearchSpaceGenerator(n_estimators=200)
 ### Define Search Space
 
 
-To use a specific search space, one can change the parameter `search_space` when calling `make_experiment`. Taking defing the `max_depth` as 20 for `xgboost` as an example:
+To use a specific search space, one can change the parameter `search_space` when calling `make_experiment`. Taking defining the `max_depth` as 20 for `xgboost` as an example:
 
 ```python
 from hypergbm import make_experiment
@@ -30,7 +30,7 @@ experiment = make_experiment(train_data,
 
 
 
-If you want to use searchable parameters, we recommend defining a subclass of `GeneralSearchSpaceGenerator`. For example, if we want the algorithm to search among 3 choices of the `max_depth` for `xgboost`:
+If you want to use searchable parameters, we recommend doing this by defining a subclass of `GeneralSearchSpaceGenerator`. For example, if we want the algorithm to search among 3 choices of the `max_depth` for `xgboost`:
 
 ```python
 from hypergbm import make_experiment
