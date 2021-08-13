@@ -57,7 +57,16 @@ print(estimator)
 
 ```
 
+### 设置最大搜索次数(max_trials)
+缺省情况下，`make_experiment`所创建的实验最多搜索10种参数便会停止搜索。实际使用中，建议将最大搜索次数设置为30以上。
 
+```python
+from hypergbm import make_experiment
+
+train_data = ...
+experiment = make_experiment(train_data, max_trials=50)
+...
+```
 
 ### 交叉验证
 
@@ -128,7 +137,7 @@ print(estimator)
 
 ### 设置搜索次数和早停（Early Stopping）策略
 
-使用`make_experiment`时，可通过参数`max_trials`设置最大搜索次数，通过参数`early_stopping_round`、`early_stopping_time_limit`、`early_stopping_reward`设置实验的早停策略。
+使用`make_experiment`时，可通过参数`early_stopping_round`、`early_stopping_time_limit`、`early_stopping_reward`设置实验的早停策略。
 
 将搜索时间设置为最多3小时的示例代码：
 ```python
