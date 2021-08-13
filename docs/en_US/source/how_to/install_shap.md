@@ -6,7 +6,7 @@
     yum install -y llvm9.0 llvm9.0-devel python36-devel devtoolset-9-gcc devtoolset-9-gcc-c++ make cmake 
     ```
 
-2. Configure install environment
+2. Configure installing environment
     ```shell script
     whereis llvm-config-9.0-64  # find your `llvm-config` path
     # llvm-config-9: /usr/bin/llvm-config-9.0-64
