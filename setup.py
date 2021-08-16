@@ -83,6 +83,7 @@ setup(
         'Programming Language :: Python',
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: 3.8',
         'Topic :: Scientific/Engineering',
         'Topic :: Scientific/Engineering :: Artificial Intelligence',
         'Topic :: Software Development',
@@ -91,6 +92,7 @@ setup(
     ],
     packages=find_packages(exclude=('docs', 'tests')),
     package_data={
+        'hypergbm': ['examples/*', ],
     },
     zip_safe=False,
     entry_points={

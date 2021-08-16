@@ -9,12 +9,20 @@
 pip install hypergbm
 ```
 
-此时会安装HyperGBM及必要的依赖包，如果您希望安装HyperGBM以及所有依赖包（如：shap)，则可通过如下形式安装：
+可选的, 如果您希望在JupyterLab中使用HyperGBM, 可通过如下命令安装HyperGBM:
+```bash
+pip install hypergbm[notebook]
+```
+可选的, 如果您希望在特征衍生时支持中文字符中, 可通过如下命令安装HyperGBM:
+```bash
+pip install hypergbm[zhcn]
+```
+
+可选的, 如果您希望安装HyperGBM以及所有依赖包，则可通过如下形式安装：
 
 ```bash
 pip install hypergbm[all]
 ```
-
 
 
 ### 使用Docker

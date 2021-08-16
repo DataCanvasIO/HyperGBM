@@ -2,7 +2,7 @@
 
 
 HyperGBM提供了命令行工具 `hypergbm` 进行模型训练、评估和预测数据，查看命令行帮助：
-```console
+```bash
 hypergm -h
 
 usage: hypergbm [-h] [--log-level LOG_LEVEL] [-error] [-warn] [-info] [-debug]
