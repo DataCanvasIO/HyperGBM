@@ -23,7 +23,7 @@ experiment = make_experiment(train_data,
 
 The most common approach to handle the data imbalance problem is to modify the data distribution to get a more balanced dataset then train the model with the modified dataset. Currently, HyperGBM supports several resampling strategies including *RandomOverSampler*, *SMOTE*, *ADASYN*, *RandomUnderSampler*, *NearMiss*, *TomekLinks*, and *EditedNearestNeighbours*. To enable different sampling method, one only needs to set `class_balancing='<selected strategy>'` when using `make_experiment`. Pleas refer to the following example:
 
-为了利用欠采样或过采样技建模，在调用`make_experiment`时，设置参数`class_balancing=‘<采用策略>’`即可，示例如下：
+To enable Under sampling and Over sampling, set `class_balancing=‘<strategy>’` when creating experiment. An example code is as follows:
 
 ```python
 from hypergbm import make_experiment
