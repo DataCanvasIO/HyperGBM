@@ -9,7 +9,6 @@ from os import path as P
 
 
 def read_requirements(file_path='requirements.txt'):
-
     if not os.path.exists(file_path):
         return []
 
@@ -92,7 +91,7 @@ setup(
     ],
     packages=find_packages(exclude=('docs', 'tests')),
     package_data={
-        'hypergbm': ['examples/*', ],
+        'hypergbm': ['examples/*', 'examples/**/*', 'examples/**/**/*'],
     },
     zip_safe=False,
     entry_points={
