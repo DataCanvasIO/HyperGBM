@@ -13,7 +13,7 @@ The basic steps for training the model with *make_experiment* are as follows：
 
 
 Prepare the dataset
------------------
+--------------------------
 
 Both pandas and dask can be loaded depending on your task types to get DataFrame for training the model.
 
@@ -35,7 +35,7 @@ where *train_data* is used for model trianing while *X_test* are *y_test* used f
 
 
 Create experiment with *make_experiment*
----------------------------------
+--------------------------------------------
 
 Users can creating experiment for the prepared dataset and start training the model following procedures below：
 
@@ -51,7 +51,7 @@ Users can creating experiment for the prepared dataset and start training the mo
 where *estimator* is the trianed model.
 
 
-Get the model
+Save the model
 ---------------------------------
 
 

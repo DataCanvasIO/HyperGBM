@@ -1,24 +1,24 @@
 Advanced applications
-==========
+=========================
 
-HyperGBM *make_experiment* create an instance of *CompeteExeriment* in Hypernets. There are many advanced features of *CompeteExeriment* which will be covered in this section.
+HyperGBM *make_experiment* create an instance of *CompeteExperiment* in Hypernets. There are many advanced features of *CompeteExperiment* which will be covered in this section.
 
 .. mermaid::
 
     flowchart LR
         dc[Data<br/>Cleaning]
         fg[Feature generation]
-        cd[Colinear detection]
+        cd[collinearity detection]
         dd[Drift detection]
         fs[Feature selection]
         s1[Search optimization]
-        pi[Two-stage<br/>Feature<br/>selection]
+        pi[2nd-stage<br/>Feature<br/>selection]
         pl[Pseudo label]
-        s2[Two-stage<br/>search optimization]
-        em[Modle<br/>ensemble]
+        s2[2nd-stage<br/>search optimization]
+        em[Model<br/>ensemble]
         op2[op]
 
-        subgraph One-stage
+        subgraph 1st-stage
             direction LR
             subgraph op
                 direction TB
@@ -28,7 +28,7 @@ HyperGBM *make_experiment* create an instance of *CompeteExeriment* in Hypernets
             fg-->op
             op-->s1
         end
-        subgraph Two-stage
+        subgraph 2nd-stage
             direction LR
             subgraph op2
                 direction TB
@@ -36,22 +36,21 @@ HyperGBM *make_experiment* create an instance of *CompeteExeriment* in Hypernets
             end
             op2-->s2
         end
-        dc-->One-stage-->Two-stage-->em
+        dc-->1st-stage-->2nd-stage-->em
 
-        style Two-stage stroke:#6666,stroke-width:2px,stroke-dasharray: 5, 5;
-        style Two-stage stroke:#6666,stroke-width:2px,stroke-dasharray: 5, 5;
+        style 2nd-stage stroke:#6666,stroke-width:2px,stroke-dasharray: 5, 5;
 
 
 
 Data cleaning
----------
+-----------------
 
-The first step of the *CompeteExeriment* is to perform data cleaning with DataCleaner in Hypernets. Note that this step can not be disabled but can be adjusted with DataCleaner in the following ways：
+The first step of the *CompeteExperiment* is to perform data cleaning with DataCleaner in Hypernets. Note that this step can not be disabled but can be adjusted with DataCleaner in the following ways：
 
 * nan_chars： value or list, (default None), replace some characters with np.nan
-* correct_object_dtype： bool, (default True), whether correct the datatypes
-* drop_constant_columns： bool, (default True), whether drop constatn columns
-* drop_duplicated_columns： bool, (default False), whether deteate repeated columns
+* correct_object_dtype： bool, (default True), whether correct the data types
+* drop_constant_columns： bool, (default True), whether drop constant columns
+* drop_duplicated_columns： bool, (default False), whether delete repeated columns
 * drop_idness_columns： bool, (default True), whether drop id columns
 * drop_label_nan_rows： bool, (default True), whether drop rows with target values np.nan
 * replace_inf_values： (default np.nan), which values to replace np.nan with
@@ -74,19 +73,19 @@ If nan is represented by '\N' in data，users can replace '\N' back to np.nan wh
 
 
 Feature generation
-----------
+---------------------
 
-*CompeteExeriment* is capable of performing featrue generation, which can be turned on by setting *feature_generation=True* when creating experiment with *make_experiment*. There are several options:
+*CompeteExperiment* is capable of performing feature generation, which can be turned on by setting *feature_generation=True* when creating experiment with *make_experiment*. There are several options:
 
-* feature_generation_continuous_cols：list (default None)), continuous featrue, inferring automatically if set as None.
-* feature_generation_categories_cols：list (default None)), categorical feature, need to be set explicitly, *CompeteExeriment* can not perform automatic inference for this one.
+* feature_generation_continuous_cols：list (default None)), continuous feature, inferring automatically if set as None.
+* feature_generation_categories_cols：list (default None)), categorical feature, need to be set explicitly, *CompeteExperiment* can not perform automatic inference for this one.
 * feature_generation_datetime_cols：list (default None), datetime feature, inferring automatically if set as None.
 * feature_generation_latlong_cols：list (default None), latitude and longtitude feature, inferring automatically if set as None. 
 * feature_generation_text_cols：list (default None), text feature, inferring automatically if set as None.
 * feature_generation_trans_primitives：list (default None), transformations for feature generation, inferring automatically if set as None.
 
 
-When feature_generation_trans_primitives=None, *CompeteExeriment* will automatically infere the types used for transforming based on the default features. Specifically, different transformations will be adopted for different types:
+When feature_generation_trans_primitives=None, *CompeteExperiment* will automatically infer the types used for transforming based on the default features. Specifically, different transformations will be adopted for different types:
 
 * continuous_cols： None, need to be set explicitly.
 * categories_cols： cross_categorical.
@@ -112,15 +111,15 @@ An example code for enabling feature generation:
 Please refer to [featuretools](https://docs.featuretools.com/) for more information.
 
 
-Colinear detection
------------------
+Collinearity detection
+---------------------------
 
 There will often be some highly relevant features which are not informative but are more seen as noises. They are not very useful. On the contrary, the dataset will be affected by drifts of these features more heavily.
 
 
-It is possible to handle these colinear features with *CompeteExeriment*. This can be simply enabled by setting *collinearity_detection=True* when creating experiment.
+It is possible to handle these collinear features with *CompeteExperiment*. This can be simply enabled by setting *collinearity_detection=True* when creating experiment.
 
-Example code for using colinear detection
+Example code for using collinearity detection
 
 .. code-block:: python
 
@@ -133,7 +132,7 @@ Example code for using colinear detection
 
 
 Drift detection
-------------
+-------------------
 
 Concept drift is one of the major challenge for machine learning. The model will often perform worse in practice due to the fact that the data distributions will change along with time. To handle this problem, *CompeteExeriment* adopts Adversarial Validation to detect whether there is any drifted features and drop them to maintain a good performance.
 
@@ -186,15 +185,15 @@ An code example:
 
 
 Feature selection
-------------
+--------------------------
 
-*CompeteExeriment* evaluates the importances of features by training a model. Then it chooses the most important ones among them to continue the model training.
+*CompeteExperiment* evaluates the importances of features by training a model. Then it chooses the most important ones among them to continue the model training.
 
 To enable feature selection, one needs to set *feature_selection=True* when creating experiment. Relevant parameters:
 
-* feature_selection_strategy：str, selection strategies(default threshold), can be choosed from *threshold*, *number* and *quantile*.
-* feature_selection_threshold：float, (default 0.1), selection threshold when the strategy is *threshold*, features with scores higher than this threshold will be selcected.
-* feature_selection_quantile：float, (default 0.2), selection threshold when the strategy is *quantile*, features with scores higher than this threshold will be selcected.
+* feature_selection_strategy：str, selection strategies(default threshold), can be chose from *threshold*, *number* and *quantile*.
+* feature_selection_threshold：float, (default 0.1), selection threshold when the strategy is *threshold*, features with scores higher than this threshold will be selected.
+* feature_selection_quantile：float, (default 0.2), selection threshold when the strategy is *quantile*, features with scores higher than this threshold will be selected.
 * feature_selection_number：int or float, (default 0.8), selection numbers when the strategy is *number*.
 
 An example code:
@@ -213,7 +212,7 @@ An example code:
 
 
 UnderSampling pre-search
-----------------
+-----------------------------
 
 Normally, hyperparameter optimization will utilize all training data. However, this will cost a huge amount of time for a large dataset. To alleviate this problem, one can perform a pre-search with only a part of data to try more model parameters in the same amout of time. Better parameters will then be used for training with the whole data to obtain the optimal parameters.
 
@@ -238,20 +237,20 @@ An example code:
                                  ...)
 
 
-Two-stage feature selection
-------------------
+The second stage feature selection
+----------------------------------------
 
 *CompeteExperiment* supports continuing data processing with the trained model, which is officially called  *Two-stage search*. There are two types of Two-stage processings supported by *CompeteExperiment*: Two-stage feature selection and pseudo label which will be covered in the rest of this section.
 
-In *CompeteExperiment*, Two-stage feature selection is to choose models with good performances in the first stage, and use *permutation_importance* to evaluate them to give better features.
+In *CompeteExperiment*, the second stage feature selection is to choose models with good performances in the first stage, and use *permutation_importance* to evaluate them to give better features.
 
-To enable feature selection, one needs to set *feature_reselection=True*  when creating experiment. Relevant parameters:
+To enable the second stage feature selection, one needs to set *feature_reselection=True*  when creating experiment. Relevant parameters:
 
 * feature_reselection_estimator_size：int, (default=10), the number of models to be used for evaluating the importances of feature (top n best models in the first stage).
-* feature_reselection_strategy：str, selection strategy(default threshold), avaliable selection strategies include *threshold*, *number*, *quantile*.
+* feature_reselection_strategy：str, selection strategy(default threshold), available selection strategies include *threshold*, *number*, *quantile*.
 * feature_reselection_threshold：float, (default 1e-5), threshold when the selection strategy is *threshold*, importance scores higher than this values will be choosed.
 * feature_reselection_quantile：float, (default 0.2),  threshold when the selection strategy is *quantile*, importance scores higher than this values will be choosed.
-* feature_reselection_number：int or float, (default 0.8), the number of features to be selcected when the strategy is *number*.
+* feature_reselection_number：int or float, (default 0.8), the number of features to be selected when the strategy is *number*.
 
 An example code:
 
@@ -269,13 +268,13 @@ An example code:
 Please refer to [scikit-learn](https://scikit-learn.org/stable/modules/permutation_importance.html) for more information about  *permutation_importance*.
 
 Pseudo label
------------
+--------------
 
 Pseudo label is a kind of semi-supervised machine learning method. It will assign labels predicted by the model trained in the first stage to some examples in test data. Then examples with higher confidence values than a threshold will be added into the trainig set to train the model again. 
 
 To enable feature selection, one needs to set *pseudo_labeling=True* when creating experiment. Relevant parameters:
 
-* pseudo_labeling_strategy：str, selection strategy(default threshold), avaliable strategies include *threshold*, *number* and  *quantile*.
+* pseudo_labeling_strategy：str, selection strategy(default threshold), available strategies include *threshold*, *number* and  *quantile*.
 * pseudo_labeling_proba_threshold：float(default 0.8),  threshold when the selection strategy is *threshold*, confidence scores higher than this values will be choosed.
 * pseudo_labeling_proba_quantile：float(default 0.8),  threshold when the selection strategy is *quantile*, importance scores higher than this values will be choosed.
 * pseudo_labeling_sample_number：float(0.0~1.0) or int (default 0.2), the number of top features to be selcected when the strategy is *number*.
