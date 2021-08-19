@@ -1,5 +1,5 @@
 ## Installing HyperGBM
-We recommend installing HyperGBM with `pip`. Installing and using HyperGBM in a Docker container is also possible if you have a Docker environment.
+We recommend installing HyperGBM with `pip`. Installing and using HyperGBM in a Docker container are also possible if you have a Docker environment.
 
 
 

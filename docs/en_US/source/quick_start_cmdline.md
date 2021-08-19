@@ -113,7 +113,7 @@ id,y
 
 
 
-Furthermore, including all columns of the test data besides the predicting result to the file `bank_output.csv` can be done by setting `--with-data` as "*":
+Furthermore, including all columns of the test data besides the predicting results to the file `bank_output.csv` can be done by setting `--with-data` as "*":
 
 ```bash
 hypergbm predict --model model.pkl --data bank_to_pred.csv --output bank_output.csv --with-data '*'

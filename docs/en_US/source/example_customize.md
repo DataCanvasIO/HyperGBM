@@ -58,7 +58,7 @@ experiment = make_experiment(train_data,
 ### Support Machine Learning Models
 HyperGBM has already supported XGBoost, LightGBM, CatBoost, and HistGradientBoosting. They are taken as components of the Search Space to be searched for training a model. Supporting other machine learning algorithms can be done by following 3 steps:
 
-* encapsulating your algorithms as a subclass of HyperEstimator
+* Encapsulating your algorithms as a subclass of HyperEstimator
 * Add the encapsulated algorithms to the search sapce and define the search parameters
 * Use your Search Space in `make_experiment`
 

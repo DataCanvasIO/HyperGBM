@@ -1,7 +1,7 @@
 Advanced applications
 ==========
 
-HyperGBM *make_experiment* create a instance of *CompeteExeriment* in Hypernets. There are many advanced features of *CompeteExeriment* which will be covered in this section.
+HyperGBM *make_experiment* create an instance of *CompeteExeriment* in Hypernets. There are many advanced features of *CompeteExeriment* which will be covered in this section.
 
 .. mermaid::
 
@@ -50,12 +50,12 @@ The first step of the *CompeteExeriment* is to perform data cleaning with DataCl
 
 * nan_chars： value or list, (default None), replace some characters with np.nan
 * correct_object_dtype： bool, (default True), whether correct the datatypes
-* drop_constant_columns： bool, (default True), whether deleate constatn columns
+* drop_constant_columns： bool, (default True), whether drop constatn columns
 * drop_duplicated_columns： bool, (default False), whether deteate repeated columns
-* drop_idness_columns： bool, (default True), whether deleate id columns
-* drop_label_nan_rows： bool, (default True), whether deleate rows with target values np.nan
+* drop_idness_columns： bool, (default True), whether drop id columns
+* drop_label_nan_rows： bool, (default True), whether drop rows with target values np.nan
 * replace_inf_values： (default np.nan), which values to replace np.nan with
-* drop_columns： list, (default None), deleate which columns
+* drop_columns： list, (default None), drop which columns
 * reserve_columns： list, (default None), reserve which columns when performing data cleaning
 * reduce_mem_usage： bool, (default False), whether try to reduce the memory usage
 * int_convert_to： bool, (default 'float'), transform int to other types，None for no transformation
@@ -76,7 +76,7 @@ If nan is represented by '\N' in data，users can replace '\N' back to np.nan wh
 Feature generation
 ----------
 
-*CompeteExeriment* is cable of performing featrue generation, which can be turned on by setting *feature_generation=True* when creating experiment with *make_experiment*. There are several options:
+*CompeteExeriment* is capable of performing featrue generation, which can be turned on by setting *feature_generation=True* when creating experiment with *make_experiment*. There are several options:
 
 * feature_generation_continuous_cols：list (default None)), continuous featrue, inferring automatically if set as None.
 * feature_generation_categories_cols：list (default None)), categorical feature, need to be set explicitly, *CompeteExeriment* can not perform automatic inference for this one.
@@ -115,7 +115,7 @@ Please refer to [featuretools](https://docs.featuretools.com/) for more informat
 Colinear detection
 -----------------
 
-There will often be some highly relevant features which are not informative but more as noises. On the contrary, the dataset will be affected by drifts of these features more heavily.
+There will often be some highly relevant features which are not informative but are more seen as noises. They are not very useful. On the contrary, the dataset will be affected by drifts of these features more heavily.
 
 
 It is possible to handle these colinear features with *CompeteExeriment*. This can be simply enabled by setting *collinearity_detection=True* when creating experiment.
@@ -135,7 +135,7 @@ Example code for using colinear detection
 Drift detection
 ------------
 
-Concepts drift is one of the major challenge for machine learning. The model will often perform worse in practice due to the fact that the data distributions will change sometimes. To handle this problem, *CompeteExeriment* adopts Adversarial Validation to detect whether there is any drifted features and drop them to maintain a good performance.
+Concept drift is one of the major challenge for machine learning. The model will often perform worse in practice due to the fact that the data distributions will change along with time. To handle this problem, *CompeteExeriment* adopts Adversarial Validation to detect whether there is any drifted features and drop them to maintain a good performance.
 
 To enable drift detection, one needs to set *drift_detection=True* when creating experiment and provide *test_data*.
 
@@ -188,7 +188,7 @@ An code example:
 Feature selection
 ------------
 
-*CompeteExeriment* evaluates the importances of features by training a model. Then it choose the most important ones among them to continue the model training.
+*CompeteExeriment* evaluates the importances of features by training a model. Then it chooses the most important ones among them to continue the model training.
 
 To enable feature selection, one needs to set *feature_selection=True* when creating experiment. Relevant parameters:
 
@@ -215,7 +215,7 @@ An example code:
 UnderSampling pre-search
 ----------------
 
-Normally, hyperparameter optimization will utilize all training data. However, this will cost a huge amount of time for a large dataset. Therefore, to alleviate this problem, one can perform a pre-search with only a part of data to try more model parameters in the same amout of time. Better parameters will then be used for training with whole data to obtain the optimal parameters.
+Normally, hyperparameter optimization will utilize all training data. However, this will cost a huge amount of time for a large dataset. To alleviate this problem, one can perform a pre-search with only a part of data to try more model parameters in the same amout of time. Better parameters will then be used for training with the whole data to obtain the optimal parameters.
 
 To enable feature selection, one needs to set *down_sample_search=True*  when creating experiment. Relevant parameters:
 
@@ -271,7 +271,7 @@ Please refer to [scikit-learn](https://scikit-learn.org/stable/modules/permutati
 Pseudo label
 -----------
 
-Pseudo lable is a kind of semi-supervised machine learning. It will assign labels predicted by the model trained in the first stage to some examples in test data. Then examples with higher confidence values than a threshold will be added into the trainig set to train the model again. 
+Pseudo label is a kind of semi-supervised machine learning method. It will assign labels predicted by the model trained in the first stage to some examples in test data. Then examples with higher confidence values than a threshold will be added into the trainig set to train the model again. 
 
 To enable feature selection, one needs to set *pseudo_labeling=True* when creating experiment. Relevant parameters:
 

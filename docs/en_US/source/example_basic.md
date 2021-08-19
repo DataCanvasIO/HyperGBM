@@ -58,7 +58,7 @@ print(estimator)
 
 ### Use Cross Validation
 
-Users can apply cross validation in teh experiment by manually setting parameter `cv`. Setting `cv` as 'False' will lead the experiment to avoid using cross validation and apply train_test_split instead. On the other hand, when `cv` is `True`, the experiment will use cross validation where the number of folds can be adjusted through the parameter `num_folds`. The default value of `num_folds` is 3.
+Users can apply cross validation in the experiment by manually setting parameter `cv`. Setting `cv` as 'False' will lead the experiment to avoid using cross validation and apply train_test_split instead. On the other hand, when `cv` is `True`, the experiment will use cross validation where the number of folds can be adjusted through the parameter `num_folds`. The default value of `num_folds` is 3.
 
 
 Example code when `cv=True`:
@@ -143,7 +143,7 @@ print(estimator)
 
 ### Choose a Searcher
 
-HyperGBM performs parameter tuning with the search algorithms provided by Hypernets, which includes EvolutionSearch, MCTSSearcher, RandomSearcher. One can choose a specific searcher when using `make_experiment` by setting the parameter `searcher`.
+HyperGBM performs hyperparameter search with the search algorithms provided by Hypernets, which includes EvolutionSearch, MCTSSearcher, RandomSearcher. One can choose a specific searcher when using `make_experiment` by setting the parameter `searcher`.
 
 ```python
 from hypergbm import make_experiment
@@ -181,7 +181,7 @@ print(estimator)
 
 ### Ensemble Models
 
-`make_experiment` automatically turns on the model ensembling function to get a better model when created. It will ensemble the best 20 models while the number for ensembling can be changed by setting `ensemble_size` as the following code, where `ensemble_size=0` means no ensembling wii be made.
+`make_experiment` automatically turns on the model ensemble function to get a better model when created. It will ensemble the best 20 models while the number for ensembling can be changed by setting `ensemble_size` as the following code, where `ensemble_size=0` means no ensembling wii be made.
 
 ```python
 train_data = ...
@@ -193,7 +193,7 @@ experiment = make_experiment(train_data, ensemble_size=10, ...)
 
 ### Change the log level
 
-The progress message during training can be shown by setting `log_level` (`str` or `int`) to change the log level. Please refer the `logging` package of python for further details. Besides, more thorough messages will show  when `verobs` is set as `1`.
+The progress messages during training can be shown by setting `log_level` (`str` or `int`) to change the log level. Please refer the `logging` package of python for further details. Besides, more thorough messages will show  when `verobs` is set as `1`.
 
 The following codes sets the log level to 'INFO':
 ```python

@@ -5,10 +5,10 @@ We add the following new features to this version:
 
 * Data cleaning
   - Support automatically recognizing categorical columns among features with numerical datatypes
-  - Support performing data cleaning with several specific columns untouched
+  - Support performing data cleaning with several specific columns reserved
 
 * Feature generation
-  - Support datatime, text and Latitude and Longitude
+  - Support datatime, text and Latitude and Longitude features
   - Support distributed training
 
 * Modelling algorithms

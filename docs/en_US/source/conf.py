@@ -27,6 +27,7 @@ author = 'Zetyun.com'
 # The full version, including alpha/beta/rc tags
 release = '0.2.2'
 extensions = ['recommonmark',
+              'sphinxcontrib.mermaid'
               'sphinx.ext.autodoc',
               'sphinx.ext.napoleon',
               'sphinx.ext.viewcode'
