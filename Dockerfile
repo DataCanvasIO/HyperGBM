@@ -1,54 +1,21 @@
-FROM centos:7
+From python:3.7-buster
 
-ARG HYPERGBM_VERSION
-ARG HYPERGBM_GIT=https://github.com/DataCanvasIO/hypergbm.git
+ARG PIP_PKGS="hypergbm[all]"
+ARG PIP_OPTS="--disable-pip-version-check --no-cache-dir"
+#ARG PIP_OPTS="--disable-pip-version-check --no-cache-dir -i https://pypi.tuna.tsinghua.edu.cn/simple/"
 
-USER root
-ENV LANG C.UTF-8
-ENV NotebookToken ''
-
-# llvm9 in epel, need by compile shap;
-# gcc9 in centos-release-scl; gcc9 is need by compile xgboost
-# `scl enable devtoolset-9 bash` to enable gcc9
-# `echo "source /opt/rh/devtoolset-9/enable" >> /etc/profile` is equals to `scl enable devtoolset-9 bash`
-# xgboost need cmake3
-
-RUN  yum install epel-release  centos-release-scl -y \
-     && yum clean all \
-     && yum makecache \
-     && yum install -y llvm9.0 llvm9.0-devel python36-devel devtoolset-9-gcc devtoolset-9-gcc-c++ make cmake3 \
-	 && ln -s /opt/rh/devtoolset-9/root/usr/bin/gcc /usr/local/bin \
-	 && ln -s /opt/rh/devtoolset-9/root/usr/bin/g++ /usr/local/bin \
-	 && ln -s /usr/bin/cmake3 /usr/bin/cmake \
-     && yum install -y graphviz \
-     && yum install -y git
-
-ENV LLVM_CONFIG /usr/bin/llvm-config-9.0-64
-
-RUN mkdir -p /root/.pip \
-    && echo -e "[global]\n\
-index-url = https://mirrors.aliyun.com/pypi/simple" > /root/.pip/pip.conf
-
-# For install shap
-RUN echo -e "[easy_install]\n\
-index_url = https://mirrors.aliyun.com/pypi/simple" > /root/.pydistutils.cfg
-
-RUN mkdir -p /opt/datacanvas
-
-RUN git clone -b ${HYPERGBM_VERSION} ${HYPERGBM_GIT} /opt/datacanvas/hypergbm
-
-RUN pip3 install jupyterlab Cython # Docker Image deps
-
-RUN pip3 -v install numpy==1.19.1 scikit-learn==0.23.1  # Prepare for shap
-RUN pip3 -v install shap==0.28.5 pyarrow==2.0.0 matplotlib  # Prepare for hypergbm
-
-RUN pip3 install hypergbm==${HYPERGBM_VERSION}
+RUN pip install $PIP_OPTS $PIP_PKGS\
+    && mkdir -p /opt/datacanvas \
+    && cp -r /usr/local/lib/python3.7/site-packages/hypergbm/examples /opt/datacanvas/ \
+    && echo "#!/bin/bash\njupyter lab --notebook-dir=/opt/datacanvas --ip=0.0.0.0 --port=\$NotebookPort --no-browser --allow-root --NotebookApp.token=\$NotebookToken" > /entrypoint.sh \
+    && chmod +x /entrypoint.sh \
+    && rm -rf /tmp/*
 
 EXPOSE 8888
 
-CMD [ "bash", "-c", "/usr/local/bin/jupyter notebook --notebook-dir=/opt/datacanvas/hypergbm/hypergbm/examples  --ip=0.0.0.0 --allow-root --NotebookApp.token=$NotebookToken"]
+ENV NotebookToken="" \
+    NotebookPort=8888
 
-# docker run --rm  -p 8888:8888 datacanvas/hypergbm
-# docker run --rm  -p 8888:8888 -e NotebookToken=your-token datacanvas/hypergbm
-# docker build --build-arg HYPERGBM_VERSION=0.2.2 --build-arg HYPERGBM_GIT=https://gitee.com/oaksharks/hypergbm.git  -t datacanvas/hypergbm:0.2.2 .
+CMD ["/entrypoint.sh"]
 
+# docker run --rm --name hypergbm -p 8830:8888 -e NotebookToken=your-token  datacanvas/hypergbm
