@@ -55,6 +55,22 @@ print(estimator)
 ```  
 
 
+### Set the Number of Search Trials
+
+One can set the max search trial number by adjusting `max_trials`.
+
+The following code sets the max searching time as 3 hours:
+
+```python
+from hypergbm import make_experiment
+from hypernets.tabular.datasets import dsutils
+
+train_data = dsutils.load_blood()
+experiment = make_experiment(train_data, target='Class', max_trials=100)
+estimator = experiment.run()
+print(estimator)
+
+```
 
 ### Use Cross Validation
 
@@ -123,9 +139,9 @@ print(estimator)
 
 
 
-### Set the Numbers of Search and Early Stopping
+### Set the Early Stopping
 
-One can set the max search numbers by adjusting `max_trials`. Early stopping strategy can be enabled and adjusted by setting `early_stopping_round`, `early_stopping_time_limit` and `early_stopping_reward`.
+One can set the early stopping strategy with settings of `early_stopping_round`, `early_stopping_time_limit` and `early_stopping_reward`.
 
 The following code sets the max searching time as 3 hours:
 ```python
