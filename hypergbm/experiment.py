@@ -129,12 +129,27 @@ _search_space_doc = """
     default is hypergbm.search_space.search_space_general (if Dask isn't enabled)
     or hypergbm.dask.search_space.search_space_general (if Dask is enabled)."""
 
+_class_balancing_doc = """ : str, optional, (default=None)
+    Strategy for imbalanced learning (classification task only).  Possible values:
+        - ClassWeight
+        - RandomOverSampler
+        - SMOTE
+        - ADASYN
+        - RandomUnderSampler
+        - NearMiss
+        - TomekLinks
+        - EditedNearestNeighbours"""
+
 
 def _merge_doc():
     my_doc = DocLens(make_experiment.__doc__)
     params = DocLens(_make_experiment.__doc__).parameters
     params.pop('hyper_model_cls')
     params['search_space'] += _search_space_doc
+    params['class_balancing'] = _class_balancing_doc
+    for k in ['clear_cache', 'log_level']:
+        params.move_to_end(k)
+
     my_doc.parameters = params
 
     make_experiment.__doc__ = my_doc.render()

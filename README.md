@@ -27,8 +27,25 @@ The underlying search space representation and search algorithm in HyperGBM are 
 * [Searchers](https://hypergbm.readthedocs.io/en/latest/searchers.html)
 
 ## Installation
-```shell script
+
+Insall HyperGBM with `pip` command:
+```bash
 pip install hypergbm
+```
+
+Optional, to run HyperGBM in JupyterLab notebooks, install HyperGBM and JupyterLab with command:
+```bash
+pip install hypergbm[notebook]
+```
+
+Optional, to support dataset with simplified Chinese in feature generation, install `jieba` package before run HyperGBM, or install HyperGBM with command:
+```bash
+pip install hypergbm[zhcn]
+```
+
+Optional, install all HyperGBM components and dependencies with one command:
+```bash
+pip install hypergbm[all]
 ```
 
 ## Examples
@@ -38,7 +55,7 @@ User can create experiment instance with `make_experiment` and run it quickly。
 Codes:
 ```python
 from hypergbm import make_experiment
-from tabular_toolbox.datasets import dsutils
+from hypernets.tabular.datasets import dsutils
 
 train_data = dsutils.load_blood()
 experiment = make_experiment(train_data, target='Class')
@@ -53,24 +70,21 @@ Pipeline(steps=[('data_clean',
                 ('estimator',
                  GreedyEnsemble(...)])
 
-Process finished with exit code 0
 ``` 
 
 Hypergbm also provides command line tools to train models and predict data:
 ```
 hypergm -h
 
-usage: hypergbm [-h] --train_file TRAIN_FILE [--eval_file EVAL_FILE]
-                [--eval_size EVAL_SIZE] [--test_file TEST_FILE] --target
-                TARGET [--pos_label POS_LABEL] [--max_trials MAX_TRIALS]
-                [--model_output MODEL_OUTPUT]
-                [--prediction_output PREDICTION_OUTPUT] [--searcher SEARCHER]
-...
+usage: hypergbm [-h] [--log-level LOG_LEVEL] [-error] [-warn] [-info] [-debug]
+                [--verbose VERBOSE] [-v] [--enable-dask ENABLE_DASK] [-dask]
+                [--overload OVERLOAD]
+                {train,evaluate,predict} ...
 ```
 
-For example,  train dataset [blood.csv](https://github.com/DataCanvasIO/tabular-toolbox/blob/main/tabular_toolbox/datasets/blood.csv):
+For example,  train model for dataset [blood.csv](https://github.com/DataCanvasIO/Hypernets/blob/master/hypernets/tabular/datasets/blood.csv):
 ```shell script
-hypergbm --train_file=blood.csv --test_file=blood.csv --target=Class --pos_label=1 --model_output=model.pkl
+hypergbm train --train-file=blood.csv --target=Class --model-file=model.pkl
 ```
 
 
@@ -84,6 +98,14 @@ hypergbm --train_file=blood.csv --test_file=blood.csv --target=Class --pos_label
 
 ![DataCanvas AutoML Toolkit](docs/static/images/datacanvas_automl_toolkit.png)
 
+## Documents
+
+* [Overview](https://hypergbm.readthedocs.io/en/latest/overview.html)
+* [Installation](https://hypergbm.readthedocs.io/en/latest/overview.html)
+* [Quick Start](https://hypergbm.readthedocs.io/en/latest/quick_start.html)
+* [Examples](https://hypergbm.readthedocs.io/en/latest/example.html)
+* [How-To](https://hypergbm.readthedocs.io/en/latest/how_to.html)
+* [Release Notes](https://hypergbm.readthedocs.io/en/latest/release_note.html)
 
 ## DataCanvas
 HyperGBM is an open source project created by [DataCanvas](https://www.datacanvas.com/). 

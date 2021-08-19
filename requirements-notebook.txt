@@ -1,0 +1,4 @@
+jupyterlab
+ipywidgets
+jupyterlab_widgets
+hypernets-jupyter-widget

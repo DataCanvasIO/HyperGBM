@@ -16,9 +16,25 @@ HyperGBM是一款全Pipeline自动机器学习工具，可以端到端的完整�
 HyperGBM中的优化算法和搜索空间表示技术由 [Hypernets](https://github.com/DataCanvasIO/Hypernets) 项目提供支撑。
 
 ## 安装
-```shell script
+
+推荐使用`pip`命令安装HyperGBM:
+```bash
 pip install hypergbm
 ```
+
+可选的, 如果您希望在JupyterLab中使用HyperGBM, 可通过如下命令安装HyperGBM:
+```bash
+pip install hypergbm[notebook]
+```
+可选的,  如果您希望在特征衍生时支持中文字符中, 可通过如下命令安装HyperGBM:
+```bash
+pip install hypergbm[zhcn]
+```
+
+可选的, 可通过如下命令安装HyperGBM所有组件及依赖包:
+```bash
+pip install hypergbm[all]
+``` 
 
 ## 相关文章
 * [HyperGBM用4记组合拳提升AutoML模型泛化能力](https://zhuanlan.zhihu.com/p/349824150)
@@ -37,6 +53,15 @@ pip install hypergbm
 
 ![DataCanvas AutoML Toolkit](docs/static/images/datacanvas_automl_toolkit.png)
 
+
+## 参考文档
+
+* [概览](https://hypergbm.readthedocs.io/zh_CN/latest/overview.html)
+* [安装](https://hypergbm.readthedocs.io/zh_CN/latest/overview.html)
+* [快速开始](https://hypergbm.readthedocs.io/zh_CN/latest/quick_start.html)
+* [使用示例](https://hypergbm.readthedocs.io/zh_CN/latest/example.html)
+* [How-To](https://hypergbm.readthedocs.io/zh_CN/latest/how_to.html)
+* [Release Notes](https://hypergbm.readthedocs.io/zh_CN/latest/release_note.html)
 
 ## DataCanvas
 HyperGBM是由数据科学平台领导厂商 [DataCanvas](https://www.datacanvas.com/) 创建的开源项目.
