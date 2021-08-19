@@ -60,7 +60,7 @@ The first step of the *CompeteExperiment* is to perform data cleaning with DataC
 * int_convert_to： bool, (default 'float'), transform int to other types，None for no transformation
 
 
-If nan is represented by '\N' in data，users can replace '\N' back to np.nan when performing data cleaning as follows:
+If nan is represented by '\\N' in data，users can replace '\\N' back to np.nan when performing data cleaning as follows:
 
 .. code-block:: python
 
@@ -68,7 +68,7 @@ If nan is represented by '\N' in data，users can replace '\N' back to np.nan wh
 
     train_data = ...
     experiment = make_experiment(train_data, target='...',
-                                data_cleaner_args={'nan_chars':'\\N'})
+                                data_cleaner_args={'nan_chars': r'\N'})
     ...
 
 

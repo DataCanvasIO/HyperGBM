@@ -63,7 +63,7 @@ HyperGBM *make_experiment* 所创建的是 Hypernets 的 *CompeteExeriment* 实�
 
 调用 *make_expperiment* 时，可通过参数 *data_cleaner_args* 对DataCleaner的配置进行调整。
 
-假设，训练数据中用字符'\N'表示nan，希望在数据清洗阶段将其替换为np.nan，则可如下设置:
+假设，训练数据中用字符'\\N'表示nan，希望在数据清洗阶段将其替换为np.nan，则可如下设置:
 
 .. code-block:: python
 
@@ -71,7 +71,7 @@ HyperGBM *make_experiment* 所创建的是 Hypernets 的 *CompeteExeriment* 实�
 
     train_data = ...
     experiment = make_experiment(train_data, target='...',
-                                data_cleaner_args={'nan_chars':'\\N'})
+                                data_cleaner_args={'nan_chars': r'\N'})
     ...
 
 
