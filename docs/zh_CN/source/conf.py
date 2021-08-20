@@ -37,7 +37,7 @@ author = 'Zetyun.com'
 mermaid_version = ''
 
 # The full version, including alpha/beta/rc tags
-release = '0.3.0'
+release = '0.2.3'
 extensions = ['recommonmark',
               'sphinxcontrib.mermaid',
               'sphinx.ext.autodoc',
