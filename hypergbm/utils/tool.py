@@ -12,8 +12,6 @@ from hypernets.utils import const, logging
 metric_choices = ['accuracy', 'auc', 'f1', 'logloss', 'mse', 'mae', 'msle', 'precision', 'rmse', 'r2', 'recall']
 strategy_choices = ['threshold', 'quantile', 'number']
 
-is_os_windows = sys.platform.find('win') >= 0
-
 
 def to_bool(v):
     if isinstance(v, bool) or v is None:

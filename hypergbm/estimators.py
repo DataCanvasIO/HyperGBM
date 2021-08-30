@@ -2,7 +2,6 @@
 """
 
 """
-import sys
 import catboost
 import lightgbm
 import numpy as np
@@ -14,11 +13,11 @@ from hypernets.core.search_space import ModuleSpace
 from hypernets.discriminators import UnPromisingTrial
 from hypernets.tabular import dask_ex as dex
 from hypernets.tabular.column_selector import column_object_category_bool, column_zero_or_positive_int32
-from hypernets.utils import const, logging
+from hypernets.utils import const, logging, is_os_windows
 from .gbm_callbacks import LightGBMDiscriminationCallback, XGBoostDiscriminationCallback, CatboostDiscriminationCallback
 
 logger = logging.get_logger(__name__)
-_is_windows = sys.platform.find('win') >= 0
+_is_windows = is_os_windows
 
 
 def get_categorical_features(X):
