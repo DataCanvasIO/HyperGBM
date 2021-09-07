@@ -18,6 +18,7 @@ from sklearn import pipeline as sk_pipeline
 from sklearn.model_selection import KFold, StratifiedKFold
 from tqdm.auto import tqdm
 
+from hypergbm.gbm_callbacks import FileMonitorCallback
 from hypergbm.pipeline import ComposeTransformer
 from hypernets.core import Callback, ProgressiveCallback
 from hypernets.model.estimator import Estimator
@@ -216,12 +217,13 @@ class HyperGBMEstimator(Estimator):
         return X
 
     def fit_cross_validation(self, X, y, verbose=0, stratified=True, num_folds=3, pos_label=None,
-                             shuffle=False, random_state=9527, metrics=None, **kwargs):
+                             shuffle=False, random_state=9527, metrics=None, skip_if_file=None, **kwargs):
         if dex.exist_dask_object(X, y):
             return self.fit_cross_validation_by_dask(X, y, verbose=verbose, pos_label=pos_label,
                                                      stratified=stratified, num_folds=num_folds,
                                                      shuffle=shuffle, random_state=random_state,
-                                                     metrics=metrics, **kwargs)
+                                                     metrics=metrics, skip_if_file=skip_if_file,
+                                                     **kwargs)
         starttime = time.time()
         if verbose is None:
             verbose = 0
@@ -274,12 +276,7 @@ class HyperGBMEstimator(Estimator):
             fold_est = copy.deepcopy(self.gbm_model)
             fold_est.group_id = f'{fold_est.__class__.__name__}_cv_{n_fold}'
             fit_kwargs = {**kwargs, 'verbose': 0}
-            if hasattr(fold_est, 'build_discriminator_callback'):
-                callback = fold_est.build_discriminator_callback(self.discriminator)
-                if callback:
-                    callbacks = fit_kwargs.get('callbacks', [])
-                    callbacks.append(callback)
-                    fit_kwargs['callbacks'] = callbacks
+            self._prepare_callbacks(fit_kwargs, fold_est, self.discriminator, skip_if_file)
 
             fold_est.fit(x_train_fold, y_train_fold, **fit_kwargs)
             # print(fold_est.__class__)
@@ -345,7 +342,7 @@ class HyperGBMEstimator(Estimator):
         return iteration_scores
 
     def fit_cross_validation_by_dask(self, X, y, verbose=0, stratified=True, num_folds=3, pos_label=None,
-                                     shuffle=False, random_state=9527, metrics=None, **kwargs):
+                                     shuffle=False, random_state=9527, metrics=None, skip_if_file=None, **kwargs):
         starttime = time.time()
         if verbose is None:
             verbose = 0
@@ -395,12 +392,7 @@ class HyperGBMEstimator(Estimator):
                           'early_stopping_rounds': kwargs.get('early_stopping_rounds')
                           if eval_set is not None else None}
             fold_est.group_id = f'{fold_est.__class__.__name__}_cv_{n_fold}'
-            if hasattr(fold_est, 'build_discriminator_callback'):
-                callback = fold_est.build_discriminator_callback(self.discriminator)
-                if callback:
-                    callbacks = fit_kwargs.get('callbacks', [])
-                    callbacks.append(callback)
-                    fit_kwargs['callbacks'] = callbacks
+            self._prepare_callbacks(fit_kwargs, fold_est, self.discriminator, skip_if_file)
             fold_est.fit(x_train_fold, y_train_fold, **fit_kwargs)
 
             # print(f'fold {n_fold}, est:{fold_est.__class__},  best_n_estimators:{fold_est.best_n_estimators}')
@@ -440,7 +432,7 @@ class HyperGBMEstimator(Estimator):
             logger.info(f'taken {time.time() - starttime}s')
         return scores, oof_, None
 
-    def fit(self, X, y, pos_label=None, verbose=0, **kwargs):
+    def fit(self, X, y, pos_label=None, skip_if_file=None, verbose=0, **kwargs):
         starttime = time.time()
         if verbose is None:
             verbose = 0
@@ -489,12 +481,7 @@ class HyperGBMEstimator(Estimator):
 
         fit_kwargs = {**kwargs, 'verbose': 0}
         self.gbm_model.group_id = f'{self.gbm_model.__class__.__name__}'
-        if hasattr(self.gbm_model, 'build_discriminator_callback'):
-            callback = self.gbm_model.build_discriminator_callback(self.discriminator)
-            if callback:
-                callbacks = fit_kwargs.get('callbacks', [])
-                callbacks.append(callback)
-                fit_kwargs['callbacks'] = callbacks
+        self._prepare_callbacks(fit_kwargs, self.gbm_model, self.discriminator, skip_if_file)
 
         self.gbm_model.fit(X, y, **fit_kwargs)
 
@@ -513,6 +500,20 @@ class HyperGBMEstimator(Estimator):
         #     sample_weight[y == c] *= cw[i]
         # return sample_weight
         return dex.compute_sample_weight(y)
+
+    @staticmethod
+    def _prepare_callbacks(fit_kwargs, est, discriminator, skip_if_file):
+        if hasattr(est, 'build_discriminator_callback'):
+            callback = est.build_discriminator_callback(discriminator)
+            if callback:
+                callbacks = fit_kwargs.get('callbacks', [])
+                callbacks.append(callback)
+                fit_kwargs['callbacks'] = callbacks
+
+        if skip_if_file:
+            callbacks = fit_kwargs.get('callbacks', [])
+            callbacks.append(FileMonitorCallback(skip_if_file))
+            fit_kwargs['callbacks'] = callbacks
 
     def predict(self, X, verbose=0, **kwargs):
         starttime = time.time()
