@@ -150,7 +150,7 @@ class GeneralSearchSpaceGenerator(BaseSearchSpaceGenerator):
     @property
     def default_xgb_init_kwargs(self):
         return {
-            'booster': Choice(['gbtree', 'dart']),
+            # 'booster': Choice(['gbtree', 'dart']),
             'max_depth': Choice([3, 5, 7, 10]),
             'n_estimators': Choice([10, 30, 50, 100, 200, 300]),
             'learning_rate': Choice([0.001, 0.01, 0.5, 0.1]),
