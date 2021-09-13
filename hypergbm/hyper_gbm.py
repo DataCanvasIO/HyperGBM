@@ -278,7 +278,10 @@ class HyperGBMEstimator(Estimator):
             fit_kwargs = {**kwargs, 'verbose': 0}
             self._prepare_callbacks(fit_kwargs, fold_est, self.discriminator, skip_if_file)
 
+            fold_start_at = time.time()
             fold_est.fit(x_train_fold, y_train_fold, **fit_kwargs)
+            if verbose:
+                logger.info(f'fit fold {n_fold} with {time.time() - fold_start_at} seconds')
             # print(fold_est.__class__)
             # print(fold_est.evals_result_)
             # print(f'fold {n_fold}, est:{fold_est.__class__},  best_n_estimators:{fold_est.best_n_estimators}')
@@ -393,7 +396,10 @@ class HyperGBMEstimator(Estimator):
                           if eval_set is not None else None}
             fold_est.group_id = f'{fold_est.__class__.__name__}_cv_{n_fold}'
             self._prepare_callbacks(fit_kwargs, fold_est, self.discriminator, skip_if_file)
+            fold_start_at = time.time()
             fold_est.fit(x_train_fold, y_train_fold, **fit_kwargs)
+            if verbose:
+                logger.info(f'fit fold {n_fold} with {time.time() - fold_start_at} seconds')
 
             # print(f'fold {n_fold}, est:{fold_est.__class__},  best_n_estimators:{fold_est.best_n_estimators}')
             if self.classes_ is None and hasattr(fold_est, 'classes_'):
