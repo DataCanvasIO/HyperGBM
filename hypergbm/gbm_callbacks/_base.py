@@ -6,7 +6,7 @@ __author__ = 'yangjian'
 import os.path
 
 from hypernets.discriminators import UnPromisingTrial
-
+from hypernets.experiment.cfg import ExperimentCfg as cfg
 
 class BaseDiscriminationCallback(object):
     def __init__(self, discriminator, group_id):
@@ -20,14 +20,20 @@ class BaseDiscriminationCallback(object):
         promising = self.discriminator.is_promising(self.iteration_trajectory, self.group_id)
         self.is_promising_ = promising
         if not promising:
-            raise UnPromisingTrial(f'unpromising trial:{self.iteration_trajectory}')
+            raise UnPromisingTrial(f'unpromising trial:{self.iteration_trajectory[-6:]}')
 
     def _get_score(self, env):
         raise NotImplementedError
 
     def __call__(self, env):
         score = self._get_score(env)
-        self.iteration(score)
+        if 'once' in cfg.experiment_discriminator:
+            if env.iteration == int(env.end_iteration/2):
+                self.iteration(score)
+            else:
+                self.iteration_trajectory.append(score)
+        else:
+            self.iteration(score)
 
 
 class FileMonitorCallback(object):
