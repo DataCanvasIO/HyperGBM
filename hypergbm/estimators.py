@@ -6,8 +6,12 @@ import catboost
 import lightgbm
 import numpy as np
 import xgboost
-from sklearn.experimental.enable_hist_gradient_boosting import \
-    HistGradientBoostingRegressor, HistGradientBoostingClassifier
+
+try:
+    from sklearn.ensemble import HistGradientBoostingRegressor, HistGradientBoostingClassifier
+except ImportError:
+    from sklearn.experimental.enable_hist_gradient_boosting import \
+        HistGradientBoostingRegressor, HistGradientBoostingClassifier
 
 from hypernets.core.search_space import ModuleSpace
 from hypernets.discriminators import UnPromisingTrial
