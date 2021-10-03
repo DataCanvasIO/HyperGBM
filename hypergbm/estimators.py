@@ -11,8 +11,8 @@ from sklearn.experimental.enable_hist_gradient_boosting import \
 
 from hypernets.core.search_space import ModuleSpace
 from hypernets.discriminators import UnPromisingTrial
-from hypernets.tabular import dask_ex as dex
 from hypernets.tabular.column_selector import column_object_category_bool, column_zero_or_positive_int32
+from hypernets.tabular.dask_ex import DaskToolBox
 from hypernets.utils import const, logging, is_os_windows
 from .gbm_callbacks import LightGBMDiscriminationCallback, XGBoostDiscriminationCallback, CatboostDiscriminationCallback
 
@@ -285,21 +285,21 @@ if lgbm_dask_distributed:
 else:
     class LGBMClassifierDaskWrapper(LGBMClassifierWrapper):
         def fit(self, *args, **kwargs):
-            return dex.compute_and_call(super().fit, *args, **kwargs)
+            return DaskToolBox.compute_and_call(super().fit, *args, **kwargs)
 
         def predict(self, *args, **kwargs):
-            return dex.compute_and_call(super().predict, *args, **kwargs)
+            return DaskToolBox.compute_and_call(super().predict, *args, **kwargs)
 
         def predict_proba(self, *args, **kwargs):
-            return dex.compute_and_call(super().predict_proba, *args, **kwargs)
+            return DaskToolBox.compute_and_call(super().predict_proba, *args, **kwargs)
 
 
     class LGBMRegressorDaskWrapper(LGBMRegressorWrapper):
         def fit(self, *args, **kwargs):
-            return dex.compute_and_call(super().fit, *args, **kwargs)
+            return DaskToolBox.compute_and_call(super().fit, *args, **kwargs)
 
         def predict(self, *args, **kwargs):
-            return dex.compute_and_call(super().predict, *args, **kwargs)
+            return DaskToolBox.compute_and_call(super().predict, *args, **kwargs)
 
 
 class LightGBMDaskEstimator(LightGBMEstimator):
@@ -469,7 +469,7 @@ if xgb_dask_distributed:
                     # y = le.fit_transform(y)
                     le.fit(y)
 
-                    if dex.is_dask_object(le.classes_):
+                    if DaskToolBox.is_dask_object(le.classes_):
                         le.classes_ = le.classes_.compute()
 
                     eval_set = kwargs.get('eval_set')
@@ -495,7 +495,7 @@ if xgb_dask_distributed:
             proba = super().predict_proba(X, ntree_limit=ntree_limit)
 
             if self.n_classes_ == 2:
-                proba = dex.fix_binary_predict_proba_result(proba)
+                proba = DaskToolBox.fix_binary_predict_proba_result(proba)
 
             return proba
 
@@ -531,21 +531,21 @@ if xgb_dask_distributed:
 else:
     class XGBClassifierDaskWrapper(XGBClassifierWrapper):
         def fit(self, *args, **kwargs):
-            return dex.compute_and_call(super().fit, *args, **kwargs)
+            return DaskToolBox.compute_and_call(super().fit, *args, **kwargs)
 
         def predict(self, *args, **kwargs):
-            return dex.compute_and_call(super().predict, *args, **kwargs)
+            return DaskToolBox.compute_and_call(super().predict, *args, **kwargs)
 
         def predict_proba(self, *args, **kwargs):
-            return dex.compute_and_call(super().predict_proba, *args, **kwargs)
+            return DaskToolBox.compute_and_call(super().predict_proba, *args, **kwargs)
 
 
     class XGBRegressorDaskWrapper(XGBRegressorWrapper):
         def fit(self, *args, **kwargs):
-            return dex.compute_and_call(super().fit, *args, **kwargs)
+            return DaskToolBox.compute_and_call(super().fit, *args, **kwargs)
 
         def predict(self, *args, **kwargs):
-            return dex.compute_and_call(super().predict, *args, **kwargs)
+            return DaskToolBox.compute_and_call(super().predict, *args, **kwargs)
 
 
 class XGBoostDaskEstimator(XGBoostEstimator):
@@ -675,21 +675,21 @@ class CatBoostEstimator(HyperEstimator):
 
 class CatBoostClassifierDaskWrapper(CatBoostClassifierWrapper):
     def fit(self, *args, **kwargs):
-        return dex.compute_and_call(super().fit, *args, **kwargs)
+        return DaskToolBox.compute_and_call(super().fit, *args, **kwargs)
 
     def predict(self, *args, **kwargs):
-        return dex.compute_and_call(super().predict, *args, **kwargs)
+        return DaskToolBox.compute_and_call(super().predict, *args, **kwargs)
 
     def predict_proba(self, *args, **kwargs):
-        return dex.compute_and_call(super().predict_proba, *args, **kwargs)
+        return DaskToolBox.compute_and_call(super().predict_proba, *args, **kwargs)
 
 
 class CatBoostRegressionDaskWrapper(CatBoostRegressionWrapper):
     def fit(self, *args, **kwargs):
-        return dex.compute_and_call(super().fit, *args, **kwargs)
+        return DaskToolBox.compute_and_call(super().fit, *args, **kwargs)
 
     def predict(self, *args, **kwargs):
-        return dex.compute_and_call(super().predict, *args, **kwargs)
+        return DaskToolBox.compute_and_call(super().predict, *args, **kwargs)
 
 
 class CatBoostDaskEstimator(CatBoostEstimator):

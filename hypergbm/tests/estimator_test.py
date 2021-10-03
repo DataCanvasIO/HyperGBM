@@ -15,10 +15,8 @@ from hypergbm.sklearn.sklearn_ops import categorical_pipeline_simple, numeric_pi
     categorical_pipeline_complex, numeric_pipeline_complex
 from hypernets.core.ops import HyperInput, Choice, ModuleChoice
 from hypernets.core.search_space import HyperSpace, Real
-from hypernets.tabular.column_selector import column_object, column_number_exclude_timedelta, \
-    column_object_category_bool
 from hypernets.tabular.datasets import dsutils
-from hypernets.tabular.general import general_preprocessor
+from hypernets.tabular import get_tool_box
 
 
 def get_space_multi_dataframemapper(default=False):
@@ -41,6 +39,8 @@ def get_space_num_cat_pipeline_multi_complex(dataframe_mapper_default=False,
                                              lightgbm_fit_kwargs={},
                                              xgb_fit_kwargs={}):
     space = HyperSpace()
+    tb = get_tool_box(pd.DataFrame)
+    column_object = tb.column_selector.column_object
     with space.as_default():
         input = HyperInput(name='input1')
         p1 = numeric_pipeline_complex()(input)
@@ -111,7 +111,7 @@ class Test_Estimator():
         df = dsutils.load_bank().head(1000)
         y = df.pop('y')
 
-        X = general_preprocessor(df).fit_transform(df)
+        X = get_tool_box(df).general_preprocessor(df).fit_transform(df)
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, stratify=y, random_state=9527)
         import xgboost as xgb
         clf = xgb.XGBClassifier(n_estimators=1000)
@@ -128,7 +128,7 @@ class Test_Estimator():
         df = dsutils.load_bank().head(1000)
         y = df.pop('y')
 
-        X = general_preprocessor(df).fit_transform(df)
+        X = get_tool_box(df).general_preprocessor(df).fit_transform(df)
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, stratify=y, random_state=9527)
         import lightgbm as lgbm
         clf = lgbm.LGBMClassifier(n_estimators=1000)
@@ -144,7 +144,7 @@ class Test_Estimator():
         df = dsutils.load_bank().head(1000)
         y = df.pop('y')
 
-        X = general_preprocessor(df).fit_transform(df)
+        X = get_tool_box(df).general_preprocessor(df).fit_transform(df)
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, stratify=y, random_state=9527)
         import catboost as cat
         clf = cat.CatBoostClassifier(n_estimators=1000)
@@ -160,8 +160,9 @@ class Test_Estimator():
         space.random_sample()
         estimator = HyperGBMEstimator('binary', space)
         X, y = get_df()
-        num_cols = column_number_exclude_timedelta(X)
-        cat_cols = column_object_category_bool(X)
+        tb = get_tool_box(X)
+        num_cols = tb.column_selector.column_number_exclude_timedelta(X)
+        cat_cols = tb.column_selector.column_object_category_bool(X)
         df_1 = estimator.data_pipeline.fit_transform(X, y)
         assert list(df_1.columns) == ['a', 'e', 'f', 'b', 'c', 'd', 'l']
         assert df_1.shape == (3, 7)

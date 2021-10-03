@@ -166,5 +166,10 @@ class DataFrameMapper(ComposeTransformer):
             transformers.append((p.columns, transformer))
 
         pv = self.param_values
-        ct = dataframe_mapper.DataFrameMapper(features=transformers, **pv)
+        # ct = dataframe_mapper.DataFrameMapper(features=transformers, **pv)
+        ct = self._create_dataframe_mapper(features=transformers, **pv)
         return next, (self.name, ct)
+
+    @staticmethod
+    def _create_dataframe_mapper(features, **kwargs):
+        return dataframe_mapper.DataFrameMapper(features=features, **kwargs)

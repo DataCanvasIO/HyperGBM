@@ -144,7 +144,7 @@ class Test_Experiment():
                                        feature_reselection_threshold=1e-5,
                                        ensemble_size=10,
                                        cross_validator=cross_validator,
-                                       random_state=12345
+                                       random_state=2345
                                        )
         pipeline = experiment.run(max_trials=max_trials)
         acc_scorer = get_scorer('accuracy')
@@ -230,6 +230,9 @@ class Test_Experiment():
         self.run_binary(cv=True, cross_validator=preq_split)
 
     def test_feature_generation(self):
+        from hypernets.tabular.cfg import TabularCfg as tcfg
+        tcfg.tfidf_primitive_output_feature_count = 5
+
         df = dsutils.load_movielens()
         df['genres'] = df['genres'].apply(lambda s: s.replace('|', ' '))
         df['timestamp'] = df['timestamp'].apply(datetime.fromtimestamp)
@@ -237,6 +240,7 @@ class Test_Experiment():
         experiment = make_experiment(df, target='rating', cv=False, ensemble_size=0,
                                      feature_generation=True,
                                      feature_generation_text_cols=['title', 'genres'],
+                                     random_state=2345
                                      )
         assert isinstance(experiment, CompeteExperiment)
 

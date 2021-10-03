@@ -7,11 +7,10 @@ from functools import partial
 from hypergbm.dask import dask_transformers as tf, dask_ops as ops
 from hypergbm.estimators import LightGBMDaskEstimator, CatBoostDaskEstimator, XGBoostDaskEstimator, \
     lgbm_dask_distributed, xgb_dask_distributed
-from hypergbm.pipeline import Pipeline, DataFrameMapper
+from hypergbm.pipeline import Pipeline
 from hypergbm.search_space import GeneralSearchSpaceGenerator
 from hypernets.core.search_space import get_default_space
-from hypernets.tabular import dask_ex as dex
-from hypernets.tabular.column_selector import column_object, column_all
+from hypernets.tabular.dask_ex import DaskToolBox
 from hypernets.utils import logging
 
 logger = logging.get_logger(__name__)
@@ -36,7 +35,7 @@ def _dfm_decorator(cache, cache_key, remove_keys, dfm):
                               remove_keys=remove_keys,
                               fit_transform=True,
                               transform=True)
-    pipeline = Pipeline([persister], name='dfm_cacher', columns=column_all)
+    pipeline = Pipeline([persister], name='dfm_cacher', columns=DaskToolBox.column_selector.column_all)
     return pipeline(dfm)
 
 
@@ -55,7 +54,7 @@ class DaskGeneralSearchSpaceGenerator(GeneralSearchSpaceGenerator):
     @property
     def estimators(self):
         r = {}
-        is_local = dex.is_local_dask()
+        is_local = DaskToolBox.is_local_dask()
 
         if self.enable_xgb and (is_local or xgb_dask_distributed):
             r['xgb'] = (XGBoostDaskEstimator, self.default_xgb_init_kwargs, self.default_xgb_fit_kwargs)
@@ -89,8 +88,9 @@ class DaskGeneralSearchSpaceGenerator(GeneralSearchSpaceGenerator):
         num_pipeline = ops.numeric_pipeline_complex(decorate=num_transformer_decorator)(hyper_input)
         cat_pipeline = ops.categorical_pipeline_complex(decorate=cat_transformer_decorator)(hyper_input)
 
-        dfm = DataFrameMapper(default=dataframe_mapper_default, input_df=True, df_out=True,
-                              df_out_dtype_transforms=[(column_object, 'int')])([num_pipeline, cat_pipeline])
+        column_object = DaskToolBox.column_selector.column_object
+        dfm = tf.DaskDataFrameMapper(default=dataframe_mapper_default, input_df=True, df_out=True,
+                                     df_out_dtype_transforms=[(column_object, 'int')])([num_pipeline, cat_pipeline])
         preprocessor = dfm_decorator(dfm)
 
         return preprocessor
@@ -101,7 +101,7 @@ search_space_general = DaskGeneralSearchSpaceGenerator(n_estimators=200, enable_
 #
 # def _build_estimator_dapater(fn_call, *args, **kwargs):
 #     r = fn_call(*args, **kwargs)
-#     r = dex.wrap_local_estimator(r)
+#     r = DaskToolBox.wrap_local_estimator(r)
 #     return r
 #
 #

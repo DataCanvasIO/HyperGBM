@@ -411,8 +411,9 @@ def evaluate(args):
 
 def predict(args):
     from hypernets.utils import load_data
-    from hypernets.tabular import dask_ex as dex, metrics
+    from hypernets.tabular.dask_ex import DaskToolBox
     import pandas as pd
+    import dask.dataframe as dd
 
     data_file = args.data
     model_file = args.model_file
@@ -443,11 +444,11 @@ def predict(args):
     if args.proba:
         if args.verbose:
             print(f'>>> run predict_proba')
-        pred = metrics.predict_proba(model_file, X, n_jobs=args.jobs)
+        pred = DaskToolBox.metrics.predict_proba(model_file, X, n_jobs=args.jobs)
     else:
         if args.verbose:
             print(f'>>> run predict')
-        pred = metrics.predict(model_file, X, n_jobs=args.jobs, threshold=args.threshold)
+        pred = DaskToolBox.metrics.predict(model_file, X, n_jobs=args.jobs, threshold=args.threshold)
 
     if args.verbose:
         print(f'>>> save prediction to {output_file}')
@@ -457,13 +458,13 @@ def predict(args):
     else:
         columns = [target]
 
-    if dex.is_dask_object(pred):
-        y = dex.dd.from_dask_array(pred, columns=columns)
+    if DaskToolBox.is_dask_object(pred):
+        y = dd.from_dask_array(pred, columns=columns)
     else:
         y = pd.DataFrame(pred, columns=columns)
 
-    df = dex.concat_df([data, y], axis=1) if data is not None else y
-    if dex.is_dask_object(df):
+    df = DaskToolBox.concat_df([data, y], axis=1) if data is not None else y
+    if DaskToolBox.is_dask_object(df):
         from hypernets.tabular.persistence import to_parquet
         to_parquet(df, output_file)
     else:

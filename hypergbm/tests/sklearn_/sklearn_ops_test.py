@@ -185,7 +185,8 @@ class Test_CommonOps():
         next, (name, p) = space.Module_DataFrameMapper_1.compose()
         X, y = get_df()
         df_1 = p.fit_transform(X, y)
-        assert list(df_1.columns) == ['a_e_f_0', 'a_e_f_1', 'a_e_f_2']
+        # assert list(df_1.columns) == ['a_e_f_0', 'a_e_f_1', 'a_e_f_2']
+        assert list(df_1.columns) == ['a', 'e', 'f']
         assert df_1.shape == (3, 3)
 
     def test_numeric_pipeline(self):

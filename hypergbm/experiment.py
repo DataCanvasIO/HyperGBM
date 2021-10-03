@@ -8,7 +8,7 @@ import copy
 
 from hypergbm.hyper_gbm import HyperGBM
 from hypernets.experiment import make_experiment as _make_experiment
-from hypernets.tabular import dask_ex as dex
+from hypernets.tabular.dask_ex import DaskToolBox
 from hypernets.utils import DocLens
 
 
@@ -87,7 +87,7 @@ def make_experiment(train_data,
             if key in kwargs.keys():
                 args[key] = kwargs.get(key)
 
-        dask_enable = dex.exist_dask_object(train_data, test_data, eval_data) or dex.dask_enabled()
+        dask_enable = DaskToolBox.exist_dask_object(train_data, test_data, eval_data) or DaskToolBox.dask_enabled()
         if dask_enable:
             from hypergbm.dask.search_space import search_space_general as dask_search_space
             result = copy.deepcopy(dask_search_space)

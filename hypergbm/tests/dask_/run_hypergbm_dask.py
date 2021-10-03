@@ -5,7 +5,7 @@
 from dask.distributed import Client
 
 from hypergbm import make_experiment
-from hypernets.tabular import dask_ex as dex
+from hypernets.tabular.dask_ex import DaskToolBox
 from hypernets.tabular.datasets import dsutils
 from hypernets.tabular.metrics import evaluate
 
@@ -24,7 +24,7 @@ def main():
     # df = df.sample(frac=0.1)
     df = df.repartition(npartitions=worker_count)
 
-    df_train, df_test = dex.train_test_split(df, test_size=0.5, random_state=42, shuffle=False)
+    df_train, df_test = DaskToolBox.train_test_split(df, test_size=0.5, random_state=42, shuffle=False)
     df_train, df_test = client.persist([df_train, df_test])
 
     # make experiment and run it
@@ -47,9 +47,9 @@ def main():
     X_test = df_test.copy()
     y_test = X_test.pop(target_name)
     X_test, y_test = client.persist([X_test, y_test])
-    result = evaluate(estimator, X_test, y_test,
-                      metrics=['accuracy', 'auc', 'logloss', 'f1', 'recall', 'precision'],
-                      pos_label='yes')
+    result = DaskToolBox.metrics.evaluate(estimator, X_test, y_test,
+                                          metrics=['accuracy', 'auc', 'logloss', 'f1', 'recall', 'precision'],
+                                          pos_label='yes')
     print(f'final result: {result}')
 
 

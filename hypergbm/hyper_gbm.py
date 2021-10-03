@@ -23,11 +23,10 @@ from hypergbm.pipeline import ComposeTransformer
 from hypernets.core import Callback, ProgressiveCallback
 from hypernets.model.estimator import Estimator
 from hypernets.model.hyper_model import HyperModel
-from hypernets.tabular import dask_ex as dex
+from hypernets.tabular import get_tool_box
 from hypernets.tabular.cache import cache
-from hypernets.tabular.data_cleaner import DataCleaner
+from hypernets.tabular.dask_ex import DaskToolBox
 from hypernets.tabular.lifelong_learning import select_valid_oof
-from hypernets.tabular.metrics import calc_score
 from hypernets.utils import logging, fs
 from .estimators import HyperEstimator
 
@@ -143,11 +142,13 @@ class HyperGBMEstimator(Estimator):
         # next, (name, p) = pipeline_module[0].compose()
         self.data_pipeline = self.build_pipeline(space, pipeline_module[0])
         # logger.debug(f'data_pipeline:{self.data_pipeline}')
-        self.pipeline_signature = self.get_pipeline_signature(self.data_pipeline)
-        if self.data_cleaner_params is not None:
-            self.data_cleaner = DataCleaner(**self.data_cleaner_params)
-        else:
-            self.data_cleaner = None
+        # self.pipeline_signature = self.get_pipeline_signature(self.data_pipeline)
+
+        # if self.data_cleaner_params is not None:
+        #     self.data_cleaner = DataCleaner(**self.data_cleaner_params)
+        # else:
+        #     self.data_cleaner = None
+        self.data_cleaner = None
 
     def get_pipeline_signature(self, pipeline):
         repr = pipeline.__repr__(1000000)
@@ -185,6 +186,9 @@ class HyperGBMEstimator(Estimator):
     def fit_transform_data(self, X, y=None, verbose=0):
         starttime = time.time()
 
+        if self.data_cleaner_params is not None:
+            self.data_cleaner = get_tool_box(X).transformers['DataCleaner'](**self.data_cleaner_params)
+
         if self.data_cleaner is not None:
             if verbose > 0:
                 logger.info('clean data')
@@ -218,7 +222,7 @@ class HyperGBMEstimator(Estimator):
 
     def fit_cross_validation(self, X, y, verbose=0, stratified=True, num_folds=3, pos_label=None,
                              shuffle=False, random_state=9527, metrics=None, skip_if_file=None, **kwargs):
-        if dex.exist_dask_object(X, y):
+        if DaskToolBox.exist_dask_object(X, y):
             return self.fit_cross_validation_by_dask(X, y, verbose=verbose, pos_label=pos_label,
                                                      stratified=stratified, num_folds=num_folds,
                                                      shuffle=shuffle, random_state=random_state,
@@ -319,8 +323,8 @@ class HyperGBMEstimator(Estimator):
         else:
             preds = self.proba2predict(proba)
             preds = np.array(self.classes_).take(preds, axis=0)
-        scores = calc_score(y, preds, proba, metrics=metrics, task=self.task,
-                            classes=self.classes_, pos_label=self.pos_label)
+        scores = get_tool_box(y).metrics.calc_score(y, preds, proba, metrics=metrics, task=self.task,
+                                                    classes=self.classes_, pos_label=self.pos_label)
         return scores
 
     def get_iteration_scores(self):
@@ -374,8 +378,8 @@ class HyperGBMEstimator(Estimator):
         for n_fold, (train_idx, valid_idx) in enumerate(iterators.split(X_values, y_values)):
             x_train_fold, y_train_fold = X_values[train_idx], y_values[train_idx]
             x_val_fold, y_val_fold = X_values[valid_idx], y_values[valid_idx]
-            x_train_fold = dex.array_to_df(x_train_fold, meta=X)
-            x_val_fold = dex.array_to_df(x_val_fold, meta=X)
+            x_train_fold = DaskToolBox.array_to_df(x_train_fold, meta=X)
+            x_val_fold = DaskToolBox.array_to_df(x_val_fold, meta=X)
 
             sample_weight = None
             if self.task != 'regression' and self.class_balancing is not None:
@@ -410,13 +414,13 @@ class HyperGBMEstimator(Estimator):
                 proba = fold_est.predict_proba(x_val_fold)
 
             index = valid_idx.copy().reshape((valid_idx.shape[0], 1))
-            oof_.append(dex.hstack_array([index, proba]))
+            oof_.append(DaskToolBox.hstack_array([index, proba]))
             models.append(fold_est)
 
             if pbar is not None:
                 pbar.update(1)
 
-        oof_ = dex.vstack_array(oof_)
+        oof_ = DaskToolBox.vstack_array(oof_)
         oof_df = dd.from_dask_array(oof_).set_index(0)
         oof_ = oof_df.to_dask_array(lengths=True)
 
@@ -432,8 +436,8 @@ class HyperGBMEstimator(Estimator):
             proba = oof_
             preds = self.proba2predict(oof_)
             preds = da.take(np.array(self.classes_), preds, axis=0)
-        scores = calc_score(y, preds, proba, metrics=metrics, task=self.task,
-                            classes=self.classes_, pos_label=pos_label)
+        scores = DaskToolBox.metrics.calc_score(y, preds, proba, metrics=metrics, task=self.task,
+                                                classes=self.classes_, pos_label=pos_label)
         if verbose > 0:
             logger.info(f'taken {time.time() - starttime}s')
         return scores, oof_, None
@@ -505,7 +509,7 @@ class HyperGBMEstimator(Estimator):
         # for i, c in enumerate(unique):
         #     sample_weight[y == c] *= cw[i]
         # return sample_weight
-        return dex.compute_sample_weight(y)
+        return get_tool_box(y).compute_sample_weight(y)
 
     @staticmethod
     def _prepare_callbacks(fit_kwargs, est, discriminator, skip_if_file):
@@ -540,10 +544,7 @@ class HyperGBMEstimator(Estimator):
             else:
                 proba = self.predict_proba(X)
                 preds = self.proba2predict(proba)
-                if dex.is_dask_object(preds):
-                    preds = da.take(np.array(self.classes_), preds, axis=0)
-                else:
-                    preds = np.array(self.classes_).take(preds, axis=0)
+                preds = get_tool_box(preds).take_array(np.array(self.classes_), preds, axis=0)
         else:
             X = self.transform_data(X, verbose=verbose)
             if verbose > 0:
@@ -591,8 +592,8 @@ class HyperGBMEstimator(Estimator):
         else:
             proba = None
         preds = self.predict(X, verbose=verbose)
-        scores = calc_score(y, preds, proba, metrics=metrics, task=self.task,
-                            pos_label=self.pos_label, classes=self.classes_)
+        scores = get_tool_box(X).metrics.calc_score(y, preds, proba, metrics=metrics, task=self.task,
+                                                    pos_label=self.pos_label, classes=self.classes_)
         return scores
 
     def save(self, model_file):

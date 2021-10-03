@@ -7,11 +7,17 @@ import numpy as np
 from dask_ml import impute as dimp
 from dask_ml import preprocessing as dm_pre
 
-from hypergbm.pipeline import HyperTransformer
+from hypergbm.pipeline import HyperTransformer, DataFrameMapper
+from hypernets.tabular.dask_ex import DaskToolBox
 from hypernets.utils import logging
-from hypernets.tabular import dask_ex as dex
 
 logger = logging.get_logger(__name__)
+
+
+class DaskDataFrameMapper(DataFrameMapper):
+    @staticmethod
+    def _create_dataframe_mapper(features, **kwargs):
+        return DaskToolBox.transformers['DataFrameMapper'](features=features, **kwargs)
 
 
 class StandardScaler(HyperTransformer):
@@ -42,7 +48,7 @@ class SafeOneHotEncoder(HyperTransformer):
         # kwargs['handle_unknown'] = 'ignore' #fixme
 
         # HyperTransformer.__init__(self, dpre.OneHotEncoder, space, name, **kwargs)
-        HyperTransformer.__init__(self, dex.SafeOneHotEncoder, space, name, **kwargs)
+        HyperTransformer.__init__(self, DaskToolBox.transformers['SafeOneHotEncoder'], space, name, **kwargs)
 
 
 class MinMaxScaler(HyperTransformer):
@@ -74,7 +80,7 @@ class MaxAbsScaler(HyperTransformer):
         if copy is not None and copy != True:
             kwargs['copy'] = copy
 
-        HyperTransformer.__init__(self, dex.MaxAbsScaler, space, name, **kwargs)
+        HyperTransformer.__init__(self, DaskToolBox.transformers['MaxAbsScaler'], space, name, **kwargs)
 
 
 class SimpleImputer(HyperTransformer):
@@ -100,7 +106,7 @@ class MultiLabelEncoder(HyperTransformer):
     def __init__(self, columns=None, space=None, name=None, **kwargs):
         if columns is not None:
             kwargs['columns'] = columns
-        HyperTransformer.__init__(self, dex.MultiLabelEncoder, space, name, **kwargs)
+        HyperTransformer.__init__(self, DaskToolBox.transformers['MultiLabelEncoder'], space, name, **kwargs)
 
 
 class OrdinalEncoder(HyperTransformer):
@@ -110,7 +116,7 @@ class OrdinalEncoder(HyperTransformer):
 
 class SafeOrdinalEncoder(HyperTransformer):
     def __init__(self, space=None, name=None, **kwargs):
-        HyperTransformer.__init__(self, dex.SafeOrdinalEncoder, space, name, **kwargs)
+        HyperTransformer.__init__(self, DaskToolBox.transformers['SafeOrdinalEncoder'], space, name, **kwargs)
 
 
 class TruncatedSVD(HyperTransformer):
@@ -127,13 +133,13 @@ class TruncatedSVD(HyperTransformer):
         if random_state is not None:
             kwargs['random_state'] = random_state
 
-        HyperTransformer.__init__(self, dex.TruncatedSVD, space, name, **kwargs)
+        HyperTransformer.__init__(self, DaskToolBox.transformers['TruncatedSVD'], space, name, **kwargs)
 
 
 class CallableAdapterEncoder(HyperTransformer):
     def __init__(self, fn, space=None, name=None,
                  fit=False, fit_transform=False, transform=False, inverse_transform=False):
-        HyperTransformer.__init__(self, dex.CallableAdapterEncoder, space, name,
+        HyperTransformer.__init__(self, DaskToolBox.transformers['CallableAdapterEncoder'], space, name,
                                   fn=fn,
                                   fit=fit, fit_transform=fit_transform,
                                   transform=transform, inverse_transform=inverse_transform)
@@ -142,7 +148,7 @@ class CallableAdapterEncoder(HyperTransformer):
 class DataCacher(HyperTransformer):
     def __init__(self, cache_dict, space=None, name=None, cache_key=None, remove_keys=None,
                  fit=False, fit_transform=False, transform=False, inverse_transform=False):
-        HyperTransformer.__init__(self, dex.DataCacher, space, name,
+        HyperTransformer.__init__(self, DaskToolBox.transformers['DataCacher'], space, name,
                                   cache_dict=cache_dict, cache_key=cache_key, remove_keys=remove_keys,
                                   fit=fit, fit_transform=fit_transform,
                                   transform=transform, inverse_transform=inverse_transform)
@@ -151,7 +157,7 @@ class DataCacher(HyperTransformer):
 class CacheCleaner(HyperTransformer):
     def __init__(self, cache_dict, space=None, name=None,
                  fit=False, fit_transform=False, transform=False, inverse_transform=False):
-        HyperTransformer.__init__(self, dex.CacheCleaner, space, name,
+        HyperTransformer.__init__(self, DaskToolBox.transformers['CacheCleaner'], space, name,
                                   cache_dict=cache_dict,
                                   fit=fit, fit_transform=fit_transform,
                                   transform=transform, inverse_transform=inverse_transform)
