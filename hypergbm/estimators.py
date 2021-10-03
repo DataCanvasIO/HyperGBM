@@ -2,6 +2,8 @@
 """
 
 """
+from distutils.version import LooseVersion
+
 import catboost
 import lightgbm
 import numpy as np
@@ -586,7 +588,8 @@ class CatBoostEstimatorMixin:
     def build_discriminator_callback(self, discriminator):
         if discriminator is None:
             return None
-        if int(catboost.__version__.split('.')[1]) >= 26:
+
+        if LooseVersion(catboost.__version__) >= LooseVersion('0.26.0'):
             callback = CatboostDiscriminationCallback(discriminator=discriminator, group_id=self.group_id)
             self.discriminator_callback = callback
             return callback
