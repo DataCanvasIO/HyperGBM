@@ -148,7 +148,7 @@ class LGBMEstimatorMixin:
     def prepare_fit_kwargs(self, X, y, kwargs):
         if not kwargs.__contains__('categorical_feature'):
             cat_cols = get_categorical_features(X)
-            kwargs['categorical_feature'] = cat_cols
+            kwargs['categorical_feature'] = cat_cols if len(cat_cols) > 0 else None
         if kwargs.get('early_stopping_rounds') is None and kwargs.get('eval_set') is not None:
             kwargs['early_stopping_rounds'] = _default_early_stopping_rounds(self)
         return kwargs
