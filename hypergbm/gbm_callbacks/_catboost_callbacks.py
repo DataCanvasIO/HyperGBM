@@ -13,7 +13,7 @@ class CatboostDiscriminationCallback(BaseDiscriminationCallback):
     def after_iteration(self, info):
         score = self._get_score(info)
         self.iteration_trajectory.append(score)
-        self.is_promising_ = self.discriminator.is_promising(self.iteration_trajectory, self.group_id)
+        self.is_promising_ = self.discriminator.is_promising(self.iteration_trajectory, self.group_id, -1)
         return self.is_promising_
 
     def _get_score(self, info):
