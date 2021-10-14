@@ -589,7 +589,7 @@ class CatBoostEstimatorMixin:
         if discriminator is None:
             return None
 
-        if LooseVersion(catboost.__version__) >= LooseVersion('0.26.0'):
+        if LooseVersion(catboost.__version__) >= LooseVersion('0.26'):
             callback = CatboostDiscriminationCallback(discriminator=discriminator, group_id=self.group_id)
             self.discriminator_callback = callback
             return callback

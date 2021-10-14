@@ -95,8 +95,8 @@ def main():
     X_train = df_train
     y_train = X_train.pop(target)
     classes = list(set(y_train))
-    from hypernets.utils import infer_task_type
-    task_type = infer_task_type(y_train)[0]
+    from hypernets.tabular import get_tool_box
+    task_type = get_tool_box(y_train).infer_task_type(y_train)[0]
 
     if task_type == tt_const.TASK_BINARY:
         if pos_label is None or len(pos_label) < 1:
