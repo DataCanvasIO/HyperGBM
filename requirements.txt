@@ -1,3 +1,5 @@
+featuretools>=0.23.0,<1.0
+scikit-learn>=0.22.1,<1.0
 hypernets==0.2.3
 fsspec>=0.8.0
 dask
