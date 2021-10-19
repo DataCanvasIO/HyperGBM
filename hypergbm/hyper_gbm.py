@@ -8,14 +8,10 @@ import pickle
 import re
 import time
 
-import dask.array as da
-import dask.dataframe as dd
-import dask_ml.model_selection as dm_sel
 import numpy as np
 from imblearn.over_sampling import RandomOverSampler, SMOTE, ADASYN
 from imblearn.under_sampling import RandomUnderSampler, NearMiss, TomekLinks, EditedNearestNeighbours
 from sklearn import pipeline as sk_pipeline
-from sklearn.model_selection import KFold, StratifiedKFold
 from tqdm.auto import tqdm
 
 from hypergbm.gbm_callbacks import FileMonitorCallback
@@ -25,9 +21,7 @@ from hypernets.model.estimator import Estimator
 from hypernets.model.hyper_model import HyperModel
 from hypernets.tabular import get_tool_box
 from hypernets.tabular.cache import cache
-from hypernets.tabular.dask_ex import DaskToolBox
-from hypernets.tabular.lifelong_learning import select_valid_oof
-from hypernets.utils import logging, fs
+from hypernets.utils import logging, fs, const
 from .estimators import HyperEstimator
 
 try:
@@ -222,12 +216,6 @@ class HyperGBMEstimator(Estimator):
 
     def fit_cross_validation(self, X, y, verbose=0, stratified=True, num_folds=3, pos_label=None,
                              shuffle=False, random_state=9527, metrics=None, skip_if_file=None, **kwargs):
-        if DaskToolBox.exist_dask_object(X, y):
-            return self.fit_cross_validation_by_dask(X, y, verbose=verbose, pos_label=pos_label,
-                                                     stratified=stratified, num_folds=num_folds,
-                                                     shuffle=shuffle, random_state=random_state,
-                                                     metrics=metrics, skip_if_file=skip_if_file,
-                                                     **kwargs)
         starttime = time.time()
         if verbose is None:
             verbose = 0
@@ -239,17 +227,18 @@ class HyperGBMEstimator(Estimator):
             pbar.reset()
             pbar.set_description('fit_transform_data')
 
+        tb = get_tool_box(X, y)
         X = self.fit_transform_data(X, y, verbose=verbose)
-        y = np.array(y)
+        # y = np.array(y)
 
         cross_validator = kwargs.pop('cross_validator', None)
         if cross_validator is not None:
             iterators = cross_validator
         else:
-            if stratified and self.task == 'binary':
-                iterators = StratifiedKFold(n_splits=num_folds, shuffle=True, random_state=9527)
+            if stratified and self.task == const.TASK_BINARY:
+                iterators = tb.statified_kfold(n_splits=num_folds, shuffle=True, random_state=9527)
             else:
-                iterators = KFold(n_splits=num_folds, shuffle=True, random_state=9527)
+                iterators = tb.kfold(n_splits=num_folds, shuffle=True, random_state=9527)
 
         kwargs = self.fit_kwargs
         if kwargs.get('verbose') is None:
@@ -257,22 +246,24 @@ class HyperGBMEstimator(Estimator):
 
         if metrics is None:
             metrics = ['accuracy']
-        oof_ = None
+
+        oof_ = []
         oof_scores = []
         self.pos_label = pos_label
         self.cv_gbm_models_ = []
         if pbar is not None:
             pbar.set_description('cross_validation')
+        sel = tb.select_1d
         for n_fold, (train_idx, valid_idx) in enumerate(iterators.split(X, y)):
-            x_train_fold, y_train_fold = X.iloc[train_idx], y[train_idx]
-            x_val_fold, y_val_fold = X.iloc[valid_idx], y[valid_idx]
+            x_train_fold, y_train_fold = sel(X, train_idx), sel(y, train_idx)
+            x_val_fold, y_val_fold = sel(X, valid_idx), sel(y, valid_idx)
 
             kwargs['eval_set'] = [(x_val_fold, y_val_fold)]
             sample_weight = None
-            if self.task != 'regression' and self.class_balancing is not None:
+            if self.task != const.TASK_REGRESSION and self.class_balancing is not None:
                 sampler = get_sampler(self.class_balancing)
                 if sampler is None:
-                    sample_weight = self._get_sample_weight(y_train_fold)
+                    sample_weight = tb.compute_sample_weight(y_train_fold)
                 else:
                     x_train_fold, y_train_fold = sampler.fit_resample(x_train_fold, y_train_fold)
             kwargs['sample_weight'] = sample_weight
@@ -290,41 +281,39 @@ class HyperGBMEstimator(Estimator):
             # print(fold_est.evals_result_)
             # print(f'fold {n_fold}, est:{fold_est.__class__},  best_n_estimators:{fold_est.best_n_estimators}')
             if self.classes_ is None and hasattr(fold_est, 'classes_'):
-                self.classes_ = fold_est.classes_
-            if self.task == 'regression':
+                self.classes_ = np.array(fold_est.classes_)
+            if self.task == const.TASK_REGRESSION:
                 proba = fold_est.predict(x_val_fold)
             else:
                 proba = fold_est.predict_proba(x_val_fold)
 
             fold_scores = self.get_scores(y_val_fold, proba, metrics)
             oof_scores.append(fold_scores)
-            if oof_ is None:
-                if len(proba.shape) == 1:
-                    oof_ = np.full(y.shape, np.nan, proba.dtype)
-                else:
-                    oof_ = np.full((y.shape[0], proba.shape[-1]), np.nan, proba.dtype)
-            oof_[valid_idx] = proba
+            oof_.append((valid_idx, proba))
             self.cv_gbm_models_.append(fold_est)
 
             if pbar is not None:
                 pbar.update(1)
 
         logger.info(f'oof_scores:{oof_scores}')
+        oof_ = tb.merge_oof(oof_)
         scores = self.get_scores(y, oof_, metrics)
         if verbose > 0:
             logger.info(f'taken {time.time() - starttime}s')
         return scores, oof_, oof_scores
 
     def get_scores(self, y, oof_, metrics):
-        y, proba = select_valid_oof(y, oof_)
-        if self.task == 'regression':
+        tb = get_tool_box(y)
+        y, proba = tb.select_valid_oof(y, oof_)
+        if self.task == const.TASK_REGRESSION:
             preds = proba
             proba = None
         else:
             preds = self.proba2predict(proba)
-            preds = np.array(self.classes_).take(preds, axis=0)
-        scores = get_tool_box(y).metrics.calc_score(y, preds, proba, metrics=metrics, task=self.task,
-                                                    classes=self.classes_, pos_label=self.pos_label)
+            # preds = np.array(self.classes_).take(preds, axis=0)
+            preds = tb.take_array(self.classes_, preds, axis=0)
+        scores = tb.metrics.calc_score(y, preds, proba, metrics=metrics, task=self.task,
+                                       classes=self.classes_, pos_label=self.pos_label)
         return scores
 
     def get_iteration_scores(self):
@@ -347,100 +336,6 @@ class HyperGBMEstimator(Estimator):
         else:
             get_scores(self.gbm_model, iteration_scores)
         return iteration_scores
-
-    def fit_cross_validation_by_dask(self, X, y, verbose=0, stratified=True, num_folds=3, pos_label=None,
-                                     shuffle=False, random_state=9527, metrics=None, skip_if_file=None, **kwargs):
-        starttime = time.time()
-        if verbose is None:
-            verbose = 0
-        if verbose > 0:
-            logger.info('estimator is transforming the train set')
-
-        pbar = self.transients_.get('pbar')
-        if pbar is not None:
-            pbar.reset()
-            pbar.set_description('fit_transform_data')
-
-        X = self.fit_transform_data(X, y, verbose=verbose)
-
-        iterators = dm_sel.KFold(n_splits=num_folds, shuffle=shuffle, random_state=random_state)
-        X_values = X.to_dask_array(lengths=True)
-        y_values = y.to_dask_array(lengths=True)
-
-        kwargs = self.fit_kwargs
-        # if kwargs.get('verbose') is None and str(type(self.gbm_model)).find('dask') < 0:
-        #     kwargs['verbose'] = verbose
-
-        oof_ = []
-        models = []
-        if pbar is not None:
-            pbar.set_description('cross_validation')
-        for n_fold, (train_idx, valid_idx) in enumerate(iterators.split(X_values, y_values)):
-            x_train_fold, y_train_fold = X_values[train_idx], y_values[train_idx]
-            x_val_fold, y_val_fold = X_values[valid_idx], y_values[valid_idx]
-            x_train_fold = DaskToolBox.array_to_df(x_train_fold, meta=X)
-            x_val_fold = DaskToolBox.array_to_df(x_val_fold, meta=X)
-
-            sample_weight = None
-            if self.task != 'regression' and self.class_balancing is not None:
-                sampler = get_sampler(self.class_balancing)
-                if sampler is None:
-                    sample_weight = self._get_sample_weight(y_train_fold)
-                else:
-                    x_train_fold, y_train_fold = sampler.fit_resample(x_train_fold, y_train_fold)
-
-            eval_set = [(x_val_fold, y_val_fold)]
-            if self.task != 'regression' and \
-                    len(da.unique(y_val_fold).compute()) != len(da.unique(y_train_fold).compute()):
-                eval_set = None
-
-            fold_est = copy.deepcopy(self.gbm_model)
-            fit_kwargs = {**kwargs, 'sample_weight': sample_weight, 'eval_set': eval_set, 'verbose': 0,
-                          'early_stopping_rounds': kwargs.get('early_stopping_rounds')
-                          if eval_set is not None else None}
-            fold_est.group_id = f'{fold_est.__class__.__name__}_cv_{n_fold}'
-            self._prepare_callbacks(fit_kwargs, fold_est, self.discriminator, skip_if_file)
-            fold_start_at = time.time()
-            fold_est.fit(x_train_fold, y_train_fold, **fit_kwargs)
-            if verbose:
-                logger.info(f'fit fold {n_fold} with {time.time() - fold_start_at} seconds')
-
-            # print(f'fold {n_fold}, est:{fold_est.__class__},  best_n_estimators:{fold_est.best_n_estimators}')
-            if self.classes_ is None and hasattr(fold_est, 'classes_'):
-                self.classes_ = fold_est.classes_
-            if self.task == 'regression':
-                proba = fold_est.predict(x_val_fold)
-            else:
-                proba = fold_est.predict_proba(x_val_fold)
-
-            index = valid_idx.copy().reshape((valid_idx.shape[0], 1))
-            oof_.append(DaskToolBox.hstack_array([index, proba]))
-            models.append(fold_est)
-
-            if pbar is not None:
-                pbar.update(1)
-
-        oof_ = DaskToolBox.vstack_array(oof_)
-        oof_df = dd.from_dask_array(oof_).set_index(0)
-        oof_ = oof_df.to_dask_array(lengths=True)
-
-        self.cv_gbm_models_ = models
-        self.pos_label = pos_label
-
-        if metrics is None:
-            metrics = ['accuracy']
-        if self.task == 'regression':
-            proba = None
-            preds = oof_
-        else:
-            proba = oof_
-            preds = self.proba2predict(oof_)
-            preds = da.take(np.array(self.classes_), preds, axis=0)
-        scores = DaskToolBox.metrics.calc_score(y, preds, proba, metrics=metrics, task=self.task,
-                                                classes=self.classes_, pos_label=pos_label)
-        if verbose > 0:
-            logger.info(f'taken {time.time() - starttime}s')
-        return scores, oof_, None
 
     def fit(self, X, y, pos_label=None, skip_if_file=None, verbose=0, **kwargs):
         starttime = time.time()
@@ -474,12 +369,13 @@ class HyperGBMEstimator(Estimator):
         if kwargs.get('verbose') is None:
             kwargs['verbose'] = verbose
 
-        if self.task != 'regression' and self.class_balancing is not None:
+        if self.task != const.TASK_REGRESSION and self.class_balancing is not None:
             sampler = get_sampler(self.class_balancing)
             if sampler is None:
                 if verbose > 0:
                     logger.info('setting sample weight')
-                sample_weight = self._get_sample_weight(y)
+                tb = get_tool_box(y)
+                sample_weight = tb.compute_sample_weight(y)
                 kwargs['sample_weight'] = sample_weight
             else:
                 if verbose > 0:
@@ -502,15 +398,6 @@ class HyperGBMEstimator(Estimator):
         if verbose > 0:
             logger.info(f'taken {time.time() - starttime}s')
 
-    def _get_sample_weight(self, y):
-        # unique = np.unique(y)
-        # cw = list(class_weight.compute_class_weight('balanced', unique, y))
-        # sample_weight = np.ones(y.shape)
-        # for i, c in enumerate(unique):
-        #     sample_weight[y == c] *= cw[i]
-        # return sample_weight
-        return get_tool_box(y).compute_sample_weight(y)
-
     @staticmethod
     def _prepare_callbacks(fit_kwargs, est, discriminator, skip_if_file):
         if hasattr(est, 'build_discriminator_callback'):
@@ -531,7 +418,7 @@ class HyperGBMEstimator(Estimator):
             verbose = 0
 
         if self.cv_gbm_models_ is not None:
-            if self.task == 'regression':
+            if self.task == const.TASK_REGRESSION:
                 pred_sum = None
                 X = self.transform_data(X, verbose=verbose)
                 for est in self.cv_gbm_models_:
@@ -587,7 +474,7 @@ class HyperGBMEstimator(Estimator):
     def evaluate(self, X, y, metrics=None, verbose=0, **kwargs):
         if metrics is None:
             metrics = ['accuracy']
-        if self.task != 'regression':
+        if self.task != const.TASK_REGRESSION:
             proba = self.predict_proba(X, verbose=verbose)
         else:
             proba = None

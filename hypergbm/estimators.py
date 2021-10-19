@@ -469,7 +469,7 @@ if xgb_dask_distributed:
 
             task = self.__dict__.get('task')
             if task is not None and task in {const.TASK_MULTICLASS, const.TASK_BINARY}:
-                if y is not None and y.dtype == np.object:
+                if y is not None and str(y.dtype) == 'object':
                     from dask_ml.preprocessing import LabelEncoder as DaskLabelEncoder
                     le = DaskLabelEncoder()
                     # y = le.fit_transform(y)
