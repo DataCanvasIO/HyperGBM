@@ -140,6 +140,10 @@ _class_balancing_doc = """ : str, optional, (default=None)
         - TomekLinks
         - EditedNearestNeighbours"""
 
+_cross_validator_doc = """ : cross-validation generator, optional
+    Used to split a fit_transformed dataset into a sequence of train and test portions.
+    KFold for regression task and StratifiedKFold for classification task by default."""
+
 
 def _merge_doc():
     my_doc = DocLens(make_experiment.__doc__)
@@ -147,6 +151,7 @@ def _merge_doc():
     params.pop('hyper_model_cls')
     params['search_space'] += _search_space_doc
     params['class_balancing'] = _class_balancing_doc
+    params['cross_validator'] = _cross_validator_doc
     for k in ['clear_cache', 'log_level']:
         params.move_to_end(k)
 
