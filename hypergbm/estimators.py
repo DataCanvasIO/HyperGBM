@@ -342,12 +342,12 @@ class XGBEstimatorMixin:
         return callback
 
     def prepare_fit_kwargs(self, X, y, kwargs):
-        task = self.__dict__.get('task')
-        if kwargs.get('eval_metric') is None:
-            if task is not None and task == const.TASK_MULTICLASS:
-                kwargs['eval_metric'] = 'mlogloss'
-            else:
-                kwargs['eval_metric'] = 'logloss'
+#         task = self.__dict__.get('task')
+#         if kwargs.get('eval_metric') is None:
+#             if task is not None and task == const.TASK_MULTICLASS:
+#                 kwargs['eval_metric'] = 'mlogloss'
+#             else:
+#                 kwargs['eval_metric'] = 'logloss'
         if kwargs.get('early_stopping_rounds') is None and kwargs.get('eval_set') is not None:
             kwargs['early_stopping_rounds'] = _default_early_stopping_rounds(self)
         return kwargs
