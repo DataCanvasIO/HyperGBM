@@ -6,3 +6,4 @@ How-To
 
    How to install shap on centos7?<how_to/install_shap.md>
    How to customize reward_metric in HyperGBM?<how_to/customize_reward_metric.md>
+   How to customize storage in HyperGBM?<how_to/customize_storage.md>
