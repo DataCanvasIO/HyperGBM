@@ -1,6 +1,6 @@
 ## How to customize storage in HyperGBM?
 
-HyperGBM store intermediate data (model files, cache data, etc.) under the *work_dir*,  which is a subdirectory under your system temporary directory by default.
+HyperGBM store intermediate data (model files, cache data, etc.) in the *work_dir*,  which is a subdirectory under your system temporary directory by default.
 
 ---
 
@@ -31,6 +31,7 @@ HyperGBM store intermediate data (model files, cache data, etc.) under the *work
                    "aws_secret_access_key": "your_secret_access_key"
            }
    }
+   """
    ```
 
 Refer to [s3fs](https://s3fs.readthedocs.io/en/latest/) for more installation and connection information.
