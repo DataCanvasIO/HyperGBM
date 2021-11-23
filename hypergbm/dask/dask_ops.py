@@ -5,11 +5,11 @@
 
 import numpy as np
 
-from hypergbm.pipeline import Pipeline
 from hypernets.core.ops import ModuleChoice, Optional
 from hypernets.core.search_space import Choice
-from hypernets.utils import logging
+from hypernets.pipeline.base import Pipeline
 from hypernets.tabular.column_selector import column_object_category_bool, column_number_exclude_timedelta
+from hypernets.utils import logging
 from . import dask_transformers as tf
 
 logger = logging.get_logger(__name__)

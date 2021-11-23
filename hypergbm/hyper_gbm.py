@@ -15,10 +15,10 @@ from sklearn import pipeline as sk_pipeline
 from tqdm.auto import tqdm
 
 from hypergbm.gbm_callbacks import FileMonitorCallback
-from hypergbm.pipeline import ComposeTransformer
 from hypernets.core import Callback, ProgressiveCallback
 from hypernets.model.estimator import Estimator
 from hypernets.model.hyper_model import HyperModel
+from hypernets.pipeline.base import ComposeTransformer
 from hypernets.tabular import get_tool_box
 from hypernets.tabular.cache import cache
 from hypernets.utils import logging, fs, const

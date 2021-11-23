@@ -7,7 +7,7 @@ import numpy as np
 from dask_ml import impute as dimp
 from dask_ml import preprocessing as dm_pre
 
-from hypergbm.pipeline import HyperTransformer, DataFrameMapper
+from hypernets.pipeline.base import HyperTransformer, DataFrameMapper
 from hypernets.tabular.dask_ex import DaskToolBox
 from hypernets.utils import logging
 

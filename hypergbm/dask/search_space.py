@@ -7,9 +7,9 @@ from functools import partial
 from hypergbm.dask import dask_transformers as tf, dask_ops as ops
 from hypergbm.estimators import LightGBMDaskEstimator, CatBoostDaskEstimator, XGBoostDaskEstimator, \
     lgbm_dask_distributed, xgb_dask_distributed
-from hypergbm.pipeline import Pipeline
 from hypergbm.search_space import GeneralSearchSpaceGenerator
 from hypernets.core.search_space import get_default_space
+from hypernets.pipeline.base import Pipeline
 from hypernets.tabular.dask_ex import DaskToolBox
 from hypernets.utils import logging
 

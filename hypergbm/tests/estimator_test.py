@@ -9,14 +9,14 @@ from sklearn.model_selection import train_test_split
 
 from hypergbm import HyperGBMEstimator
 from hypergbm.estimators import LightGBMEstimator, XGBoostEstimator
-from hypergbm.pipeline import DataFrameMapper
 from hypergbm.search_space import search_space_general
 from hypergbm.sklearn.sklearn_ops import categorical_pipeline_simple, numeric_pipeline_simple, \
     categorical_pipeline_complex, numeric_pipeline_complex
 from hypernets.core.ops import HyperInput, Choice, ModuleChoice
 from hypernets.core.search_space import HyperSpace, Real
-from hypernets.tabular.datasets import dsutils
+from hypernets.pipeline.base import DataFrameMapper
 from hypernets.tabular import get_tool_box
+from hypernets.tabular.datasets import dsutils
 
 
 def get_space_multi_dataframemapper(default=False):

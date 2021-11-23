@@ -6,13 +6,13 @@ __author__ = 'yangjian'
 
 from hypergbm.cfg import HyperGBMCfg as cfg
 from hypergbm.estimators import LightGBMEstimator, XGBoostEstimator, CatBoostEstimator, HistGBEstimator
-from hypergbm.pipeline import DataFrameMapper
 from hypergbm.sklearn.sklearn_ops import numeric_pipeline_simple, numeric_pipeline_complex, \
     categorical_pipeline_simple, categorical_pipeline_complex, \
     datetime_pipeline_simple, text_pipeline_simple
 from hypernets.core import randint
 from hypernets.core.ops import ModuleChoice, HyperInput
 from hypernets.core.search_space import HyperSpace, Choice, Int
+from hypernets.pipeline.base import DataFrameMapper
 from hypernets.tabular.column_selector import column_object
 from hypernets.utils import logging, get_params
 

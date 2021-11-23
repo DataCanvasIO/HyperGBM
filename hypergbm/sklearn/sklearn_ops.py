@@ -5,11 +5,11 @@
 import numpy as np
 
 from hypergbm.cfg import HyperGBMCfg as cfg
-from hypergbm.pipeline import Pipeline
-from hypergbm.sklearn.transformers import SimpleImputer, SafeOneHotEncoder, TruncatedSVD, \
+from hypernets.core.ops import ModuleChoice, Optional, Choice
+from hypernets.pipeline.base import Pipeline
+from hypernets.pipeline.transformers import SimpleImputer, SafeOneHotEncoder, TruncatedSVD, \
     StandardScaler, MinMaxScaler, MaxAbsScaler, RobustScaler, SafeOrdinalEncoder, \
     LogStandardScaler, DatetimeEncoder, TfidfEncoder, AsTypeTransformer
-from hypernets.core.ops import ModuleChoice, Optional, Choice
 from hypernets.tabular import column_selector
 
 

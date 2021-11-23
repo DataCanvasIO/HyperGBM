@@ -81,7 +81,7 @@ def main():
 
     from hypergbm.estimators import LightGBMEstimator, XGBoostEstimator, CatBoostEstimator
     from hypergbm.hyper_gbm import HyperGBM
-    from hypergbm.pipeline import DataFrameMapper
+    from hypernets.pipeline.base import DataFrameMapper
     from hypergbm.sklearn.sklearn_ops import numeric_pipeline_complex, categorical_pipeline_simple
     from hypergbm.search_space import search_space_general
     from hypernets.experiment.general import GeneralExperiment
