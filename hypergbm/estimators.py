@@ -37,7 +37,7 @@ def _default_early_stopping_rounds(estimator):
     if isinstance(n_estimators, int):
         return max(5, n_estimators // 20)
     else:
-#         return None
+        #return None
         return 200
 
 
