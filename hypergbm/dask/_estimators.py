@@ -6,7 +6,7 @@
 import lightgbm
 import xgboost
 
-from hypernets.utils import const, logging, is_os_windows
+from hypernets.utils import const, logging, is_os_linux
 from hypernets.tabular.dask_ex import DaskToolBox
 from ..estimators import _default_early_stopping_rounds
 from ..estimators import LGBMEstimatorMixin, LGBMClassifierWrapper, LGBMRegressorWrapper, LightGBMEstimator
@@ -15,8 +15,8 @@ from ..estimators import CatBoostEstimatorMixin, CatBoostClassifierWrapper, CatB
 
 logger = logging.get_logger(__name__)
 
-lgbm_dask_distributed = hasattr(lightgbm, 'dask')
-xgb_dask_distributed = hasattr(xgboost, 'dask') and not is_os_windows
+lgbm_dask_distributed = hasattr(lightgbm, 'dask') and is_os_linux
+xgb_dask_distributed = hasattr(xgboost, 'dask') and is_os_linux
 catboost_dask_distributed = False
 
 if lgbm_dask_distributed:
