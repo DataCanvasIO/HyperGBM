@@ -6,6 +6,7 @@ __author__ = 'yangjian'
 
 from hypergbm.cfg import HyperGBMCfg as cfg
 from hypergbm.estimators import LightGBMEstimator, XGBoostEstimator, CatBoostEstimator, HistGBEstimator
+from hypergbm.estimators import detect_lgbm_gpu
 from hypergbm.sklearn.sklearn_ops import numeric_pipeline_simple, numeric_pipeline_complex, \
     categorical_pipeline_simple, categorical_pipeline_complex, \
     datetime_pipeline_simple, text_pipeline_simple
@@ -234,7 +235,7 @@ search_space_general = GeneralSearchSpaceGenerator(n_estimators=200)
 
 search_space_general_gpu = \
     GeneralSearchSpaceGenerator(n_estimators=200,
-                                lightgbm_init_kwargs={'device': 'GPU'},
+                                lightgbm_init_kwargs={'device': 'GPU'} if detect_lgbm_gpu() else {},
                                 xgb_init_kwargs={'tree_method': 'gpu_hist'},
                                 catboost_init_kwargs={'task_type': 'GPU'})
 

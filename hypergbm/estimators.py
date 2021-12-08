@@ -7,6 +7,7 @@ from distutils.version import LooseVersion
 import catboost
 import lightgbm
 import numpy as np
+import pandas as pd
 import xgboost
 
 try:
@@ -19,11 +20,20 @@ from hypernets.core.search_space import ModuleSpace
 from hypernets.discriminators import UnPromisingTrial
 from hypernets.tabular.column_selector import column_object_category_bool, column_zero_or_positive_int32
 from hypernets.tabular.dask_ex import DaskToolBox
+from hypernets.tabular import get_tool_box
 from hypernets.utils import const, logging, is_os_windows
 from .gbm_callbacks import LightGBMDiscriminationCallback, XGBoostDiscriminationCallback, CatboostDiscriminationCallback
 
 logger = logging.get_logger(__name__)
 _is_windows = is_os_windows
+
+
+def detect_lgbm_gpu():
+    tb = get_tool_box(pd.DataFrame)
+    detected = tb.estimator_detector('lightgbm.LGBMClassifier', const.TASK_BINARY,
+                                     init_kwargs={'device': 'GPU'},
+                                     fit_kwargs={})()
+    return 'fitted' in detected
 
 
 def get_categorical_features(X):
@@ -589,7 +599,11 @@ class CatBoostEstimatorMixin:
         if discriminator is None:
             return None
 
-        if LooseVersion(catboost.__version__) >= LooseVersion('0.26'):
+        task_type = self.get_params(deep=False).get('task_type', None)
+
+        if str(task_type).upper() == 'GPU':
+            return None  # User defined loss functions, metrics and callbacks are not supported for GPU
+        elif LooseVersion(catboost.__version__) >= LooseVersion('0.26'):
             callback = CatboostDiscriminationCallback(discriminator=discriminator, group_id=self.group_id)
             self.discriminator_callback = callback
             return callback

@@ -401,13 +401,15 @@ class HyperGBMEstimator(Estimator):
     @staticmethod
     def _prepare_callbacks(fit_kwargs, est, discriminator, skip_if_file):
         if hasattr(est, 'build_discriminator_callback'):
-            callback = est.build_discriminator_callback(discriminator)
-            if callback:
+            discriminator_callback = est.build_discriminator_callback(discriminator)
+            if discriminator_callback:
                 callbacks = fit_kwargs.get('callbacks', [])
-                callbacks.append(callback)
+                callbacks.append(discriminator_callback)
                 fit_kwargs['callbacks'] = callbacks
+        else:
+            discriminator_callback = None  # dose not support callback
 
-        if skip_if_file:
+        if skip_if_file and discriminator_callback is not None:
             callbacks = fit_kwargs.get('callbacks', [])
             callbacks.append(FileMonitorCallback(skip_if_file))
             fit_kwargs['callbacks'] = callbacks
