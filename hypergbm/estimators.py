@@ -24,13 +24,20 @@ except ImportError:
 
 logger = logging.get_logger(__name__)
 
+_detected_lgbm_gpu = None
+
 
 def detect_lgbm_gpu():
-    tb = get_tool_box(pd.DataFrame)
-    detected = tb.estimator_detector('lightgbm.LGBMClassifier', const.TASK_BINARY,
-                                     init_kwargs={'device': 'GPU'},
-                                     fit_kwargs={})()
-    return 'fitted' in detected
+    global _detected_lgbm_gpu
+
+    if _detected_lgbm_gpu is None:
+        tb = get_tool_box(pd.DataFrame)
+        detected = tb.estimator_detector('lightgbm.LGBMClassifier', const.TASK_BINARY,
+                                         init_kwargs={'device': 'GPU'},
+                                         fit_kwargs={})()
+        _detected_lgbm_gpu = 'fitted' in detected
+
+    return _detected_lgbm_gpu
 
 
 def get_categorical_features(X):
