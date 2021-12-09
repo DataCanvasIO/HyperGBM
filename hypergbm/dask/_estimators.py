@@ -6,18 +6,20 @@
 import lightgbm
 import xgboost
 
-from hypernets.utils import const, logging, is_os_linux
 from hypernets.tabular.dask_ex import DaskToolBox
-from ..estimators import _default_early_stopping_rounds
+from hypernets.utils import const, logging, is_os_linux
+from ..estimators import CatBoostClassifierWrapper, CatBoostRegressionWrapper, CatBoostEstimator
+from ..estimators import HistGradientBoostingClassifierWrapper, HistGradientBoostingRegressorWrapper, HistGBEstimator
 from ..estimators import LGBMEstimatorMixin, LGBMClassifierWrapper, LGBMRegressorWrapper, LightGBMEstimator
 from ..estimators import XGBEstimatorMixin, XGBClassifierWrapper, XGBRegressorWrapper, XGBoostEstimator
-from ..estimators import CatBoostEstimatorMixin, CatBoostClassifierWrapper, CatBoostRegressionWrapper, CatBoostEstimator
+from ..estimators import _default_early_stopping_rounds
 
 logger = logging.get_logger(__name__)
 
 lgbm_dask_distributed = hasattr(lightgbm, 'dask') and is_os_linux
 xgb_dask_distributed = hasattr(xgboost, 'dask') and is_os_linux
 catboost_dask_distributed = False
+histgb_dask_distributed = False
 
 if lgbm_dask_distributed:
     class LGBMEstimatorDaskMixin(LGBMEstimatorMixin):
@@ -211,3 +213,31 @@ class CatBoostDaskEstimator(CatBoostEstimator):
         else:
             cat = CatBoostClassifierDaskWrapper(**kwargs)
         return cat
+
+
+class HistGradientBoostingClassifierDaskWrapper(HistGradientBoostingClassifierWrapper):
+    def fit(self, *args, **kwargs):
+        return DaskToolBox.compute_and_call(super().fit, *args, **kwargs)
+
+    def predict(self, *args, **kwargs):
+        return DaskToolBox.compute_and_call(super().predict, *args, **kwargs)
+
+    def predict_proba(self, *args, **kwargs):
+        return DaskToolBox.compute_and_call(super().predict_proba, *args, **kwargs)
+
+
+class HistGradientBoostingRegressorDaskWrapper(HistGradientBoostingRegressorWrapper):
+    def fit(self, *args, **kwargs):
+        return DaskToolBox.compute_and_call(super().fit, *args, **kwargs)
+
+    def predict(self, *args, **kwargs):
+        return DaskToolBox.compute_and_call(super().predict, *args, **kwargs)
+
+
+class HistGBDaskEstimator(HistGBEstimator):
+    def _build_estimator(self, task, kwargs):
+        if task == const.TASK_REGRESSION:
+            hgb = HistGradientBoostingRegressorDaskWrapper(**kwargs)
+        else:
+            hgb = HistGradientBoostingClassifierDaskWrapper(**kwargs)
+        return hgb

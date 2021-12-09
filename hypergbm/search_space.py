@@ -215,18 +215,31 @@ class GeneralSearchSpaceGenerator(BaseSearchSpaceGenerator):
     def default_histgb_fit_kwargs(self):
         return {}
 
+    lightgbm_estimator_cls = LightGBMEstimator
+    xgboost_estimator_cls = XGBoostEstimator
+    catboost_estimator_cls = CatBoostEstimator
+    histgb_estimator_cls = HistGBEstimator
+
     @property
     def estimators(self):
         r = {}
 
         if self.enable_lightgbm:
-            r['lightgbm'] = (LightGBMEstimator, self.default_lightgbm_init_kwargs, self.default_lightgbm_fit_kwargs)
+            r['lightgbm'] = (self.lightgbm_estimator_cls,
+                             self.default_lightgbm_init_kwargs,
+                             self.default_lightgbm_fit_kwargs)
         if self.enable_xgb:
-            r['xgb'] = (XGBoostEstimator, self.default_xgb_init_kwargs, self.default_xgb_fit_kwargs)
+            r['xgb'] = (self.xgboost_estimator_cls,
+                        self.default_xgb_init_kwargs,
+                        self.default_xgb_fit_kwargs)
         if self.enable_catboost:
-            r['catboost'] = (CatBoostEstimator, self.default_catboost_init_kwargs, self.default_catboost_fit_kwargs)
+            r['catboost'] = (self.catboost_estimator_cls,
+                             self.default_catboost_init_kwargs,
+                             self.default_catboost_fit_kwargs)
         if self.enable_histgb:
-            r['histgb'] = (HistGBEstimator, self.default_histgb_init_kwargs, self.default_histgb_fit_kwargs)
+            r['histgb'] = (self.histgb_estimator_cls,
+                           self.default_histgb_init_kwargs,
+                           self.default_histgb_fit_kwargs)
 
         return r
 

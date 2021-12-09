@@ -10,10 +10,12 @@ from hypernets.core.search_space import get_default_space
 from hypernets.pipeline.base import Pipeline
 from hypernets.tabular.dask_ex import DaskToolBox
 from hypernets.utils import logging
-from ._estimators import LightGBMDaskEstimator, CatBoostDaskEstimator, XGBoostDaskEstimator, \
-    lgbm_dask_distributed, xgb_dask_distributed
+from ._estimators import LightGBMDaskEstimator, CatBoostDaskEstimator, XGBoostDaskEstimator, HistGBDaskEstimator
+from ._estimators import lgbm_dask_distributed, xgb_dask_distributed, catboost_dask_distributed, histgb_dask_distributed
 
 logger = logging.get_logger(__name__)
+
+_is_local_dask = DaskToolBox.is_local_dask()
 
 
 def _transformer_decorator(cache, cache_key, remove_keys, transformer):
@@ -40,32 +42,27 @@ def _dfm_decorator(cache, cache_key, remove_keys, dfm):
 
 
 class DaskGeneralSearchSpaceGenerator(GeneralSearchSpaceGenerator):
+    xgboost_estimator_cls = XGBoostDaskEstimator
+    lightgbm_estimator_cls = LightGBMDaskEstimator
+    catboost_estimator_cls = CatBoostDaskEstimator
+    histgb_estimator_cls = HistGBDaskEstimator
 
-    def __init__(self, enable_lightgbm=True, enable_xgb=True, enable_catboost=True, enable_persist=True, **kwargs):
-        super().__init__(enable_lightgbm=enable_lightgbm, enable_xgb=enable_xgb, enable_catboost=enable_catboost,
-                         enable_histgb=False, **kwargs)
+    def __init__(self, enable_lightgbm=True, enable_xgb=True, enable_catboost=True, enable_histgb=False,
+                 enable_persist=True, **kwargs):
+        warning_msg = 'Your dask cluster does not support training with %s.'
+        assert _is_local_dask or lgbm_dask_distributed or not enable_lightgbm, warning_msg % 'lightgbm'
+        assert _is_local_dask or xgb_dask_distributed or not enable_xgb, warning_msg % 'xgboost'
+        assert _is_local_dask or catboost_dask_distributed or not enable_catboost, warning_msg % 'catboost'
+        assert _is_local_dask or histgb_dask_distributed or not enable_histgb, warning_msg % 'lightgbm'
 
         self.enable_persist = enable_persist
+
+        super().__init__(enable_lightgbm=enable_lightgbm, enable_xgb=enable_xgb, enable_catboost=enable_catboost,
+                         enable_histgb=enable_histgb, **kwargs)
 
     @property
     def default_xgb_init_kwargs(self):
         return {**super().default_xgb_init_kwargs, 'tree_method': 'approx'}
-
-    @property
-    def estimators(self):
-        r = {}
-        is_local = DaskToolBox.is_local_dask()
-
-        if self.enable_xgb and (is_local or xgb_dask_distributed):
-            r['xgb'] = (XGBoostDaskEstimator, self.default_xgb_init_kwargs, self.default_xgb_fit_kwargs)
-
-        if self.enable_lightgbm and (is_local or lgbm_dask_distributed):
-            r['lightgbm'] = (LightGBMDaskEstimator, self.default_lightgbm_init_kwargs, self.default_lightgbm_fit_kwargs)
-
-        if self.enable_catboost and is_local:
-            r['catboost'] = (CatBoostDaskEstimator, self.default_catboost_init_kwargs, self.default_catboost_fit_kwargs)
-
-        return r
 
     def create_preprocessor(self, hyper_input, options):
         cat_pipeline_mode = options.pop('cat_pipeline_mode', 'simple')
