@@ -15,8 +15,6 @@ from ._estimators import lgbm_dask_distributed, xgb_dask_distributed, catboost_d
 
 logger = logging.get_logger(__name__)
 
-_is_local_dask = DaskToolBox.is_local_dask()
-
 
 def _transformer_decorator(cache, cache_key, remove_keys, transformer):
     persister = tf.DataCacher(cache,
@@ -49,11 +47,11 @@ class DaskGeneralSearchSpaceGenerator(GeneralSearchSpaceGenerator):
 
     def __init__(self, enable_lightgbm=True, enable_xgb=True, enable_catboost=True, enable_histgb=False,
                  enable_persist=True, **kwargs):
-        warning_msg = 'Your dask cluster does not support training with %s.'
-        assert _is_local_dask or lgbm_dask_distributed or not enable_lightgbm, warning_msg % 'lightgbm'
-        assert _is_local_dask or xgb_dask_distributed or not enable_xgb, warning_msg % 'xgboost'
-        assert _is_local_dask or catboost_dask_distributed or not enable_catboost, warning_msg % 'catboost'
-        assert _is_local_dask or histgb_dask_distributed or not enable_histgb, warning_msg % 'lightgbm'
+        # warning_msg = 'Your dask cluster does not support training with %s.'
+        # assert _is_local_dask or lgbm_dask_distributed or not enable_lightgbm, warning_msg % 'lightgbm'
+        # assert _is_local_dask or xgb_dask_distributed or not enable_xgb, warning_msg % 'xgboost'
+        # assert _is_local_dask or catboost_dask_distributed or not enable_catboost, warning_msg % 'catboost'
+        # assert _is_local_dask or histgb_dask_distributed or not enable_histgb, warning_msg % 'lightgbm'
 
         self.enable_persist = enable_persist
 
@@ -93,7 +91,12 @@ class DaskGeneralSearchSpaceGenerator(GeneralSearchSpaceGenerator):
         return preprocessor
 
 
-search_space_general = DaskGeneralSearchSpaceGenerator(n_estimators=200, enable_persist=False)
+_is_local_dask = DaskToolBox.is_local_dask()
+search_space_general = DaskGeneralSearchSpaceGenerator(n_estimators=200,
+                                                       enable_lightgbm=_is_local_dask or lgbm_dask_distributed,
+                                                       enable_xgb=_is_local_dask or xgb_dask_distributed,
+                                                       enable_catboost=_is_local_dask or catboost_dask_distributed,
+                                                       enable_persist=False)
 
 #
 # def _build_estimator_dapater(fn_call, *args, **kwargs):
