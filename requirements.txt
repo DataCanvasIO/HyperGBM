@@ -1,4 +1,5 @@
 hypernets==0.2.3
+scikit-learn>=0.22.1
 fsspec>=0.8.0
 dask
 dask-ml

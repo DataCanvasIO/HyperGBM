@@ -11,8 +11,8 @@ from hypernets.utils import const, logging, is_os_linux
 from ..estimators import CatBoostClassifierWrapper, CatBoostRegressionWrapper, CatBoostEstimator
 from ..estimators import HistGradientBoostingClassifierWrapper, HistGradientBoostingRegressorWrapper, HistGBEstimator
 from ..estimators import LGBMEstimatorMixin, LGBMClassifierWrapper, LGBMRegressorWrapper, LightGBMEstimator
+from ..estimators import LabelEncoderMixin
 from ..estimators import XGBEstimatorMixin, XGBClassifierWrapper, XGBRegressorWrapper, XGBoostEstimator
-from ..estimators import _default_early_stopping_rounds
 
 logger = logging.get_logger(__name__)
 
@@ -87,38 +87,10 @@ class LightGBMDaskEstimator(LightGBMEstimator):
 
 
 if xgb_dask_distributed:
-    class XGBEstimatorDaskMixin(XGBEstimatorMixin):
-        def prepare_fit_kwargs(self, X, y, kwargs):
-            kwargs = super().prepare_fit_kwargs(X, y, kwargs)
-
-            task = self.__dict__.get('task')
-            if task is not None and task in {const.TASK_MULTICLASS, const.TASK_BINARY}:
-                if y is not None and str(y.dtype) == 'object':
-                    from dask_ml.preprocessing import LabelEncoder as DaskLabelEncoder
-                    le = DaskLabelEncoder()
-                    # y = le.fit_transform(y)
-                    le.fit(y)
-
-                    if DaskToolBox.is_dask_object(le.classes_):
-                        le.classes_ = le.classes_.compute()
-
-                    eval_set = kwargs.get('eval_set')
-                    if eval_set is not None:
-                        eval_set = [(ex, le.transform(ey)) for ex, ey in eval_set]
-                        kwargs['eval_set'] = eval_set
-
-                    self.y_encoder_ = le
-
-            return kwargs
-
-
-    class XGBClassifierDaskWrapper(xgboost.dask.DaskXGBClassifier, XGBEstimatorDaskMixin):
+    class XGBClassifierDaskWrapper(xgboost.dask.DaskXGBClassifier, XGBEstimatorMixin, LabelEncoderMixin):
         def fit(self, X, y=None, **kwargs):
             kwargs = self.prepare_fit_kwargs(X, y, kwargs)
-            encoder = getattr(self, 'y_encoder_', None)
-            if encoder is not None:
-                y = encoder.transform(y)
-            return super().fit(X, y, **kwargs)
+            return self.fit_with_encoder(super().fit, X, y, kwargs)
 
         def predict_proba(self, X, ntree_limit=None, **kwargs):
             X = self.prepare_predict_X(X)
@@ -131,25 +103,18 @@ if xgb_dask_distributed:
 
         def predict(self, X, **kwargs):
             X = self.prepare_predict_X(X)
-            pred = super().predict(X)
-
-            encoder = getattr(self, 'y_encoder_', None)
-            if encoder is not None:
-                pred = encoder.inverse_transform(pred)
-
-            return pred
+            return self.predict_with_encoder(super().predict, X, kwargs)
 
         def __getattribute__(self, name):
-            if name == 'classes_' and hasattr(self, 'y_encoder_'):
-                encoder = getattr(self, 'y_encoder_')
-                attr = encoder.classes_
-            else:
-                attr = super().__getattribute__(name)
+            if name == 'classes_':
+                le = self.get_label_encoder()
+                if le is not None:
+                    return le.classes_
 
-            return attr
+            return super().__getattribute__(name)
 
 
-    class XGBRegressorDaskWrapper(xgboost.dask.DaskXGBRegressor, XGBEstimatorDaskMixin):
+    class XGBRegressorDaskWrapper(xgboost.dask.DaskXGBRegressor, XGBEstimatorMixin):
         def fit(self, X, y=None, **kwargs):
             kwargs = self.prepare_fit_kwargs(X, y, kwargs)
             return super().fit(X, y, **kwargs)

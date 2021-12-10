@@ -3,12 +3,13 @@
 
 """
 from distutils.version import LooseVersion
-
+import contextlib
 import catboost
 import lightgbm
 import numpy as np
 import pandas as pd
 import xgboost
+
 from hypernets.core.search_space import ModuleSpace
 from hypernets.discriminators import UnPromisingTrial
 from hypernets.tabular.column_selector import column_object_category_bool, column_zero_or_positive_int32
@@ -94,6 +95,82 @@ class HyperEstimatorMixin:
 
     def build_discriminator_callback(self, discriminator):
         return None
+
+
+class LabelEncoderMixin:
+    label_encoder_attr_ = 'y_encoder_'
+
+    def make_label_encoder(self, y):
+        tb = get_tool_box(y)
+        le_cls = tb.transformers['LabelEncoder']
+        le = le_cls()
+        le.fit(y)
+        le.classes_, = tb.to_local(le.classes_)
+        return le
+
+    def set_label_encoder(self, le):
+        aname = self.label_encoder_attr_
+        if le is not None:
+            setattr(self, aname, le)
+        elif hasattr(self, aname):
+            delattr(self, aname)
+
+    def get_label_encoder(self):
+        return getattr(self, self.label_encoder_attr_, None)
+
+    def encode_label(self, y):
+        le = self.get_label_encoder()
+        if le is not None:
+            y = le.transform(y)
+        return y
+
+    def encode_fit_kwargs(self, kwargs):
+        le = self.get_label_encoder()
+        eval_set = kwargs.get('eval_set', None)
+        if le is not None and eval_set is not None:
+            eval_set = [(ex, le.transform(ey)) for ex, ey in eval_set]
+            kwargs['eval_set'] = eval_set
+        return kwargs
+
+    def decode_label(self, y):
+        le = self.get_label_encoder()
+        if le is not None:
+            y = le.inverse_transform(y)
+        return y
+
+    def fit_with_encoder(self, fn_fit, X, y, kwargs):
+        if str(y.dtype) == 'object':
+            le = self.make_label_encoder(y)
+            self.set_label_encoder(le)
+            y = self.encode_label(y)
+            kwargs = self.encode_fit_kwargs(kwargs)
+
+        with self.suppress_label_encoder():
+            return fn_fit(X, y, **kwargs)
+
+    def predict_with_encoder(self, fn_predict, X, kwargs=None):
+        if kwargs is None:
+            kwargs = {}
+
+        with self.suppress_label_encoder():
+            pred = fn_predict(X, **kwargs)
+
+        pred = self.decode_label(pred)
+        return pred
+
+    @contextlib.contextmanager
+    def suppress_label_encoder(self):
+        le = self.get_label_encoder()
+        if le is not None:
+            self.set_label_encoder(None)
+
+        try:
+            yield
+        # except Exception as ex:
+        #      raise
+        finally:
+            if le is not None:
+                self.set_label_encoder(le)
 
 
 class HistGradientBoostingClassifierWrapper(HistGradientBoostingClassifier, HyperEstimatorMixin):
@@ -309,18 +386,26 @@ class XGBEstimatorMixin:
         return X
 
 
-class XGBClassifierWrapper(xgboost.XGBClassifier, XGBEstimatorMixin):
+class XGBClassifierWrapper(xgboost.XGBClassifier, XGBEstimatorMixin, LabelEncoderMixin):
     def fit(self, X, y, **kwargs):
         kwargs = self.prepare_fit_kwargs(X, y, kwargs)
-        super().fit(X, y, **kwargs)
+        return self.fit_with_encoder(super().fit, X, y, kwargs)
 
     def predict(self, X, **kwargs):
         X = self.prepare_predict_X(X)
-        return super().predict(X, **kwargs)
+        return self.predict_with_encoder(super().predict, X, kwargs)
 
     def predict_proba(self, X, **kwargs):
         X = self.prepare_predict_X(X)
         return super().predict_proba(X, **kwargs)
+
+    def __getattribute__(self, name):
+        if name == 'classes_':
+            le = self.get_label_encoder()
+            if le is not None:
+                return le.classes_
+
+        return super().__getattribute__(name)
 
 
 class XGBRegressorWrapper(xgboost.XGBRegressor, XGBEstimatorMixin):
@@ -402,6 +487,7 @@ class XGBoostEstimator(HyperEstimator):
         if validate_parameters is not None:
             kwargs['validate_parameters'] = validate_parameters
 
+        kwargs['use_label_encoder'] = False  # xgboost deprecate: use_label_encoder=True
         HyperEstimator.__init__(self, fit_kwargs, space, name, **kwargs)
 
     def _build_estimator(self, task, kwargs):
