@@ -9,7 +9,7 @@ from hypernets.core.ops import ModuleChoice, Optional, Choice
 from hypernets.pipeline.base import Pipeline
 from hypernets.pipeline.transformers import SimpleImputer, SafeOneHotEncoder, TruncatedSVD, \
     StandardScaler, MinMaxScaler, MaxAbsScaler, RobustScaler, SafeOrdinalEncoder, \
-    LogStandardScaler, DatetimeEncoder, TfidfEncoder, AsTypeTransformer
+    LogStandardScaler, DatetimeEncoder, TfidfEncoder, AsTypeTransformer, PassThroughEstimator
 from hypernets.tabular import column_selector
 
 
@@ -85,6 +85,7 @@ def numeric_pipeline_complex(impute_strategy=None, seq_no=0):
                             force_output_as_float=True)
     scaler_options = ModuleChoice(
         [
+            PassThroughEstimator(name=f'numeric_pass_through_{seq_no}'),
             LogStandardScaler(name=f'numeric_log_standard_scaler_{seq_no}'),
             StandardScaler(name=f'numeric_standard_scaler_{seq_no}'),
             MinMaxScaler(name=f'numeric_minmax_scaler_{seq_no}'),
@@ -92,8 +93,8 @@ def numeric_pipeline_complex(impute_strategy=None, seq_no=0):
             RobustScaler(name=f'numeric_robust_scaler_{seq_no}')
         ], name=f'numeric_or_scaler_{seq_no}'
     )
-    scaler_optional = Optional(scaler_options, keep_link=True, name=f'numeric_scaler_optional_{seq_no}')
-    pipeline = Pipeline([imputer, scaler_optional],
+    # scaler_optional = Optional(scaler_options, keep_link=True, name=f'numeric_scaler_optional_{seq_no}')
+    pipeline = Pipeline([imputer, scaler_options],
                         name=f'numeric_pipeline_complex_{seq_no}',
                         columns=column_selector.column_number_exclude_timedelta)
     return pipeline

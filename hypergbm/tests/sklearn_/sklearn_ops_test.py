@@ -214,6 +214,7 @@ class Test_CommonOps():
         ids = []
         space.traverse(get_id)
         assert ids == ['ID_input1', 'ID_numeric_pipeline_complex_0_input', 'ID_numeric_imputer_0',
+                       'ID_numeric_pass_through_0',
                        'ID_numeric_pipeline_complex_0_output', 'Module_DataFrameMapper_1', 'Module_LightGBMEstimator_1']
 
         next, (name, p) = space.Module_DataFrameMapper_1.compose()
@@ -223,7 +224,7 @@ class Test_CommonOps():
         assert df_1.shape == (3, 4)
 
         space = get_space_numeric_pipeline_complex()
-        space.assign_by_vectors([0, 1, 0])
+        space.assign_by_vectors([0, 1])
         space, _ = space.compile_and_forward()
         ids = []
         space.traverse(get_id)

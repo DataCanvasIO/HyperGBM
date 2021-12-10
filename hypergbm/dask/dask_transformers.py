@@ -8,10 +8,14 @@ from dask_ml import impute as dimp
 from dask_ml import preprocessing as dm_pre
 
 from hypernets.pipeline.base import HyperTransformer, DataFrameMapper
+from hypernets.pipeline.transformers import AsTypeTransformer, PassThroughEstimator
 from hypernets.tabular.dask_ex import DaskToolBox
 from hypernets.utils import logging
 
 logger = logging.get_logger(__name__)
+
+type(AsTypeTransformer)  # disable import optimize
+type(PassThroughEstimator)  # disable import optimize
 
 
 class DaskDataFrameMapper(DataFrameMapper):

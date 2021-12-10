@@ -5,8 +5,7 @@
 
 import numpy as np
 
-from hypernets.core.ops import ModuleChoice, Optional
-from hypernets.core.search_space import Choice
+from hypernets.core import ModuleChoice, Optional, Choice
 from hypernets.pipeline.base import Pipeline
 from hypernets.tabular.column_selector import column_object_category_bool, column_number_exclude_timedelta
 from hypernets.utils import logging
@@ -89,15 +88,16 @@ def numeric_pipeline_complex(impute_strategy=None, seq_no=0, decorate=default_tr
                                         name=f'numeric_imputer_{seq_no}', fill_value=0))
     scaler_options = ModuleChoice(
         [
+            decorate(tf.PassThroughEstimator(name=f'numeric_pass_through_{seq_no}')),
             decorate(tf.StandardScaler(name=f'numeric_standard_scaler_{seq_no}')),
             decorate(tf.MinMaxScaler(name=f'numeric_minmax_scaler_{seq_no}')),
             decorate(tf.MaxAbsScaler(name=f'numeric_maxabs_scaler_{seq_no}')),
             decorate(tf.RobustScaler(name=f'numeric_robust_scaler_{seq_no}'))
         ], name=f'numeric_or_scaler_{seq_no}'
     )
-    scaler_optional = Optional(scaler_options, keep_link=True, name=f'numeric_scaler_optional_{seq_no}')
+    # scaler_optional = Optional(scaler_options, keep_link=True, name=f'numeric_scaler_optional_{seq_no}')
 
-    pipeline = Pipeline([imputer, scaler_optional],
+    pipeline = Pipeline([imputer, scaler_options],
                         name=f'numeric_pipeline_complex_{seq_no}',
                         columns=column_number_exclude_timedelta)
     return pipeline
