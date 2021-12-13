@@ -53,6 +53,8 @@ pip install hypergbm[all]
 
 ## Examples
 
+* Use HyperGBM with Python
+
 Users can quickly create and run an experiment with `make_experiment`, which only needs one required input parameter `train_data`. The example shown below is using the `blood` dataset as `train_data` from `hypernet.tabular`. If the target column of the dataset is not `y`, it needs to be manually set through the argument `target`. 
 
 An example codes:
@@ -72,11 +74,13 @@ Pipeline(steps=[('data_clean',
                  DataCleanStep(...),
                 ('estimator',
                  GreedyEnsemble(...)])
-
 ``` 
-To see more examples, please read [Examples](https://hypergbm.readthedocs.io/en/latest/example.html)
+To see more examples, please read [Quick Start](https://hypergbm.readthedocs.io/en/latest/quick_start_python.html#create-experiment-with-make-experiment) and [Examples](https://hypergbm.readthedocs.io/en/latest/example.html).
 
-Hypergbm also provides command line tools to train models and predict data:
+
+* Use HyperGBM with Command line tools
+
+Hypergbm also supports command line tools to perform model training, evaluation and prediction. The following codes enable the user to view command line help:
 ```
 hypergbm -h
 
@@ -86,11 +90,11 @@ usage: hypergbm [-h] [--log-level LOG_LEVEL] [-error] [-warn] [-info] [-debug]
                 {train,evaluate,predict} ...
 ```
 
-For example,  train model for dataset [blood.csv](https://github.com/DataCanvasIO/Hypernets/blob/master/hypernets/tabular/datasets/blood.csv):
+The example of training a model for dataset [blood.csv](https://github.com/DataCanvasIO/Hypernets/blob/master/hypernets/tabular/datasets/blood.csv) is shown below:
 ```shell script
 hypergbm train --train-file=blood.csv --target=Class --model-file=model.pkl
 ```
-
+For more details, please read [Quick Start](https://hypergbm.readthedocs.io/en/latest/quick_start_cmdline.html).
 
 ## Hypernets related projects
 * [Hypernets](https://github.com/DataCanvasIO/Hypernets): A general automated machine learning (AutoML) framework.
