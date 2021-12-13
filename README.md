@@ -15,7 +15,7 @@ HyperGBM is a full pipeline automated machine learning (AutoML) toolkit designed
 
 HyperGBM optimizes the end-to-end ML processing stages within one search space, which differs from most existing AutoML approaches that only tackle partial stages, for instance, hyperparameter optimazation. This full pipeline optimization process is very similar to a sequential decision process (SDP). Therefore, HyperGBM utilizes reinforcement learning, Monte Carlo Tree Search, evolution algorithm combined with a meta-learner to efficiently solve the pipeline optimization problem.  
 
-HyperGBM, as indicated in the name, involves several gradient boosting tree models (GBM), namely, XGBoost, LightGBM and Catboost. What's more, it could access the [Hypernets](https://github.com/DataCanvasIO/Hypernets), a general automated machine learning framework, and introduce its advanced characteristics in data cleaning, feature engineering and model ensemble. Additionally, the search space representation and search algorithm inside Hyper GBM are also provided by Hypernets.
+HyperGBM, as indicated in the name, involves several gradient boosting tree models (GBM), namely, XGBoost, LightGBM and Catboost. What's more, it could access the [Hypernets](https://github.com/DataCanvasIO/Hypernets), a general automated machine learning framework, and introduce its advanced characteristics in data cleaning, feature engineering and model ensemble. Additionally, the search space representation and search algorithm inside Hyper GBM are also supported by Hypernets.
 
 
 ## Tutorial
@@ -27,31 +27,35 @@ HyperGBM, as indicated in the name, involves several gradient boosting tree mode
 
 ## Installation
 
-Insall HyperGBM with `pip` command:
+Install HyperGBM with different options:
+
+* Typical installation:
 ```bash
 pip install hypergbm
 ```
 
-Optional, to run HyperGBM in JupyterLab notebooks, install HyperGBM and JupyterLab with command:
+* To run HyperGBM in JupyterLab/Jupyter notebook, install with command:
 ```bash
 pip install hypergbm[notebook]
 ```
 
-Optional, to support dataset with simplified Chinese in feature generation, install `jieba` package before run HyperGBM, or install HyperGBM with command:
+* To support dataset with simplified Chinese in feature generation,
+  * Install `jieba` package before running HyperGBM. 
+  * OR install with command:
 ```bash
 pip install hypergbm[zhcn]
 ```
 
-Optional, install all HyperGBM components and dependencies with one command:
+* Install all above with one command:
 ```bash
 pip install hypergbm[all]
 ```
 
 ## Examples
 
-User can create experiment instance with `make_experiment` and run it quickly。`train_data` is the only required parameter, all others are optional.   The `target` is also required if your target feature name isn't `y`。
+Users can quickly create and run an experiment with `make_experiment`, which only needs one required input parameter `train_data`. The example shown below is using the `blood` dataset as `train_data` from `hypernet.tabular`. If the target column of the dataset is not `y`, it needs to be manually set through the argument `target`. 
 
-Codes:
+An example codes:
 ```python
 from hypergbm import make_experiment
 from hypernets.tabular.datasets import dsutils
@@ -62,7 +66,7 @@ estimator = experiment.run()
 print(estimator)
 ```
 
-Outputs：
+This training experiment returns a pipeline with two default steps, `data_clean` and `estimator`. In particular, the `estimator` returns a final model which consists of various models. The outputs：
 ```
 Pipeline(steps=[('data_clean',
                  DataCleanStep(...),
@@ -70,10 +74,11 @@ Pipeline(steps=[('data_clean',
                  GreedyEnsemble(...)])
 
 ``` 
+To see more examples, please read [Examples](https://hypergbm.readthedocs.io/en/latest/example.html)
 
 Hypergbm also provides command line tools to train models and predict data:
 ```
-hypergm -h
+hypergbm -h
 
 usage: hypergbm [-h] [--log-level LOG_LEVEL] [-error] [-warn] [-info] [-debug]
                 [--verbose VERBOSE] [-v] [--enable-dask ENABLE_DASK] [-dask]
@@ -88,12 +93,11 @@ hypergbm train --train-file=blood.csv --target=Class --model-file=model.pkl
 
 
 ## Hypernets related projects
-
+* [Hypernets](https://github.com/DataCanvasIO/Hypernets): A general automated machine learning (AutoML) framework.
 * [HyperGBM](https://github.com/DataCanvasIO/HyperGBM): A full pipeline AutoML tool integrated various GBM models.
 * [HyperDT/DeepTables](https://github.com/DataCanvasIO/DeepTables): An AutoDL tool for tabular data.
 * [HyperKeras](https://github.com/DataCanvasIO/HyperKeras): An AutoDL tool for Neural Architecture Search and Hyperparameter Optimization on Tensorflow and Keras.
 * [Cooka](https://github.com/DataCanvasIO/Cooka): Lightweight interactive AutoML system.
-* [Hypernets](https://github.com/DataCanvasIO/Hypernets): A general automated machine learning framework.
 
 ![DataCanvas AutoML Toolkit](docs/static/images/datacanvas_automl_toolkit.png)
 
