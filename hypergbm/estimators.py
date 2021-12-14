@@ -139,7 +139,13 @@ class LabelEncoderMixin:
         return y
 
     def fit_with_encoder(self, fn_fit, X, y, kwargs):
-        if str(y.dtype) == 'object':
+        if str(y.dtype).find('int') >= 0:
+            uniques = get_tool_box(y).unique(y)
+            enable_encoder = not (min(uniques) == 0 and max(uniques) == len(uniques) - 1)
+        else:
+            enable_encoder = True
+
+        if enable_encoder:
             le = self.make_label_encoder(y)
             self.set_label_encoder(le)
             y = self.encode_label(y)
