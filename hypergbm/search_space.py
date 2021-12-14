@@ -209,6 +209,7 @@ class GeneralSearchSpaceGenerator(BaseSearchSpaceGenerator):
             'max_leaf_nodes': Int(15, 513, 5),
             'l2_regularization': Choice([1e-10, 1e-8, 1e-6, 1e-5, 1e-3, 0.01, 0.1, 1]),
             'random_state': randint(),
+            'class_balancing': None,
         }
 
     @property
