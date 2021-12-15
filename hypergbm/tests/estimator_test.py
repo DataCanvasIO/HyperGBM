@@ -102,7 +102,7 @@ def get_df():
             "l": [1, 10, 1000]
         }
     )
-    y = [1, 1, 0]
+    y = np.array([1, 1, 0])
     return X, y
 
 

@@ -6,8 +6,6 @@ __author__ = 'yangjian'
 import numpy as np
 import pandas as pd
 
-from hypergbm.search_space import search_space_general
-
 ids = []
 
 
@@ -33,6 +31,5 @@ def get_df():
             "l": [1, 10, 1000]
         }
     )
-    y = [1, 1, 0]
+    y = np.array([1, 1, 0])
     return X, y
-
