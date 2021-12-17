@@ -56,8 +56,8 @@ def main(target='y', dtype=None, max_trials=3, drift_detection=False, **kwargs):
 
 
 if __name__ == '__main__':
-    # main(target='y', reward_metric='auc', ensemble_size=10, pos_label='yes', log_level='info', max_trials=10)
-    main(target='y', max_trials=10, cv=False, ensemble_size=0, verbose=0, pos_label='yes', )
+    main(target='y', reward_metric='auc', ensemble_size=10, pos_label='yes', log_level='info', max_trials=10)
+    # main(target='y', max_trials=10, cv=False, ensemble_size=0, verbose=0, pos_label='yes', )
     # main(target='day', reward_metric='f1', ensemble_size=10, log_level='info', max_trials=5)
     # main(target='day', dtype='str', reward_metric='f1', ensemble_size=0,  log_level='info',  max_trials=6)
     # main(target='age', dtype='float', ensemble_size=10, log_level='info', max_trials=8)

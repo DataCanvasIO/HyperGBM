@@ -55,9 +55,9 @@ def categorical_pipeline_complex(impute_strategy=None, svd_components=3, seq_no=
                                         smooth=Choice([None, 0, 10]),
                                         name=f'categorical_target_encoder_{seq_no}')
     onehot = onehot_svd()
-    le_or_onehot_pca = ModuleChoice([label_encoder, onehot, target_encoder],
-                                    name=f'categorical_encoder_or_onehot_pca_{seq_no}')
-    steps = [imputer, le_or_onehot_pca]
+    le_or_onehot_svd = ModuleChoice([label_encoder, onehot, target_encoder],
+                                    name=f'categorical_encoder_or_onehot_svd_{seq_no}')
+    steps = [imputer, le_or_onehot_svd]
 
     if cfg.category_pipeline_auto_detect:
         cs = column_selector.AutoCategoryColumnSelector(
