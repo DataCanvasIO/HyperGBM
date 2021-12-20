@@ -35,3 +35,8 @@ class TestSearchWithHyperGBM:
         est = main(enable_catboost=False, enable_lightgbm=False, enable_xgb=False, enable_histgb=True,
                    target='y', max_trials=3, verbose=0, pos_label='yes', )
         assert est is not None
+
+    def test_complex_pipeline(self):
+        est = main(num_pipeline_mode='complex', cat_pipeline_mode='complex',
+                   target='y', max_trials=10, verbose=0, pos_label='yes', )
+        assert est is not None

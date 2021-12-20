@@ -14,6 +14,7 @@ from hypernets.tabular.datasets import dsutils
 
 def main(enable_lightgbm=True, enable_xgb=True, enable_catboost=True, enable_histgb=False,
          n_estimators=200, class_balancing=None,
+         num_pipeline_mode='simple', cat_pipeline_mode='simple',
          target='y', dtype=None, max_trials=3, **kwargs):
     set_random_state(123)
 
@@ -38,6 +39,8 @@ def main(enable_lightgbm=True, enable_xgb=True, enable_catboost=True, enable_his
                                                    enable_catboost=enable_catboost,
                                                    enable_histgb=enable_histgb,
                                                    class_balancing=class_balancing,
+                                                   cat_pipeline_mode=cat_pipeline_mode,
+                                                   num_pipeline_mode=num_pipeline_mode,
                                                    )
     rs = RandomSearcher(search_space, optimize_direction='max')
     hk = HyperGBM(rs, task=task, reward_metric=reward_metric, callbacks=[SummaryCallback(), ])
@@ -60,6 +63,6 @@ if __name__ == '__main__':
     # from hypernets.utils import logging
     #
     # logging.set_level('warn')
-    main(target='age', dtype='float', max_trials=30, verbose=0, )
+    main(target='age', dtype='float', max_trials=3, verbose=0, )
     # main(target='day', max_trials=3, verbose=0,   )
     # main(target='y', max_trials=3, verbose=0, pos_label='yes', )

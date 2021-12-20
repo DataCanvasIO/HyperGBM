@@ -95,7 +95,7 @@ def get_df():
             "l": [1, 10, 1000]
         }
     )
-    y = [1, 1, 0]
+    y = np.array([1, 1, 0])
     return X, y
 
 
@@ -107,9 +107,16 @@ class Test_CommonOps():
         global ids
         ids = []
         space.traverse(get_id)
-        assert ids == ['ID_input1', 'ID_categorical_pipeline_simple_0_input', 'ID_categorical_imputer_0',
-                       'ID_categorical_label_encoder_0', 'ID_categorical_pipeline_simple_0_output',
-                       'Module_DataFrameMapper_1', 'Module_LightGBMEstimator_1']
+        s1 = ['ID_input1',
+              'ID_categorical_pipeline_simple_0_input',
+              'ID_categorical_imputer_0',
+              'ID_categorical_label_encoder_0',
+              'ID_categorical_pipeline_simple_0_output',
+              'Module_DataFrameMapper_1',
+              'Module_LightGBMEstimator_1']
+        s2 = s1.copy()
+        s2[3] = 'ID_categorical_target_encoder_0'
+        assert ids == s1 or ids == s2
 
         next, (name, p) = space.Module_DataFrameMapper_1.compose()
         X, y = get_df()
@@ -239,10 +246,13 @@ class Test_CommonOps():
         global ids
         ids = []
         space.traverse(get_id)
-        assert ids == ['ID_input1', 'ID_categorical_pipeline_simple_0_input', 'ID_numeric_pipeline_simple_0_input',
-                       'ID_categorical_imputer_0', 'ID_numeric_imputer_0', 'ID_categorical_label_encoder_0',
-                       'ID_numeric_standard_scaler_0', 'ID_categorical_pipeline_simple_0_output',
-                       'ID_numeric_pipeline_simple_0_output', 'Module_DataFrameMapper_1', 'Module_LightGBMEstimator_1']
+        s1 = ['ID_input1', 'ID_categorical_pipeline_simple_0_input', 'ID_numeric_pipeline_simple_0_input',
+              'ID_categorical_imputer_0', 'ID_numeric_imputer_0', 'ID_categorical_label_encoder_0',
+              'ID_numeric_standard_scaler_0', 'ID_categorical_pipeline_simple_0_output',
+              'ID_numeric_pipeline_simple_0_output', 'Module_DataFrameMapper_1', 'Module_LightGBMEstimator_1']
+        s2 = s1.copy()
+        s2[5] = 'ID_categorical_target_encoder_0'
+        assert ids == s1 or ids == s2
 
         next, (name, p) = space.Module_DataFrameMapper_1.compose()
         X, y = get_df()

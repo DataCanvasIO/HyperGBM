@@ -8,16 +8,20 @@ from hypergbm.cfg import HyperGBMCfg as cfg
 from hypernets.core.ops import ModuleChoice, Optional, Choice
 from hypernets.pipeline.base import Pipeline
 from hypernets.pipeline.transformers import SimpleImputer, SafeOneHotEncoder, TruncatedSVD, \
-    StandardScaler, MinMaxScaler, MaxAbsScaler, RobustScaler, SafeOrdinalEncoder, \
+    StandardScaler, MinMaxScaler, MaxAbsScaler, RobustScaler, SafeOrdinalEncoder, MultiTargetEncoder, \
     LogStandardScaler, DatetimeEncoder, TfidfEncoder, AsTypeTransformer, PassThroughEstimator
 from hypernets.tabular import column_selector
 
 
 def categorical_pipeline_simple(impute_strategy='constant', seq_no=0):
-    steps = [
-        SimpleImputer(missing_values=np.nan, strategy=impute_strategy, name=f'categorical_imputer_{seq_no}'),
-        SafeOrdinalEncoder(name=f'categorical_label_encoder_{seq_no}', dtype='int32')
-    ]
+    imputer = SimpleImputer(missing_values=np.nan, strategy=impute_strategy, name=f'categorical_imputer_{seq_no}')
+    label_encoder = SafeOrdinalEncoder(name=f'categorical_label_encoder_{seq_no}')
+    target_encoder = MultiTargetEncoder(split_method=Choice(['random', 'continuous', 'interleaved']),
+                                        smooth=Choice([None, 0, 10]),
+                                        name=f'categorical_target_encoder_{seq_no}')
+    encoders = ModuleChoice([label_encoder, target_encoder],
+                            name=f'categorical_encoder_{seq_no}')
+    steps = [imputer, encoders]
     if cfg.category_pipeline_auto_detect:
         cs = column_selector.AutoCategoryColumnSelector(
             dtype_include=column_selector.column_object_category_bool.dtype_include,
@@ -47,9 +51,13 @@ def categorical_pipeline_complex(impute_strategy=None, svd_components=3, seq_no=
 
     imputer = SimpleImputer(missing_values=np.nan, strategy=impute_strategy, name=f'categorical_imputer_{seq_no}')
     label_encoder = SafeOrdinalEncoder(name=f'categorical_label_encoder_{seq_no}')
+    target_encoder = MultiTargetEncoder(split_method=Choice(['random', 'continuous', 'interleaved']),
+                                        smooth=Choice([None, 0, 10]),
+                                        name=f'categorical_target_encoder_{seq_no}')
     onehot = onehot_svd()
-    le_or_onehot_pca = ModuleChoice([label_encoder, onehot], name=f'categorical_le_or_onehot_pca_{seq_no}')
-    steps = [imputer, le_or_onehot_pca]
+    le_or_onehot_svd = ModuleChoice([label_encoder, onehot, target_encoder],
+                                    name=f'categorical_encoder_or_onehot_svd_{seq_no}')
+    steps = [imputer, le_or_onehot_svd]
 
     if cfg.category_pipeline_auto_detect:
         cs = column_selector.AutoCategoryColumnSelector(

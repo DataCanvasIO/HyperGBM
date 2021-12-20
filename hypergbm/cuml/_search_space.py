@@ -38,7 +38,10 @@ class CumlGeneralSearchSpaceGenerator(GeneralSearchSpaceGenerator):
         else:
             num_pipeline = ops.numeric_pipeline_complex()(hyper_input)
 
-        cat_pipeline = ops.categorical_pipeline_simple()(hyper_input)
+        if cat_pipeline_mode == 'simple':
+            cat_pipeline = ops.categorical_pipeline_simple()(hyper_input)
+        else:
+            cat_pipeline = ops.categorical_pipeline_complex()(hyper_input)
 
         column_object = CumlToolBox.column_selector.column_object
         dfm = CumlDataFrameMapper(default=dataframe_mapper_default, input_df=True, df_out=True,
