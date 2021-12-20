@@ -98,8 +98,8 @@ setup(
         'console_scripts': [
             'hypergbm = hypergbm.utils.tool:main',
         ],
-        'hypernet': [
-            'experiment_creator = hypergbm.job.HyperGBMJobEngine'
+        'hypernets_experiment': [
+            'hypergbm = hypergbm.job:HyperGBMJobEngine'
         ]
     },
     include_package_data=True,
