@@ -97,6 +97,9 @@ setup(
     entry_points={
         'console_scripts': [
             'hypergbm = hypergbm.utils.tool:main',
+        ],
+        'hypernets_experiment': [
+            'hypergbm = hypergbm.job:HyperGBMJobEngine'
         ]
     },
     include_package_data=True,
