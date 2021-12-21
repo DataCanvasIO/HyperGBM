@@ -4,8 +4,8 @@
 """
 import cudf
 
-from hypergbm import HyperGBM
-from hypergbm.cuml import CumlGeneralSearchSpaceGenerator
+# from hypergbm import HyperGBM
+from hypergbm.cuml import CumlGeneralSearchSpaceGenerator, CumlHyperGBM, CumlHyperGBMEstimator
 from hypernets.core import set_random_state, SummaryCallback
 from hypernets.searchers.random_searcher import RandomSearcher
 from hypernets.tabular.cuml_ex import CumlToolBox
@@ -43,7 +43,7 @@ def main(enable_lightgbm=True, enable_xgb=True, enable_catboost=True, enable_his
                                                    num_pipeline_mode=num_pipeline_mode,
                                                    )
     rs = RandomSearcher(search_space, optimize_direction='max')
-    hk = HyperGBM(rs, task=task, reward_metric=reward_metric, callbacks=[SummaryCallback(), ])
+    hk = CumlHyperGBM(rs, task=task, reward_metric=reward_metric, callbacks=[SummaryCallback(), ])
 
     print('searching...')
     hk.search(X_train, y_train, X_test, y_test, max_trials=max_trials, **kwargs)
@@ -52,9 +52,15 @@ def main(enable_lightgbm=True, enable_xgb=True, enable_catboost=True, enable_his
 
     estimator = hk.final_train(best_trial.space_sample, X_train, y_train, pos_label='yes')
     # score = estimator.predict(X_test)
+    assert isinstance(estimator, CumlHyperGBMEstimator)
 
     result = estimator.evaluate(X_test, y_test, metrics=[reward_metric], )
     print(f'final result:{result}')
+
+    estimator = estimator.as_local()
+    X_test, y_test = CumlToolBox.to_local(X_test, y_test)
+    result = estimator.evaluate(X_test, y_test, metrics=[reward_metric], )
+    print(f'final result with local data:{result}')
 
     return estimator
 

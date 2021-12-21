@@ -3,9 +3,7 @@
 
 """
 import copy
-import hashlib
 import pickle
-import re
 import time
 
 import numpy as np
@@ -103,19 +101,24 @@ class HyperGBMExplainer:
 class HyperGBMEstimator(Estimator):
     def __init__(self, task, space_sample, data_cleaner_params=None):
         super(HyperGBMEstimator, self).__init__(space_sample=space_sample, task=task)
-        self.data_pipeline = None
         self.data_cleaner_params = data_cleaner_params
+
+        # built
         self.gbm_model = None
-        self.cv_gbm_models_ = None
-        self.data_cleaner = None
-        self.pipeline_signature = None
-        self.fit_kwargs = None
         self.class_balancing = None
+        self.fit_kwargs = None
+        self.data_pipeline = None
+
+        # fitted
+        self.data_cleaner = None
+        self.cv_gbm_models_ = None
         self.classes_ = None
         self.pos_label = None
         self.transients_ = {}
+        # self.pipeline_signature = None
 
-        self._build_model(space_sample)
+        if space_sample is not None:
+            self._build_model(space_sample)
 
     def _build_model(self, space_sample):
         space, _ = space_sample.compile_and_forward()
@@ -131,26 +134,20 @@ class HyperGBMEstimator(Estimator):
 
         pipeline_module = space.get_inputs(outputs[0])
         assert len(pipeline_module) == 1, 'The `HyperEstimator` can only contains 1 input.'
-        assert isinstance(pipeline_module[0],
-                          ComposeTransformer), 'The upstream node of `HyperEstimator` must be `ComposeTransformer`.'
+        assert isinstance(pipeline_module[0], ComposeTransformer), \
+            'The upstream node of `HyperEstimator` must be `ComposeTransformer`.'
         # next, (name, p) = pipeline_module[0].compose()
-        self.data_pipeline = self.build_pipeline(space, pipeline_module[0])
+        self.data_pipeline = self._build_pipeline(space, pipeline_module[0])
         # logger.debug(f'data_pipeline:{self.data_pipeline}')
         # self.pipeline_signature = self.get_pipeline_signature(self.data_pipeline)
 
-        # if self.data_cleaner_params is not None:
-        #     self.data_cleaner = DataCleaner(**self.data_cleaner_params)
-        # else:
-        #     self.data_cleaner = None
-        self.data_cleaner = None
+    # def get_pipeline_signature(self, pipeline):
+    #     repr = pipeline.__repr__(1000000)
+    #     repr = re.sub(r'object at 0x(.*)>', "", repr)
+    #     md5 = hashlib.md5(repr.encode('utf-8')).hexdigest()
+    #     return md5
 
-    def get_pipeline_signature(self, pipeline):
-        repr = pipeline.__repr__(1000000)
-        repr = re.sub(r'object at 0x(.*)>', "", repr)
-        md5 = hashlib.md5(repr.encode('utf-8')).hexdigest()
-        return md5
-
-    def build_pipeline(self, space, last_transformer):
+    def _build_pipeline(self, space, last_transformer):
         transformers = []
         while True:
             next, (name, p) = last_transformer.compose()
@@ -159,15 +156,19 @@ class HyperGBMEstimator(Estimator):
             if inputs == space.get_inputs():
                 break
             assert len(inputs) == 1, 'The `ComposeTransformer` can only contains 1 input.'
-            assert isinstance(inputs[0],
-                              ComposeTransformer), 'The upstream node of `ComposeTransformer` must be `ComposeTransformer`.'
+            assert isinstance(inputs[0], ComposeTransformer), \
+                'The upstream node of `ComposeTransformer` must be `ComposeTransformer`.'
             last_transformer = inputs[0]
         assert len(transformers) > 0
         if len(transformers) == 1:
             return transformers[0][1]
         else:
-            pipeline = sk_pipeline.Pipeline(steps=transformers)
+            pipeline = self._create_pipeline(transformers)
             return pipeline
+
+    @staticmethod
+    def _create_pipeline(steps):
+        return sk_pipeline.Pipeline(steps=steps)
 
     def summary(self):
         s = f"{self.data_pipeline.__repr__(1000000)}"
@@ -229,7 +230,6 @@ class HyperGBMEstimator(Estimator):
 
         tb = get_tool_box(X, y)
         X = self.fit_transform_data(X, y, verbose=verbose)
-        # y = np.array(y)
 
         cross_validator = kwargs.pop('cross_validator', None)
         if cross_validator is not None:
@@ -524,6 +524,7 @@ class HyperGBM(HyperModel):
     """
     HyperGBM
     """
+    estimator_cls = HyperGBMEstimator
 
     def __init__(self, searcher, dispatcher=None, callbacks=None, reward_metric='accuracy', task=None,
                  discriminator=None, data_cleaner_params=None, cache_dir=None, clear_cache=None):
@@ -563,8 +564,8 @@ class HyperGBM(HyperModel):
                             task=task, discriminator=discriminator)
 
     def _get_estimator(self, space_sample):
-        estimator = HyperGBMEstimator(task=self.task, space_sample=space_sample,
-                                      data_cleaner_params=self.data_cleaner_params)
+        estimator = self.estimator_cls(task=self.task, space_sample=space_sample,
+                                       data_cleaner_params=self.data_cleaner_params)
 
         cbs = self.callbacks
         if isinstance(cbs, list) and len(cbs) > 0 and isinstance(cbs[-1], FitCrossValidationCallback):
@@ -574,7 +575,7 @@ class HyperGBM(HyperModel):
 
     def load_estimator(self, model_file):
         assert model_file is not None
-        return HyperGBMEstimator.load(model_file)
+        return self.estimator_cls.load(model_file)
 
     def export_trial_configuration(self, trial):
         return '`export_trial_configuration` does not implemented'
