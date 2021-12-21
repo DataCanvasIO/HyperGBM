@@ -2,6 +2,8 @@
 """
 
 """
+from functools import partial
+
 from hypernets.tabular.cuml_ex import CumlToolBox
 from hypernets.utils import const
 from .. import estimators as es
@@ -17,147 +19,48 @@ _detected_catboost = _detector('catboost.CatBoostClassifier', const.TASK_BINARY,
                                init_kwargs={'task_type': 'GPU', 'verbose': 0},
                                fit_kwargs={})()
 
-_FEATURE_FOR_GPU = 'fitted'
-_FEATURE_FOR_CUML = 'fitted_with_cuml'
-
-# LightGBM
-if _FEATURE_FOR_CUML in _detected_lgbm:
-    LightGBMCumlEstimator = es.LightGBMEstimator
-else:
-    class LGBMClassifierCumlWrapper(es.LGBMClassifierWrapper):
-        def fit(self, *args, **kwargs):
-            return CumlToolBox.call_local(super().fit, *args, **kwargs)
-
-        def predict(self, *args, **kwargs):
-            return CumlToolBox.call_local(super().predict, *args, **kwargs)
-
-        def predict_proba(self, *args, **kwargs):
-            return CumlToolBox.call_local(super().predict_proba, *args, **kwargs)
+_FEATURE_FOR_GPU = 'fitted'  # can fit with pandas data
+_FEATURE_FOR_CUML = 'fitted_with_cuml'  # can fit with cuml data
 
 
-    class LGBMRegressionCumlWrapper(es.LGBMRegressorWrapper):
-        def fit(self, *args, **kwargs):
-            return CumlToolBox.call_local(super().fit, *args, **kwargs)
-
-        def predict(self, *args, **kwargs):
-            return CumlToolBox.call_local(super().predict, *args, **kwargs)
+def wrap_estimator(estimator, methods=None):
+    estimator = CumlToolBox.wrap_local_estimator(estimator, methods=methods)
+    setattr(estimator, 'as_local', partial(_as_local, estimator, methods=methods))
+    return estimator
 
 
-    class LightGBMCumlEstimator(es.LightGBMEstimator):
-        def _build_estimator(self, task, kwargs):
-            if task == const.TASK_REGRESSION:
-                est = LGBMRegressionCumlWrapper(**kwargs)
-            else:
-                est = LGBMClassifierCumlWrapper(**kwargs)
-            return est
-
-# XGBoost
-if _FEATURE_FOR_CUML in _detected_xgb:
-    class XGBClassifierCumlWrapper(es.XGBClassifierWrapper):
-        # def fit(self, *args, **kwargs):
-        #     super().fit(*args, **kwargs)
-        #     le = self.get_label_encoder()
-        #     if le is not None and hasattr(le, 'as_local'):
-        #         le = le.as_local()
-        #         self.set_label_encoder(le)
-        #     return self
-
-        def predict(self, *args, **kwargs):
-            return CumlToolBox.call_local(super().predict, *args, input_to_local=False, **kwargs)
-
-        def predict_proba(self, *args, **kwargs):
-            return CumlToolBox.call_local(super().predict_proba, *args, input_to_local=False, **kwargs)
+def _as_local(estimator, methods=None):
+    estimator = CumlToolBox.unwrap_local_estimator(estimator, methods=methods)
+    delattr(estimator, 'as_local')
+    return estimator
 
 
-    class XGBRegressionCumlWrapper(es.XGBRegressorWrapper):
-        def predict(self, *args, **kwargs):
-            return CumlToolBox.call_local(super().predict, *args, input_to_local=False, **kwargs)
-
-else:
-    class XGBClassifierCumlWrapper(es.XGBClassifierWrapper):
-        def fit(self, *args, **kwargs):
-            return CumlToolBox.call_local(super().fit, *args, **kwargs)
-
-        def predict(self, *args, **kwargs):
-            return CumlToolBox.call_local(super().predict, *args, **kwargs)
-
-        def predict_proba(self, *args, **kwargs):
-            return CumlToolBox.call_local(super().predict_proba, *args, **kwargs)
-
-
-    class XGBRegressionCumlWrapper(es.XGBRegressorWrapper):
-        def fit(self, *args, **kwargs):
-            return CumlToolBox.call_local(super().fit, *args, **kwargs)
-
-        def predict(self, *args, **kwargs):
-            return CumlToolBox.call_local(super().predict, *args, **kwargs)
+class LightGBMCumlEstimator(es.LightGBMEstimator):
+    def _build_estimator(self, task, kwargs):
+        est = super()._build_estimator(task, kwargs)
+        methods = {'predict', 'predict_proba'} if _FEATURE_FOR_CUML in _detected_lgbm else None
+        est = wrap_estimator(est, methods=methods)
+        return est
 
 
 class XGBoostCumlEstimator(es.XGBoostEstimator):
     def _build_estimator(self, task, kwargs):
-        if task == const.TASK_REGRESSION:
-            est = XGBRegressionCumlWrapper(**kwargs)
-        else:
-            est = XGBClassifierCumlWrapper(**kwargs)
+        est = super()._build_estimator(task, kwargs)
+        methods = {'predict', 'predict_proba'} if _FEATURE_FOR_CUML in _detected_xgb else None
+        est = wrap_estimator(est, methods=methods)
         return est
 
 
-# CatBoost
-if _FEATURE_FOR_CUML in _detected_catboost:
-    CatBoostCumlEstimator = es.CatBoostEstimator
-else:
-    class CatBoostClassifierCumlWrapper(es.CatBoostClassifierWrapper):
-        def fit(self, *args, **kwargs):
-            return CumlToolBox.call_local(super().fit, *args, **kwargs)
-
-        def predict(self, *args, **kwargs):
-            return CumlToolBox.call_local(super().predict, *args, **kwargs)
-
-        def predict_proba(self, *args, **kwargs):
-            return CumlToolBox.call_local(super().predict_proba, *args, **kwargs)
-
-
-    class CatBoostRegressionCumlWrapper(es.CatBoostRegressionWrapper):
-        def fit(self, *args, **kwargs):
-            return CumlToolBox.call_local(super().fit, *args, **kwargs)
-
-        def predict(self, *args, **kwargs):
-            return CumlToolBox.call_local(super().predict, *args, **kwargs)
-
-
-    class CatBoostCumlEstimator(es.CatBoostEstimator):
-        def _build_estimator(self, task, kwargs):
-            if task == const.TASK_REGRESSION:
-                est = CatBoostRegressionCumlWrapper(**kwargs)
-            else:
-                est = CatBoostClassifierCumlWrapper(**kwargs)
-            return est
-
-
-# HistGB
-class HistGBClassifierCumlWrapper(es.HistGradientBoostingClassifierWrapper):
-    def fit(self, *args, **kwargs):
-        return CumlToolBox.call_local(super().fit, *args, **kwargs)
-
-    def predict(self, *args, **kwargs):
-        return CumlToolBox.call_local(super().predict, *args, **kwargs)
-
-    def predict_proba(self, *args, **kwargs):
-        return CumlToolBox.call_local(super().predict_proba, *args, **kwargs)
-
-
-class HistGBRegressionCumlWrapper(es.HistGradientBoostingRegressorWrapper):
-    def fit(self, *args, **kwargs):
-        return CumlToolBox.call_local(super().fit, *args, **kwargs)
-
-    def predict(self, *args, **kwargs):
-        return CumlToolBox.call_local(super().predict, *args, **kwargs)
+class CatBoostCumlEstimator(es.CatBoostEstimator):
+    def _build_estimator(self, task, kwargs):
+        est = super()._build_estimator(task, kwargs)
+        methods = {'predict', 'predict_proba'} if _FEATURE_FOR_CUML in _detected_catboost else None
+        est = wrap_estimator(est, methods=methods)
+        return est
 
 
 class HistGBCumlEstimator(es.HistGBEstimator):
     def _build_estimator(self, task, kwargs):
-        if task == const.TASK_REGRESSION:
-            est = HistGBRegressionCumlWrapper(**kwargs)
-        else:
-            est = HistGBClassifierCumlWrapper(**kwargs)
+        est = super()._build_estimator(task, kwargs)
+        est = wrap_estimator(est)
         return est
