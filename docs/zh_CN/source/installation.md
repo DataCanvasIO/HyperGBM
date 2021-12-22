@@ -1,10 +1,23 @@
 ## 安装HyperGBM
-推荐使用`pip`命令来安装HyperGBM；如果您有Docker环境，也可以在Docker容器中安装并运行HyperGBM。
+推荐使用`conda`或`pip`命令来安装HyperGBM（请提前准备好Python3.6以上版本的环境）；如果您有Docker环境，也可以在Docker容器中安装并运行HyperGBM。
 
+### 使用Conda
 
+可以从 *conda-forge* 安装HyperGBM:
 
-### 使用pip
-安装HyperGBM之前，您需要准备`Python3.6`或以上版本的运行环境并保证 `pip` 命令可正常运行。 使用pip安装HyperGBM：
+```bash
+conda install -c conda-forge hypergbm
+```
+
+对于Windows系统, 安装HyperGBM时建议将pyarrow(hypernets的依赖)的版本限制在4.0或更早:
+
+```bash
+conda install -c conda-forge hypergbm "pyarrow<=4.0"
+```
+
+### 使用Pip
+
+基本的，使用如下`pip`命令安装HyperGBM:
 ```bash
 pip install hypergbm
 ```

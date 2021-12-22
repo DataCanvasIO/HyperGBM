@@ -1,16 +1,43 @@
 ## Installing HyperGBM
-We recommend installing HyperGBM with `pip`. Installing and using HyperGBM in a Docker container are also possible if you have a Docker environment.
+We recommend installing HyperGBM with `conda` or `pip`. Installing and using HyperGBM in a Docker container are also possible if you have a Docker environment.
 
+Python version 3.6 or above is necessary before installing HyperGBM with `conda` or `pip`.
 
+### Conda
 
-### pip
-Python version 3.6 or above is necessary before installing HyperGBM. Here is how to use pip to install HyperGBM:
+Install HyperGBM with `conda` from the channel *conda-forge*:
+
+```bash
+conda install -c conda-forge hypergbm
+```
+
+On the Windows system, recommend install pyarrow(required by hypernets) 4.0 or earlier version with HyperGBM:
+
+```bash
+conda install -c conda-forge hypergbm "pyarrow<=4.0"
+```
+
+### Pip
+Install HyperGBM with different `pip` options:
+
+* Typical installation:
 ```bash
 pip install hypergbm
 ```
 
-Note that HyperGBM and its necessary packages will be installed at this time. If you want to install HyperGBM along with dependent packages such as `shap`, the following way is recommended:
+* To run HyperGBM in JupyterLab/Jupyter notebook, install with command:
+```bash
+pip install hypergbm[notebook]
+```
 
+* To support dataset with simplified Chinese in feature generation,
+  * Install `jieba` package before running HyperGBM. 
+  * OR install with command:
+```bash
+pip install hypergbm[zhcn]
+```
+
+* Install all above with one command:
 ```bash
 pip install hypergbm[all]
 ```

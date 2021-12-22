@@ -17,7 +17,23 @@ HyperGBM中的优化算法和搜索空间表示技术由 [Hypernets](https://git
 
 ## 安装
 
-推荐使用`pip`命令安装HyperGBM:
+### Conda
+
+可以从 *conda-forge* 安装HyperGBM:
+
+```bash
+conda install -c conda-forge hypergbm
+```
+
+对于Windows系统, 安装HyperGBM时建议将pyarrow(hypernets的依赖)的版本限制在4.0或更早:
+
+```bash
+conda install -c conda-forge hypergbm "pyarrow<=4.0"
+```
+
+### Pip
+
+基本的，使用如下`pip`命令安装HyperGBM:
 ```bash
 pip install hypergbm
 ```

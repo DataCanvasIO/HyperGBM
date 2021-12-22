@@ -27,7 +27,23 @@ HyperGBM, as indicated in the name, involves several gradient boosting tree mode
 
 ## Installation
 
-Install HyperGBM with different options:
+### Conda
+
+Install HyperGBM with `conda` from the channel *conda-forge*:
+
+```bash
+conda install -c conda-forge hypergbm
+```
+
+On the Windows system, recommend install pyarrow(required by hypernets) 4.0 or earlier version with HyperGBM:
+
+```bash
+conda install -c conda-forge hypergbm "pyarrow<=4.0"
+```
+
+### Pip
+
+Install HyperGBM with different `pip` options:
 
 * Typical installation:
 ```bash
