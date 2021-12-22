@@ -51,16 +51,58 @@ class XGBoostCumlEstimator(es.XGBoostEstimator):
         return est
 
 
-class CatBoostCumlEstimator(es.CatBoostEstimator):
-    def _build_estimator(self, task, kwargs):
-        est = super()._build_estimator(task, kwargs)
-        methods = {'predict', 'predict_proba'} if _FEATURE_FOR_CUML in _detected_catboost else None
-        est = wrap_estimator(est, methods=methods)
-        return est
-
-
 class HistGBCumlEstimator(es.HistGBEstimator):
     def _build_estimator(self, task, kwargs):
         est = super()._build_estimator(task, kwargs)
         est = wrap_estimator(est)
+        return est
+
+
+#
+# catboost override the __getstate__/__setstate__ with their method, so we wrap it with class
+#
+
+class CatBoostClassifierCumlWrapper(es.CatBoostClassifierWrapper):
+    def fit(self, *args, **kwargs):
+        if _FEATURE_FOR_CUML in _detected_catboost:
+            return super().fit(*args, **kwargs)
+        else:
+            return CumlToolBox.call_local(super().fit, *args, **kwargs)
+
+    def predict(self, *args, **kwargs):
+        return CumlToolBox.call_local(super().predict, *args, **kwargs)
+
+    def predict_proba(self, *args, **kwargs):
+        return CumlToolBox.call_local(super().predict_proba, *args, **kwargs)
+
+    def as_local(self):
+        state = self.__getstate__()
+        target = es.CatBoostClassifierWrapper()
+        target.__setstate__(state)
+        return target
+
+
+class CatBoostRegressionCumlWrapper(es.CatBoostRegressionWrapper):
+    def fit(self, *args, **kwargs):
+        if _FEATURE_FOR_CUML in _detected_catboost:
+            return super().fit(*args, **kwargs)
+        else:
+            return CumlToolBox.call_local(super().fit, *args, **kwargs)
+
+    def predict(self, *args, **kwargs):
+        return CumlToolBox.call_local(super().predict, *args, **kwargs)
+
+    def as_local(self):
+        state = self.__getstate__()
+        target = es.CatBoostRegressionWrapper()
+        target.__setstate__(state)
+        return target
+
+
+class CatBoostCumlEstimator(es.CatBoostEstimator):
+    def _build_estimator(self, task, kwargs):
+        if task == const.TASK_REGRESSION:
+            est = CatBoostRegressionCumlWrapper(**kwargs)
+        else:
+            est = CatBoostClassifierCumlWrapper(**kwargs)
         return est
