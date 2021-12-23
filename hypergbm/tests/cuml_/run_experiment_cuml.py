@@ -6,12 +6,11 @@
 import cudf
 
 from hypergbm import make_experiment
-from hypergbm.cuml import search_space_general
 from hypernets.tabular import get_tool_box
 from hypernets.tabular.datasets import dsutils
 
 
-def main(target='y', dtype=None, max_trials=3, drift_detection=False, **kwargs):
+def main(target='y', dtype=None, max_trials=3, drift_detection=False, clear_cache=True, **kwargs):
     tb = get_tool_box(cudf.DataFrame)
     assert isinstance(tb, type) and tb.__name__ == 'CumlToolBox'
 
@@ -28,11 +27,11 @@ def main(target='y', dtype=None, max_trials=3, drift_detection=False, **kwargs):
 
     exp = make_experiment(df_train, target=target,
                           test_data=X_test.copy(),
-                          search_space=search_space_general,
                           max_trials=max_trials,
                           drift_detection=drift_detection,
+                          clear_cache=clear_cache,
                           **kwargs)
-    print('experiment:', f'{[s.name for s in exp.steps]}')
+    print('experiment:', f'{[s.name for s in exp.steps]}', 'random_state', exp.random_state)
 
     print("training...")
     estimator = exp.run()

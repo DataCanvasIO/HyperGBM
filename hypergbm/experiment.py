@@ -5,11 +5,12 @@ __author__ = 'yangjian'
 
 """
 import copy
+import pandas as pd
 
 from hypergbm.hyper_gbm import HyperGBM
 from hypernets.experiment import make_experiment as _make_experiment
-from hypernets.tabular.dask_ex import DaskToolBox
 from hypernets.utils import DocLens
+from hypernets.tabular import get_tool_box
 
 
 def make_experiment(train_data,
@@ -71,6 +72,15 @@ def make_experiment(train_data,
 
     """
 
+    assert train_data is not None, 'train_data is required.'
+    assert eval_data is None or type(eval_data) is type(train_data)
+    assert test_data is None or type(test_data) is type(train_data)
+
+    if isinstance(train_data, str):
+        tb = get_tool_box(pd.DataFrame)
+    else:
+        tb = get_tool_box(train_data)
+
     def default_search_space():
         args = {}
         if estimator_early_stopping_rounds is not None:
@@ -86,10 +96,12 @@ def make_experiment(train_data,
             if key in kwargs.keys():
                 args[key] = kwargs.get(key)
 
-        dask_enable = DaskToolBox.exist_dask_object(train_data, test_data, eval_data) or DaskToolBox.dask_enabled()
-        if dask_enable:
+        if tb.__name__.lower().find('dask') >= 0:
             from hypergbm.dask.search_space import search_space_general as dask_search_space
             result = copy.deepcopy(dask_search_space)
+        elif tb.__name__.lower().find('cuml') >= 0:
+            from hypergbm.cuml import search_space_general as cuml_search_space
+            result = copy.deepcopy(cuml_search_space)
         else:
             from hypergbm.search_space import search_space_general as sk_search_space
             result = copy.deepcopy(sk_search_space)
