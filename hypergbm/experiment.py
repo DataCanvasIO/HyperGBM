@@ -98,15 +98,16 @@ def make_experiment(train_data,
 
         if tb.__name__.lower().find('dask') >= 0:
             from hypergbm.dask.search_space import search_space_general as dask_search_space
-            result = copy.deepcopy(dask_search_space)
+            result = dask_search_space
         elif tb.__name__.lower().find('cuml') >= 0:
             from hypergbm.cuml import search_space_general as cuml_search_space
-            result = copy.deepcopy(cuml_search_space)
+            result = cuml_search_space
         else:
             from hypergbm.search_space import search_space_general as sk_search_space
-            result = copy.deepcopy(sk_search_space)
+            result = sk_search_space
 
         if args:
+            result = copy.deepcopy(result)
             result.options.update(args)
         return result
 

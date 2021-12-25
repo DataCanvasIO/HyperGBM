@@ -5,8 +5,11 @@ import pickle
 import re
 import sys
 
+import pandas as pd
 import psutil
 
+import hypergbm
+from hypernets.tabular import get_tool_box as get_tool_box_, is_dask_installed, is_cuml_installed
 from hypernets.utils import const, logging
 
 metric_choices = ['accuracy', 'auc', 'f1', 'logloss', 'mse', 'mae', 'msle', 'precision', 'rmse', 'r2', 'recall']
@@ -55,7 +58,19 @@ def setup_dask(overload):
     return client
 
 
-def main():
+def get_tool_box(args):
+    if args.enable_dask:
+        import dask.dataframe as dd
+        tb = get_tool_box_(dd.DataFrame)
+    elif args.enable_gpu and is_cuml_installed:
+        import cudf
+        tb = get_tool_box_(cudf.DataFrame)
+    else:
+        tb = get_tool_box_(pd.DataFrame)
+    return tb
+
+
+def main(argv=None):
     def setup_train_args(a):
         tg = a.add_argument_group('Training settings')
         tg.add_argument('--train-data', '--train-file', '--train', type=str, default=None, required=True,
@@ -118,6 +133,9 @@ def main():
         eg.add_argument('--early-stopping-rounds', '--es-rounds', type=int, default=10,
                         help='default %(default)s ')
         eg.add_argument('--early-stopping-reward', '--es-reward', type=float, default=0.0)
+
+        eg.add_argument('--estimator_early_stopping_rounds', type=int, default=None,
+                        help='default %(default)s')
 
         fg = a.add_argument_group('Feature generation')
         fg.add_argument('--feature-generation', type=to_bool, default=False)
@@ -254,9 +272,9 @@ def main():
                        help='target feature name, default is %(default)s')
         a.add_argument('--model-file', '--model', default='model.pkl',
                        help='the pickle file name for trained model, default %(default)s')
-        a.add_argument('--metric', '--metrics', type=str, default=['accuracy'], nargs='*', metavar='METRIC',
+        a.add_argument('--metric', '--metrics', type=str, default=None, nargs='*', metavar='METRIC',
                        choices=metric_choices,
-                       help='metric name list, one or more of [%(choices)s], default %(default)s')
+                       help='metric name list, one or more of [%(choices)s], default detected from task type.')
         a.add_argument('--threshold', type=float, default=0.5,
                        help=f'probability threshold to detect pos label, '
                             f'use when task="{const.TASK_BINARY}" only, default %(default)s')
@@ -311,6 +329,11 @@ def main():
         logging_group.add_argument('-v', '-v+', dest='verbose', action='count',
                                    help='increase verbose level')
 
+        logging_group.add_argument('--version', type=to_bool, default=False,
+                                   help='print version number')
+        logging_group.add_argument('-version', '-version+', dest='version', action='store_true',
+                                   help='alias of "--version true"')
+
         # dask settings
         dask_group = a.add_argument_group('Dask settings')
         dask_group.add_argument('--enable-dask', '--dask', dest='enable_dask',
@@ -322,6 +345,13 @@ def main():
         dask_group.add_argument('--overload', '--load', type=float, default=2.0,
                                 help='memory overload of dask local cluster, '
                                      'used only when dask is enabled and  DASK_SCHEDULER_ADDRESS is not found.')
+        # gpu settings
+        dask_group = a.add_argument_group('Gpu settings')
+        dask_group.add_argument('--enable-gpu', '--gpu', dest='enable_gpu',
+                                type=to_bool, default=False,
+                                help='enable dask supported, default is %(default)s')
+        dask_group.add_argument('-gpu', '-gpu+', dest='enable_gpu', action='store_true',
+                                help='alias of "--enable-gpu true"')
 
     p = argparse.ArgumentParser(description='HyperGBM command line utility')
     setup_global_args(p)
@@ -339,21 +369,31 @@ def main():
         'predict',
         description='Run prediction with given model and data.'))
 
-    args = p.parse_args()
+    args = p.parse_args(argv)
+
+    if args.version:
+        print(f'Version: {hypergbm.__version__}')
 
     if args.command is None:
+        if args.version:
+            return
         p.parse_args(['--help'])
 
     if args.log_level is not None:
         logging.set_level(args.log_level)
 
     # setup dask if enabled
-    if os.environ.get('DASK_SCHEDULER_ADDRESS') is not None:
+    if is_dask_installed and os.environ.get('DASK_SCHEDULER_ADDRESS') is not None:
         args.enable_dask = True
     if args.enable_dask:
-        client = setup_dask(args.overload)
-        if args.verbose:
-            print(f'enable dask: {client}')
+        if is_dask_installed:
+            client = setup_dask(args.overload)
+            if args.verbose:
+                print(f'enable dask: {client}')
+        else:
+            print('Either "dask" or "dask_ml" package could not be found, check your installation please.',
+                  file=sys.stderr)
+            exit(1)
 
     # exec command
     fns = [train, evaluate, predict]
@@ -364,12 +404,23 @@ def main():
 def train(args):
     from hypergbm import make_experiment
 
-    train_data = args.train_data
-    reversed_keys = ['command', 'enable_dask', 'overload',
-                     'train_data', 'model_file']
+    reversed_keys = ['command', 'enable_dask', 'overload', 'enable_gpu',
+                     'train_data', 'eval_data', 'test_data', 'model_file']
     kwargs = {k: v for k, v in args.__dict__.items() if k not in reversed_keys and not k.startswith('_')}
 
-    experiment = make_experiment(train_data, **kwargs)
+    if args.enable_gpu and not is_cuml_installed:
+        from hypergbm.search_space import search_space_general_gpu as search_space
+        estimator_early_stopping_rounds = kwargs.get('estimator_early_stopping_rounds')
+        if estimator_early_stopping_rounds is not None:
+            search_space.options['early_stopping_rounds'] = estimator_early_stopping_rounds
+        kwargs['search_space'] = search_space
+
+    tb = get_tool_box(args)
+    train_data = tb.load_data(args.train_data)
+    eval_data = tb.load_data(args.eval_data) if args.eval_data is not None else None
+    test_data = tb.load_data(args.test_data) if args.test_data is not None else None
+
+    experiment = make_experiment(train_data, eval_data=eval_data, test_data=test_data, **kwargs)
 
     if args.verbose:
         print('>>> running experiment with train data {train_data}, '
@@ -384,9 +435,6 @@ def train(args):
 
 
 def evaluate(args):
-    from hypernets.utils import load_data
-    from hypernets.tabular.metrics import evaluate
-
     eval_data = args.eval_data
     target = args.target
     model_file = args.model_file
@@ -396,25 +444,22 @@ def evaluate(args):
     assert os.path.exists(eval_data), f'Not found {eval_data}'
     assert not (args.enable_dask and args.jobs > 1)
 
+    tb = get_tool_box(args)
+
     if args.verbose:
         print(f'>>> load data {eval_data}')
-    X = load_data(eval_data)
+    X = tb.load_data(eval_data, reset_index=True)
     y = X.pop(target)
 
     if args.verbose:
         print(f'>>> evaluate {model_file} with {metrics}')
-    scores = evaluate(model_file, X, y, metrics,
-                      pos_label=args.pos_label, threshold=args.threshold, n_jobs=args.jobs)
+    scores = tb.metrics.evaluate(model_file, X, y, metrics,
+                                 pos_label=args.pos_label, threshold=args.threshold, n_jobs=args.jobs)
 
     print(scores)
 
 
 def predict(args):
-    from hypernets.utils import load_data
-    from hypernets.tabular.dask_ex import DaskToolBox
-    import pandas as pd
-    import dask.dataframe as dd
-
     data_file = args.data
     model_file = args.model_file
     output_file = args.output
@@ -425,9 +470,11 @@ def predict(args):
     assert os.path.exists(data_file), f'Not found {data_file}'
     assert not (args.enable_dask and args.jobs > 1)
 
+    tb = get_tool_box(args)
+
     if args.verbose:
         print(f'>>> load data {data_file}')
-    X = load_data(data_file)
+    X = tb.load_data(data_file, reset_index=True)
 
     if output_with_data:
         if '*' == output_with_data or '*' in output_with_data:
@@ -444,11 +491,11 @@ def predict(args):
     if args.proba:
         if args.verbose:
             print(f'>>> run predict_proba')
-        pred = DaskToolBox.metrics.predict_proba(model_file, X, n_jobs=args.jobs)
+        pred = tb.metrics.predict_proba(model_file, X, n_jobs=args.jobs)
     else:
         if args.verbose:
             print(f'>>> run predict')
-        pred = DaskToolBox.metrics.predict(model_file, X, n_jobs=args.jobs, threshold=args.threshold)
+        pred = tb.metrics.predict(model_file, X, n_jobs=args.jobs, threshold=args.threshold)
 
     if args.verbose:
         print(f'>>> save prediction to {output_file}')
@@ -458,20 +505,18 @@ def predict(args):
     else:
         columns = [target]
 
-    if DaskToolBox.is_dask_object(pred):
-        y = dd.from_dask_array(pred, columns=columns)
-    else:
-        y = pd.DataFrame(pred, columns=columns)
+    y = tb.array_to_df(pred, columns=columns)
+    df = tb.concat_df([data, y], axis=1) if data is not None else y
 
-    df = DaskToolBox.concat_df([data, y], axis=1) if data is not None else y
-    if DaskToolBox.is_dask_object(df):
+    if args.enable_dask:
         from hypernets.tabular.persistence import to_parquet
         to_parquet(df, output_file)
     else:
-        if output_file.endswith('.parquet'):
+        df, = tb.to_local(df)
+        if output_file.endswith('.parquet') or output_file.endswith('.par'):
             df.to_parquet(output_file)
         elif output_file.endswith('.pkl') or output_file.endswith('.pickle'):
-            df.to_pickle(output_file, protocol=4)
+            df.to_pickle(output_file, protocol=pickle.HIGHEST_PROTOCOL)
         else:
             df.to_csv(output_file, index=False)
 
