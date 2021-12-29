@@ -2,14 +2,14 @@
 Features
 ======================
 
-There are three types of running HyperGBM：
+There are three running types of HyperGBM：
 
 - Single node：running in a single machine and using Pandas and Numpy datatype
 - Distributed with single node：running in a single machine and using Dask datatype which requires creating Dask collections before using HyperGBM
 - Distributed with multi nodes：running in multiple machines and using Dask datatype which requires creating Dask collections to manage resources for multiple machines before using HyperGBM
 
 
-The supported features are different for different running types as in the following table:
+The overview of supported features for different running types are displayed in the following table:
 
 .. csv-table:: 
    :stub-columns: 1
