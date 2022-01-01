@@ -9,4 +9,3 @@ xgboost>=1.3.0
 catboost>=0.26
 imbalanced-learn>=0.7.0
 tqdm
-plotly
