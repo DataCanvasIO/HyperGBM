@@ -99,9 +99,10 @@ class HyperGBMExplainer:
 
 
 class HyperGBMEstimator(Estimator):
-    def __init__(self, task, space_sample, data_cleaner_params=None):
+    def __init__(self, task, reward_metric, space_sample, data_cleaner_params=None):
         super(HyperGBMEstimator, self).__init__(space_sample=space_sample, task=task)
         self.data_cleaner_params = data_cleaner_params
+        self.reward_metric = reward_metric
 
         # built
         self.gbm_model = None
@@ -245,7 +246,7 @@ class HyperGBMEstimator(Estimator):
             kwargs['verbose'] = verbose
 
         if metrics is None:
-            metrics = ['accuracy']
+            metrics = [self.reward_metric] if self.reward_metric is not None else ['accuracy']
 
         oof_ = []
         oof_scores = []
@@ -259,6 +260,9 @@ class HyperGBMEstimator(Estimator):
             x_val_fold, y_val_fold = sel(X, valid_idx), sel(y, valid_idx)
 
             kwargs['eval_set'] = [(x_val_fold, y_val_fold)]
+            if self.reward_metric is not None and 'eval_reward_metric' not in kwargs.keys():
+                kwargs['eval_reward_metric'] = self.reward_metric
+
             sample_weight = None
             if self.task != const.TASK_REGRESSION and self.class_balancing is not None:
                 sampler = get_sampler(self.class_balancing)
@@ -364,7 +368,9 @@ class HyperGBMEstimator(Estimator):
                         logger.info(f'estimator is transforming the eval set({i})')
                     X_eval = self.transform_data(X_eval, verbose=verbose)
                     es.append((X_eval, y_eval))
-                    kwargs['eval_set'] = es
+                kwargs['eval_set'] = es
+            if self.reward_metric is not None and 'eval_reward_metric' not in kwargs.keys():
+                kwargs['eval_reward_metric'] = self.reward_metric
 
         if kwargs.get('verbose') is None:
             kwargs['verbose'] = verbose
@@ -475,7 +481,8 @@ class HyperGBMEstimator(Estimator):
 
     def evaluate(self, X, y, metrics=None, verbose=0, **kwargs):
         if metrics is None:
-            metrics = ['accuracy']
+            metrics = [self.reward_metric] if self.reward_metric is not None else ['accuracy']
+
         if self.task != const.TASK_REGRESSION:
             proba = self.predict_proba(X, verbose=verbose)
         else:
@@ -564,7 +571,8 @@ class HyperGBM(HyperModel):
                             task=task, discriminator=discriminator)
 
     def _get_estimator(self, space_sample):
-        estimator = self.estimator_cls(task=self.task, space_sample=space_sample,
+        estimator = self.estimator_cls(task=self.task, reward_metric=self.reward_metric,
+                                       space_sample=space_sample,
                                        data_cleaner_params=self.data_cleaner_params)
 
         cbs = self.callbacks

@@ -2,8 +2,9 @@
 """
 
 """
-from distutils.version import LooseVersion
 import contextlib
+from distutils.version import LooseVersion
+
 import catboost
 import lightgbm
 import numpy as np
@@ -12,8 +13,8 @@ import xgboost
 
 from hypernets.core.search_space import ModuleSpace
 from hypernets.discriminators import UnPromisingTrial
-from hypernets.tabular.column_selector import column_object_category_bool, column_zero_or_positive_int32
 from hypernets.tabular import get_tool_box
+from hypernets.tabular.column_selector import column_object_category_bool, column_zero_or_positive_int32
 from hypernets.utils import const, logging
 from .gbm_callbacks import LightGBMDiscriminationCallback, XGBoostDiscriminationCallback, CatboostDiscriminationCallback
 
@@ -225,6 +226,24 @@ class HistGBEstimator(HyperEstimator):
         return hgboost
 
 
+# see: https://lightgbm.readthedocs.io/en/latest/Parameters.html#metric
+LGBM_REWARD2METRIC = {
+    'auc': 'auc',
+    'accuracy': 'logloss',
+    'recall': 'logloss',
+    'precision': 'logloss',
+    'f1': 'logloss',
+    'logloss': 'logloss',
+    'mse': 'mse',
+    'mae': 'mae',
+    'msle': None,
+    'rmse': 'rmse',
+    'rootmeansquarederror': 'rmse',
+    'root_mean_squared_error': 'rmse',
+    'r2': None
+}
+
+
 class LGBMEstimatorMixin:
     @property
     def best_n_estimators(self):
@@ -249,6 +268,17 @@ class LGBMEstimatorMixin:
         return callback
 
     def prepare_fit_kwargs(self, X, y, kwargs):
+        # task = self.__dict__.get('task')
+        reward_metric = kwargs.pop('eval_reward_metric', None)
+
+        if reward_metric is not None and kwargs.get('eval_metric') is None:
+            eval_metric = LGBM_REWARD2METRIC.get(reward_metric)
+            #: lightgbm will fix logloss
+            # if eval_metric == 'binary_logloss' and task == const.TASK_MULTICLASS:
+            #     eval_metric = 'multi_logloss'
+            if eval_metric is not None:
+                kwargs['eval_metric'] = eval_metric
+
         if not kwargs.__contains__('categorical_feature'):
             cat_cols = get_categorical_features(X)
             kwargs['categorical_feature'] = cat_cols if len(cat_cols) > 0 else None
@@ -358,6 +388,24 @@ class LightGBMEstimator(HyperEstimator):
         return lgbm
 
 
+# see: https://github.com/dmlc/xgboost/blob/master/doc/parameter.rst
+XGB_REWARD2METRIC = {
+    'auc': 'auc',
+    'accuracy': 'logloss',
+    'recall': 'logloss',
+    'precision': 'logloss',
+    'f1': 'logloss',
+    'logloss': 'logloss',
+    'mse': 'rmse',
+    'mae': 'mae',
+    'msle': 'rmsle',
+    'rmse': 'rmse',
+    'rootmeansquarederror': 'rmse',
+    'root_mean_squared_error': 'rmse',
+    'r2': None
+}
+
+
 class XGBEstimatorMixin:
     @property
     def best_n_estimators(self):
@@ -383,12 +431,16 @@ class XGBEstimatorMixin:
         return callback
 
     def prepare_fit_kwargs(self, X, y, kwargs):
-        #         task = self.__dict__.get('task')
-        #         if kwargs.get('eval_metric') is None:
-        #             if task is not None and task == const.TASK_MULTICLASS:
-        #                 kwargs['eval_metric'] = 'mlogloss'
-        #             else:
-        #                 kwargs['eval_metric'] = 'logloss'
+        task = self.__dict__.get('task')
+        reward_metric = kwargs.pop('eval_reward_metric', None)
+
+        if reward_metric is not None and kwargs.get('eval_metric') is None:
+            eval_metric = XGB_REWARD2METRIC.get(reward_metric)
+            if eval_metric == 'logloss' and task == const.TASK_MULTICLASS:
+                eval_metric = 'mlogloss'
+            if eval_metric is not None:
+                kwargs['eval_metric'] = eval_metric
+
         if kwargs.get('early_stopping_rounds') is None and kwargs.get('eval_set') is not None:
             kwargs['early_stopping_rounds'] = _default_early_stopping_rounds(self)
         return kwargs
@@ -511,6 +563,24 @@ class XGBoostEstimator(HyperEstimator):
         return xgb
 
 
+# see: https://catboost.ai/en/docs/references/custom-metric__supported-metrics
+CATBOOST_REWARD2METRIC = {
+    'auc': 'AUC',
+    'accuracy': 'Accuracy',
+    'recall': 'Recall',
+    'precision': 'Precision',
+    'f1': 'F1',
+    'logloss': 'Logloss',
+    'mse': 'RMSE',
+    'mae': 'MAE',
+    'msle': 'MSLE',
+    'rmse': 'RMSE',
+    'rootmeansquarederror': 'RMSE',
+    'root_mean_squared_error': 'RMSE',
+    'r2': 'R2'
+}
+
+
 class CatBoostEstimatorMixin:
     @property
     def best_n_estimators(self):
@@ -546,6 +616,16 @@ class CatBoostEstimatorMixin:
             return None
 
     def prepare_fit_kwargs(self, X, y, kwargs):
+        task = self.__dict__.get('task')
+        reward_metric = kwargs.pop('eval_reward_metric', None)
+
+        if reward_metric is not None and kwargs.get('eval_metric') is None:
+            eval_metric = CATBOOST_REWARD2METRIC.get(reward_metric)
+            if eval_metric == 'Logloss' and task == const.TASK_MULTICLASS:
+                eval_metric = 'MultiLogloss'
+            if eval_metric is not None:
+                self.set_params(eval_metric=eval_metric)
+
         if not kwargs.__contains__('cat_features'):
             cat_cols = get_categorical_features(X)
             kwargs['cat_features'] = cat_cols

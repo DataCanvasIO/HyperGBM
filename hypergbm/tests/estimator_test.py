@@ -158,7 +158,7 @@ class Test_Estimator():
     def test_build_pipeline(self):
         space = search_space_general()
         space.random_sample()
-        estimator = HyperGBMEstimator('binary', space)
+        estimator = HyperGBMEstimator('binary', 'auc', space)
         X, y = get_df()
         tb = get_tool_box(X)
         num_cols = tb.column_selector.column_number_exclude_timedelta(X)
@@ -174,7 +174,7 @@ class Test_Estimator():
 
         space = get_space_multi_dataframemapper()
         space.random_sample()
-        estimator = HyperGBMEstimator('binary', space)
+        estimator = HyperGBMEstimator('binary', 'auc', space)
         X, y = get_df()
         df_1 = estimator.data_pipeline.fit_transform(X, y)
         assert list(df_1.columns) == ['a', 'e', 'f', 'b', 'c', 'd', 'l']

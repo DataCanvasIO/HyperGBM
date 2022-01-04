@@ -13,7 +13,7 @@ class CumlHyperGBMEstimator(HyperGBMEstimator, Localizable):
 
     def as_local(self):
         # create target instance with "space_sample=None" to disable building
-        target = HyperGBMEstimator(self.task, None, self.data_cleaner_params)
+        target = HyperGBMEstimator(self.task, self.reward_metric, None, self.data_cleaner_params)
 
         attrs = ['space_sample',  # init args
                  'gbm_model', 'class_balancing', 'fit_kwargs', 'data_pipeline',  # built
