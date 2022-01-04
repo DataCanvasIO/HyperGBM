@@ -48,8 +48,14 @@ def get_categorical_features(X):
 
 
 def _default_early_stopping_rounds(estimator):
-    n_estimators = getattr(estimator, 'n_estimators', None)
-    if isinstance(n_estimators, int):
+    if hasattr(estimator, 'n_estimators'):
+        n_estimators = getattr(estimator, 'n_estimators', None)
+    elif hasattr(estimator, 'get_params'):
+        n_estimators = estimator.get_params().get('n_estimators', None)
+    else:
+        n_estimators = None
+
+    if isinstance(n_estimators, int) and n_estimators > 10:
         return max(5, n_estimators // 20)
     else:
         return None
@@ -377,12 +383,12 @@ class XGBEstimatorMixin:
         return callback
 
     def prepare_fit_kwargs(self, X, y, kwargs):
-#         task = self.__dict__.get('task')
-#         if kwargs.get('eval_metric') is None:
-#             if task is not None and task == const.TASK_MULTICLASS:
-#                 kwargs['eval_metric'] = 'mlogloss'
-#             else:
-#                 kwargs['eval_metric'] = 'logloss'
+        #         task = self.__dict__.get('task')
+        #         if kwargs.get('eval_metric') is None:
+        #             if task is not None and task == const.TASK_MULTICLASS:
+        #                 kwargs['eval_metric'] = 'mlogloss'
+        #             else:
+        #                 kwargs['eval_metric'] = 'logloss'
         if kwargs.get('early_stopping_rounds') is None and kwargs.get('eval_set') is not None:
             kwargs['early_stopping_rounds'] = _default_early_stopping_rounds(self)
         return kwargs
