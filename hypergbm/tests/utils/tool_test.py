@@ -10,6 +10,13 @@ class TestTool:
     def setup_class(cls):
         cls.data_dir = path.split(dsutils.__file__)[0]
 
+    @classmethod
+    def teardown_class(cls):
+        if path.exists('model.pkl'):
+            os.remove('model.pkl')
+        if path.exists('prediction.csv'):
+            os.remove('prediction.csv')
+
     def test_version(self):
         argv = ['-version', ]
         main(argv)

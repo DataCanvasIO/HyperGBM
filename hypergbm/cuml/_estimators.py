@@ -4,20 +4,33 @@
 """
 from functools import partial
 
+from hypernets.tabular.cache import cache
 from hypernets.tabular.cuml_ex import CumlToolBox
 from hypernets.utils import const
 from .. import estimators as es
 
-_detector = CumlToolBox.estimator_detector
-_detected_lgbm = _detector('lightgbm.LGBMClassifier', const.TASK_BINARY,
-                           init_kwargs={'device': 'GPU'},
-                           fit_kwargs={})()
-_detected_xgb = _detector('xgboost.XGBClassifier', const.TASK_BINARY,
-                          init_kwargs={'tree_method': 'gpu_hist', 'use_label_encoder': False, 'verbosity': 0, },
-                          fit_kwargs={})()
-_detected_catboost = _detector('catboost.CatBoostClassifier', const.TASK_BINARY,
-                               init_kwargs={'task_type': 'GPU', 'verbose': 0},
-                               fit_kwargs={})()
+
+@cache()
+def _detect_estimator(name_or_cls, task, *,
+                      init_kwargs=None, fit_kwargs=None, n_samples=100, n_features=5):
+    r = CumlToolBox.estimator_detector(name_or_cls, task,
+                                       init_kwargs=init_kwargs,
+                                       fit_kwargs=fit_kwargs,
+                                       n_samples=n_samples,
+                                       n_features=n_features)
+    return r()
+
+
+_detected_lgbm = _detect_estimator('lightgbm.LGBMClassifier', const.TASK_BINARY,
+                                   init_kwargs={'device': 'GPU'},
+                                   fit_kwargs={})
+_detected_xgb = _detect_estimator('xgboost.XGBClassifier', const.TASK_BINARY,
+                                  init_kwargs={'tree_method': 'gpu_hist', 'use_label_encoder': False,
+                                               'verbosity': 0, },
+                                  fit_kwargs={})
+_detected_catboost = _detect_estimator('catboost.CatBoostClassifier', const.TASK_BINARY,
+                                       init_kwargs={'task_type': 'GPU', 'verbose': 0},
+                                       fit_kwargs={})
 
 _FEATURE_FOR_GPU = 'fitted'  # can fit with pandas data
 _FEATURE_FOR_CUML = 'fitted_with_cuml'  # can fit with cuml data
