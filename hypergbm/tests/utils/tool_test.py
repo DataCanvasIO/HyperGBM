@@ -1,6 +1,8 @@
 import os
 import os.path as path
 
+import pandas as pd
+
 from hypergbm.utils.tool import main
 from hypernets.tabular.datasets import dsutils
 
@@ -16,6 +18,8 @@ class TestTool:
             os.remove('model.pkl')
         if path.exists('prediction.csv'):
             os.remove('prediction.csv')
+        if path.exists('perf.csv'):
+            os.remove('perf.csv')
 
     def test_version(self):
         argv = ['-version', ]
@@ -34,6 +38,25 @@ class TestTool:
         ]
         main(argv)
         assert path.exists('model.pkl')
+
+    def test_train_with_perf(self):
+        if path.exists('model.pkl'):
+            os.remove('model.pkl')
+
+        data_file = f'{self.data_dir}/blood.csv'
+        argv = [
+            # '-info','-v',
+            '--perf-file', 'perf.csv',
+            'train',
+            '--train-data', data_file,
+            '--target', 'Class',
+        ]
+        main(argv)
+        assert path.exists('model.pkl')
+        assert path.exists('perf.csv')
+
+        perf = pd.read_csv('perf.csv')
+        assert perf is not None
 
     def test_predict(self):
         if not path.exists('model.pkl'):

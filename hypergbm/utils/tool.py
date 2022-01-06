@@ -4,13 +4,14 @@ import os
 import pickle
 import re
 import sys
+from multiprocessing import Process
 
 import pandas as pd
 import psutil
 
 import hypergbm
 from hypernets.tabular import get_tool_box as get_tool_box_, is_dask_installed, is_cuml_installed
-from hypernets.utils import const, logging
+from hypernets.utils import const, logging, dump_perf
 
 metric_choices = ['accuracy', 'auc', 'f1', 'logloss', 'mse', 'mae', 'msle', 'precision', 'rmse', 'r2', 'recall']
 strategy_choices = ['threshold', 'quantile', 'number']
@@ -56,6 +57,12 @@ def setup_dask(overload):
 
         client = Client(cluster)
     return client
+
+
+def create_dump_perf_process(perf_file, recursive=True, interval=1):
+    proc = Process(target=dump_perf, args=(perf_file, os.getpid(), recursive, interval), daemon=True)
+
+    return proc
 
 
 def get_tool_box(args):
@@ -346,12 +353,21 @@ def main(argv=None):
                                 help='memory overload of dask local cluster, '
                                      'used only when dask is enabled and  DASK_SCHEDULER_ADDRESS is not found.')
         # gpu settings
-        dask_group = a.add_argument_group('Gpu settings')
-        dask_group.add_argument('--enable-gpu', '--gpu', dest='enable_gpu',
-                                type=to_bool, default=False,
-                                help='enable dask supported, default is %(default)s')
-        dask_group.add_argument('-gpu', '-gpu+', dest='enable_gpu', action='store_true',
-                                help='alias of "--enable-gpu true"')
+        gpu_group = a.add_argument_group('Gpu settings')
+        gpu_group.add_argument('--enable-gpu', '--gpu', dest='enable_gpu',
+                               type=to_bool, default=False,
+                               help='enable dask supported, default is %(default)s')
+        gpu_group.add_argument('-gpu', '-gpu+', dest='enable_gpu', action='store_true',
+                               help='alias of "--enable-gpu true"')
+
+        # perf settings
+        perf_group = a.add_argument_group('Performance record settings')
+        perf_group.add_argument('--perf-file', type=str,
+                                help='a csv file path to store performance data, default is None(disable recording).')
+        perf_group.add_argument('--perf-interval', type=int, default=1,
+                                help='second number, default is %(default)s')
+        perf_group.add_argument('--perf-recursive', type=to_bool, default=True,
+                                help='collect children cpu/mem usage or not, default is %(default)s')
 
     p = argparse.ArgumentParser(description='HyperGBM command line utility')
     setup_global_args(p)
@@ -395,6 +411,11 @@ def main(argv=None):
                   file=sys.stderr)
             exit(1)
 
+    # start performance process
+    if args.perf_file:
+        perf_proc = create_dump_perf_process(args.perf_file, recursive=args.perf_recursive, interval=args.perf_interval)
+        perf_proc.start()
+
     # exec command
     fns = [train, evaluate, predict]
     fn = next(filter(lambda f: f.__name__ == args.command, fns))
@@ -404,7 +425,8 @@ def main(argv=None):
 def train(args):
     from hypergbm import make_experiment
 
-    reversed_keys = ['command', 'enable_dask', 'overload', 'enable_gpu',
+    reversed_keys = ['command', 'enable_dask', 'overload', 'enable_gpu', 'version',
+                     'perf_file', 'perf_interval', 'perf_recursive',
                      'train_data', 'eval_data', 'test_data', 'model_file']
     kwargs = {k: v for k, v in args.__dict__.items() if k not in reversed_keys and not k.startswith('_')}
 
