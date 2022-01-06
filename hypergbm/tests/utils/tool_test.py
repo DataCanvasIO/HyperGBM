@@ -14,12 +14,15 @@ class TestTool:
 
     @classmethod
     def teardown_class(cls):
-        if path.exists('model.pkl'):
-            os.remove('model.pkl')
-        if path.exists('prediction.csv'):
-            os.remove('prediction.csv')
-        if path.exists('perf.csv'):
-            os.remove('perf.csv')
+        try:
+            if path.exists('model.pkl'):
+                os.remove('model.pkl')
+            if path.exists('prediction.csv'):
+                os.remove('prediction.csv')
+            if path.exists('perf.csv'):
+                os.remove('perf.csv')
+        except:
+            pass
 
     def test_version(self):
         argv = ['-version', ]
