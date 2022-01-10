@@ -285,7 +285,7 @@ class HyperGBMEstimator(Estimator):
             # print(fold_est.evals_result_)
             # print(f'fold {n_fold}, est:{fold_est.__class__},  best_n_estimators:{fold_est.best_n_estimators}')
             if self.classes_ is None and hasattr(fold_est, 'classes_'):
-                self.classes_ = np.array(fold_est.classes_)
+                self.classes_ = np.array(tb.to_local(fold_est.classes_)[0])
             if self.task == const.TASK_REGRESSION:
                 proba = fold_est.predict(x_val_fold)
             else:
@@ -314,7 +314,6 @@ class HyperGBMEstimator(Estimator):
             proba = None
         else:
             preds = self.proba2predict(proba)
-            # preds = np.array(self.classes_).take(preds, axis=0)
             preds = tb.take_array(self.classes_, preds, axis=0)
         scores = tb.metrics.calc_score(y, preds, proba, metrics=metrics, task=self.task,
                                        classes=self.classes_, pos_label=self.pos_label)
