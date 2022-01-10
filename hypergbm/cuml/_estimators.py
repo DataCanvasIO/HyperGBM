@@ -6,8 +6,10 @@ from functools import partial
 
 from hypernets.tabular.cache import cache
 from hypernets.tabular.cuml_ex import CumlToolBox
-from hypernets.utils import const
+from hypernets.utils import const, logging
 from .. import estimators as es
+
+logger = logging.get_logger(__name__)
 
 
 @cache()
@@ -17,8 +19,10 @@ def _detect_estimator(name_or_cls, task, *,
                                        init_kwargs=init_kwargs,
                                        fit_kwargs=fit_kwargs,
                                        n_samples=n_samples,
-                                       n_features=n_features)
-    return r()
+                                       n_features=n_features)()
+
+    logger.info(f'detect_estimator {name_or_cls} as {r}')
+    return r
 
 
 _detected_lgbm = _detect_estimator('lightgbm.LGBMClassifier', const.TASK_BINARY,
@@ -32,8 +36,8 @@ _detected_catboost = _detect_estimator('catboost.CatBoostClassifier', const.TASK
                                        init_kwargs={'task_type': 'GPU', 'verbose': 0},
                                        fit_kwargs={})
 
-_FEATURE_FOR_GPU = 'fitted'  # can fit with pandas data
-_FEATURE_FOR_CUML = 'fitted_with_cuml'  # can fit with cuml data
+_FEATURE_FOR_GPU = 'fitted'  # succeed in fitting with pandas data
+_FEATURE_FOR_CUML = 'fitted_with_cuml'  # succeed in fitting with cuml data
 
 
 def wrap_estimator(estimator, methods=None):
