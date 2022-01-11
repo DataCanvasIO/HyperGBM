@@ -3,7 +3,9 @@
 
 """
 import copy
+import hashlib
 import pickle
+import re
 import time
 
 import numpy as np
@@ -139,14 +141,16 @@ class HyperGBMEstimator(Estimator):
             'The upstream node of `HyperEstimator` must be `ComposeTransformer`.'
         # next, (name, p) = pipeline_module[0].compose()
         self.data_pipeline = self._build_pipeline(space, pipeline_module[0])
-        # logger.debug(f'data_pipeline:{self.data_pipeline}')
-        # self.pipeline_signature = self.get_pipeline_signature(self.data_pipeline)
+        if logger.is_debug_enabled():
+            logger.debug(f'data_pipeline:{self.data_pipeline}')
+        self.pipeline_signature = self.get_pipeline_signature(self.data_pipeline)
 
-    # def get_pipeline_signature(self, pipeline):
-    #     repr = pipeline.__repr__(1000000)
-    #     repr = re.sub(r'object at 0x(.*)>', "", repr)
-    #     md5 = hashlib.md5(repr.encode('utf-8')).hexdigest()
-    #     return md5
+    @staticmethod
+    def get_pipeline_signature(pipeline):
+        repr = pipeline.__repr__(1000000)
+        repr = re.sub(r'object at 0x(.*)>', "", repr)
+        md5 = hashlib.md5(repr.encode('utf-8')).hexdigest()
+        return md5
 
     def _build_pipeline(self, space, last_transformer):
         transformers = []
