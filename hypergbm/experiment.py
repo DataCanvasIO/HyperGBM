@@ -22,6 +22,7 @@ def make_experiment(train_data,
                     callbacks=None,
                     searcher=None,
                     search_space=None,
+                    search_space_options=None,
                     search_callbacks=None,
                     early_stopping_rounds=10,
                     early_stopping_time_limit=3600,
@@ -82,7 +83,7 @@ def make_experiment(train_data,
         tb = get_tool_box(train_data)
 
     def default_search_space():
-        args = {}
+        args = search_space_options if search_space_options is not None else {}
         if estimator_early_stopping_rounds is not None:
             assert isinstance(estimator_early_stopping_rounds, int), \
                 f'estimator_early_stopping_rounds should be int or None, {estimator_early_stopping_rounds} found.'
