@@ -4,6 +4,7 @@
 """
 from functools import partial
 
+from hypergbm.cfg import HyperGBMCfg as cfg
 from hypergbm.dask import dask_transformers as tf, dask_ops as ops
 from hypergbm.search_space import GeneralSearchSpaceGenerator
 from hypernets.core.search_space import get_default_space
@@ -11,7 +12,7 @@ from hypernets.pipeline.base import Pipeline
 from hypernets.tabular.dask_ex import DaskToolBox
 from hypernets.utils import logging
 from ._estimators import LightGBMDaskEstimator, CatBoostDaskEstimator, XGBoostDaskEstimator, HistGBDaskEstimator
-from ._estimators import lgbm_dask_distributed, xgb_dask_distributed, catboost_dask_distributed, histgb_dask_distributed
+from ._estimators import lgbm_dask_distributed, xgb_dask_distributed, catboost_dask_distributed
 
 logger = logging.get_logger(__name__)
 
@@ -92,11 +93,14 @@ class DaskGeneralSearchSpaceGenerator(GeneralSearchSpaceGenerator):
 
 
 _is_local_dask = DaskToolBox.is_local_dask()
-search_space_general = DaskGeneralSearchSpaceGenerator(n_estimators=200,
-                                                       enable_lightgbm=_is_local_dask or lgbm_dask_distributed,
-                                                       enable_xgb=_is_local_dask or xgb_dask_distributed,
-                                                       enable_catboost=_is_local_dask or catboost_dask_distributed,
-                                                       enable_persist=False)
+
+search_space_general = DaskGeneralSearchSpaceGenerator(
+    enable_lightgbm=cfg.estimator_lightgbm_enabled and (_is_local_dask or lgbm_dask_distributed),
+    enable_xgb=cfg.estimator_xgboost_enabled and (_is_local_dask or xgb_dask_distributed),
+    enable_catboost=cfg.estimator_catboost_enabled and (_is_local_dask or catboost_dask_distributed),
+    enable_histgb=cfg.estimator_histgb_enabled and _is_local_dask,
+    n_estimators=200,
+    enable_persist=False)
 
 #
 # def _build_estimator_dapater(fn_call, *args, **kwargs):

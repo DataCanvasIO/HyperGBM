@@ -74,4 +74,9 @@ class CumlGeneralSearchSpaceGenerator(GeneralSearchSpaceGenerator):
                 }
 
 
-search_space_general = CumlGeneralSearchSpaceGenerator(n_estimators=200)
+search_space_general = \
+    CumlGeneralSearchSpaceGenerator(enable_lightgbm=cfg.estimator_lightgbm_enabled,
+                                    enable_xgb=cfg.estimator_xgboost_enabled,
+                                    enable_catboost=cfg.estimator_catboost_enabled,
+                                    enable_histgb=cfg.estimator_histgb_enabled,
+                                    n_estimators=200)

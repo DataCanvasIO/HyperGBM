@@ -245,16 +245,26 @@ class GeneralSearchSpaceGenerator(BaseSearchSpaceGenerator):
         return r
 
 
-search_space_general = GeneralSearchSpaceGenerator(n_estimators=200)
+_default_options = dict(enable_lightgbm=cfg.estimator_lightgbm_enabled,
+                        enable_xgb=cfg.estimator_xgboost_enabled,
+                        enable_catboost=cfg.estimator_catboost_enabled,
+                        enable_histgb=cfg.estimator_histgb_enabled,
+                        n_estimators=200)
 
-search_space_general_gpu = \
-    GeneralSearchSpaceGenerator(n_estimators=200,
-                                lightgbm_init_kwargs={'device': 'GPU'} if detect_lgbm_gpu() else {},
-                                xgb_init_kwargs={'tree_method': 'gpu_hist'},
-                                catboost_init_kwargs={'task_type': 'GPU'})
+_default_options_with_gpu = _default_options.copy()
+if _default_options_with_gpu['enable_lightgbm'] and detect_lgbm_gpu():
+    _default_options_with_gpu['lightgbm_init_kwargs'] = {'device': 'GPU'}
+if _default_options_with_gpu['enable_xgb']:
+    _default_options_with_gpu['xgb_init_kwargs'] = {'tree_method': 'gpu_hist'}
+if _default_options_with_gpu['enable_catboost']:
+    _default_options_with_gpu['catboost_init_kwargs'] = {'task_type': 'GPU'}
 
-search_space_general_with_class_balancing = \
-    GeneralSearchSpaceGenerator(n_estimators=200, class_balancing=True)
+_default_options_with_class_balancing = _default_options.copy()
+_default_options_with_class_balancing['class_balancing'] = True
+
+search_space_general = GeneralSearchSpaceGenerator(**_default_options)
+search_space_general_gpu = GeneralSearchSpaceGenerator(**_default_options_with_gpu)
+search_space_general_with_class_balancing = GeneralSearchSpaceGenerator(**_default_options_with_class_balancing)
 
 
 def search_space_one_trial(dataframe_mapper_default=False,

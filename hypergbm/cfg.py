@@ -59,3 +59,25 @@ class HyperGBMCfg(Configurable):
         Int(3,
             config=True,
             help='')
+
+    # estimators
+    estimator_lightgbm_enabled = \
+        Bool(True,
+             config=True,
+             help='enable lightgbm or not.'
+             )
+    estimator_xgboost_enabled = \
+        Bool(True,
+             config=True,
+             help='enable xgboost or not.'
+             )
+    estimator_catboost_enabled = \
+        Bool(True,
+             config=True,
+             help='enable catboost or not.'
+             )
+    estimator_histgb_enabled = \
+        Bool(False,
+             config=True,
+             help='enable HistGradientBoosting or not.'
+             )
