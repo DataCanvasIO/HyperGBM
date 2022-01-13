@@ -111,6 +111,7 @@ class HyperGBMEstimator(Estimator):
         self.class_balancing = None
         self.fit_kwargs = None
         self.data_pipeline = None
+        self.pipeline_signature = None
 
         # fitted
         self.data_cleaner = None
@@ -118,7 +119,6 @@ class HyperGBMEstimator(Estimator):
         self.classes_ = None
         self.pos_label = None
         self.transients_ = {}
-        # self.pipeline_signature = None
 
         if space_sample is not None:
             self._build_model(space_sample)

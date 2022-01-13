@@ -5,12 +5,12 @@ __author__ = 'yangjian'
 
 """
 import copy
+
 import pandas as pd
 
-from hypergbm.hyper_gbm import HyperGBM
 from hypernets.experiment import make_experiment as _make_experiment
-from hypernets.utils import DocLens
 from hypernets.tabular import get_tool_box
+from hypernets.utils import DocLens
 
 
 def make_experiment(train_data,
@@ -82,6 +82,13 @@ def make_experiment(train_data,
     else:
         tb = get_tool_box(train_data)
 
+    if tb.__name__.lower().find('cuml') >= 0:
+        from hypergbm.cuml import CumlHyperGBM
+        hyper_model_cls = CumlHyperGBM
+    else:
+        from hypergbm.hyper_gbm import HyperGBM
+        hyper_model_cls = HyperGBM
+
     def default_search_space():
         args = search_space_options if search_space_options is not None else {}
         if estimator_early_stopping_rounds is not None:
@@ -115,7 +122,7 @@ def make_experiment(train_data,
     if (searcher is None or isinstance(searcher, str)) and search_space is None:
         search_space = default_search_space()
 
-    experiment = _make_experiment(HyperGBM, train_data,
+    experiment = _make_experiment(hyper_model_cls, train_data,
                                   target=target,
                                   eval_data=eval_data,
                                   test_data=test_data,
