@@ -525,6 +525,12 @@ class HyperGBMEstimator(Estimator):
             if n_jobs == -1:
                 n_jobs = None
 
+        options = dict(random_state=random_state)
+        if sample_weight is not None:
+            options['sample_weight'] = sample_weight
+        if max_samples != 1.0:
+            options['max_samples'] = max_samples
+
         if logger.is_info_enabled():
             logger.info(f'calculate permutation_importance, n_jobs:{n_jobs}, n_repeats:{n_repeats},'
                         f' gbm_model:{type(self.gbm_model).__name__}, '
@@ -532,9 +538,7 @@ class HyperGBMEstimator(Estimator):
 
         if not self.is_data_pipeline_straightforward():
             logger.info(f'datapipeline is not straightforward, redirect calculation to sklearn')
-            return sk_pi(self, X, y,
-                         scoring=scoring, n_repeats=n_repeats, n_jobs=n_jobs,
-                         random_state=random_state, sample_weight=sample_weight, max_samples=max_samples)
+            return sk_pi(self, X, y, scoring=scoring, n_repeats=n_repeats, n_jobs=n_jobs, **options)
 
         # preprocessing data
         columns_in = X.columns.to_list()
@@ -546,9 +550,7 @@ class HyperGBMEstimator(Estimator):
         if self.cv_gbm_models_ is not None:
             importances = []
             for est in (self.cv_gbm_models_ * n_repeats)[:n_repeats]:
-                est_pi = sk_pi(est, X, y,
-                               scoring=scoring, n_repeats=1, n_jobs=n_jobs,
-                               random_state=random_state, sample_weight=sample_weight, max_samples=max_samples)
+                est_pi = sk_pi(est, X, y, scoring=scoring, n_repeats=1, n_jobs=n_jobs, **options)
                 importances.append(est_pi.importances)
             importances = tb.hstack_array(importances)
             result = Bunch(
@@ -557,9 +559,7 @@ class HyperGBMEstimator(Estimator):
                 importances=importances,
             )
         else:
-            result = sk_pi(self.gbm_model, X, y,
-                           scoring=scoring, n_repeats=n_repeats, n_jobs=n_jobs,
-                           random_state=random_state, sample_weight=sample_weight, max_samples=max_samples)
+            result = sk_pi(self.gbm_model, X, y, scoring=scoring, n_repeats=n_repeats, n_jobs=n_jobs, **options)
 
         # fix the result
         if columns_out != columns_in:
