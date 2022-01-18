@@ -15,7 +15,7 @@ from hypernets.core.search_space import ModuleSpace
 from hypernets.discriminators import UnPromisingTrial
 from hypernets.tabular import get_tool_box
 from hypernets.tabular.column_selector import column_object_category_bool, column_zero_or_positive_int32
-from hypernets.utils import const, logging
+from hypernets.utils import const, logging, to_repr
 from .gbm_callbacks import LightGBMDiscriminationCallback, XGBoostDiscriminationCallback, CatboostDiscriminationCallback
 
 try:
@@ -284,14 +284,14 @@ class LGBMEstimatorMixin:
             kwargs['categorical_feature'] = cat_cols if len(cat_cols) > 0 else None
         if kwargs.get('early_stopping_rounds') is None and kwargs.get('eval_set') is not None:
             kwargs['early_stopping_rounds'] = _default_early_stopping_rounds(self)
+
+        self.feature_names_in_ = X.columns.tolist()
         return kwargs
 
     def prepare_predict_X(self, X):
-        try:
-            if hasattr(self, 'feature_name_'):
-                X = X[self.feature_name_]
-        except:
-            pass
+        feature_names = self.feature_names_in_
+        if feature_names != X.columns.tolist():
+            X = X[feature_names]
         return X
 
 
@@ -443,10 +443,14 @@ class XGBEstimatorMixin:
 
         if kwargs.get('early_stopping_rounds') is None and kwargs.get('eval_set') is not None:
             kwargs['early_stopping_rounds'] = _default_early_stopping_rounds(self)
+
+        self.feature_names_in_ = X.columns.tolist()
         return kwargs
 
     def prepare_predict_X(self, X):
-        X = X[self.get_booster().feature_names]
+        feature_names = self.feature_names_in_
+        if feature_names != X.columns.tolist():
+            X = X[feature_names]
         return X
 
 
@@ -634,8 +638,14 @@ class CatBoostEstimatorMixin:
         return kwargs
 
     def prepare_predict_X(self, X):
-        X = X[self.feature_names_]
+        feature_names = self.feature_names_
+        if isinstance(feature_names, list) and feature_names != X.columns.to_list():
+            X = X[self.feature_names_]
         return X
+
+    @property
+    def feature_names_in_(self):
+        return self.feature_names_
 
 
 class CatBoostClassifierWrapper(catboost.CatBoostClassifier, CatBoostEstimatorMixin):
@@ -654,6 +664,9 @@ class CatBoostClassifierWrapper(catboost.CatBoostClassifier, CatBoostEstimatorMi
         X = self.prepare_predict_X(X)
         return super().predict_proba(X, **kwargs)
 
+    def __repr__(self):
+        return to_repr(self, excludes=['feature_names_in_'])
+
 
 class CatBoostRegressionWrapper(catboost.CatBoostRegressor, CatBoostEstimatorMixin):
     def fit(self, X, y=None, **kwargs):
@@ -666,6 +679,9 @@ class CatBoostRegressionWrapper(catboost.CatBoostRegressor, CatBoostEstimatorMix
     def predict(self, X, **kwargs):
         X = self.prepare_predict_X(X)
         return super().predict(X, **kwargs)
+
+    def __repr__(self):
+        return to_repr(self, excludes=['feature_names_in_'])
 
 
 class CatBoostEstimator(HyperEstimator):
