@@ -9,9 +9,12 @@ import re
 import time
 
 import numpy as np
+import pandas as pd
 from imblearn.over_sampling import RandomOverSampler, SMOTE, ADASYN
 from imblearn.under_sampling import RandomUnderSampler, NearMiss, TomekLinks, EditedNearestNeighbours
 from sklearn import pipeline as sk_pipeline
+from sklearn.inspection import permutation_importance as sk_pi
+from sklearn.utils import Bunch
 from tqdm.auto import tqdm
 
 from hypergbm.gbm_callbacks import FileMonitorCallback
@@ -23,6 +26,7 @@ from hypernets.tabular import get_tool_box
 from hypernets.tabular.cache import cache
 from hypernets.utils import logging, fs, const
 from .estimators import HyperEstimator
+from .cfg import HyperGBMCfg as cfg
 
 try:
     import shap
@@ -495,6 +499,80 @@ class HyperGBMEstimator(Estimator):
                                                     pos_label=self.pos_label, classes=self.classes_)
         return scores
 
+    def is_data_pipeline_straightforward(self):
+        excluded = cfg.straightforward_excluded
+        if excluded is None or len(excluded) == 0:
+            return True
+
+        r = self.data_pipeline.__repr__(1000000)
+        return all(map(lambda s: r.find(s) < 0, excluded))
+
+    def permutation_importance(self, X, y, *,
+                               scoring=None, n_repeats=5, n_jobs=None,
+                               random_state=None, sample_weight=None, max_samples=1.0):
+        """
+        see: sklearn.inspection.permutation_importance
+        """
+        tb = get_tool_box(X, y)
+        if isinstance(scoring, str):
+            scoring = tb.metrics.metric_to_scoring(scoring)
+
+        # optimize 'n_jobs' option
+        if type(self.gbm_model).__name__.lower().find('catboost') >= 0:
+            if n_jobs is None:
+                n_jobs = -1
+        else:
+            if n_jobs == -1:
+                n_jobs = None
+
+        if logger.is_info_enabled():
+            logger.info(f'calculate permutation_importance, n_jobs:{n_jobs}, n_repeats:{n_repeats},'
+                        f' gbm_model:{type(self.gbm_model).__name__}, '
+                        f' datapipeline:{self.data_pipeline}')
+
+        if not self.is_data_pipeline_straightforward():
+            logger.info(f'datapipeline is not straightforward, redirect calculation to sklearn')
+            return sk_pi(self, X, y,
+                         scoring=scoring, n_repeats=n_repeats, n_jobs=n_jobs,
+                         random_state=random_state, sample_weight=sample_weight, max_samples=max_samples)
+
+        # preprocessing data
+        columns_in = X.columns.to_list()
+        X = self.transform_data(X)
+        columns_out = X.columns.to_list()
+        assert set(columns_in).issuperset(set(columns_out))
+
+        # compute permutation_importance
+        if self.cv_gbm_models_ is not None:
+            importances = []
+            for est in (self.cv_gbm_models_ * n_repeats)[:n_repeats]:
+                est_pi = sk_pi(est, X, y,
+                               scoring=scoring, n_repeats=1, n_jobs=n_jobs,
+                               random_state=random_state, sample_weight=sample_weight, max_samples=max_samples)
+                importances.append(est_pi.importances)
+            importances = tb.hstack_array(importances)
+            result = Bunch(
+                importances_mean=np.mean(importances, axis=1),
+                importances_std=np.std(importances, axis=1),
+                importances=importances,
+            )
+        else:
+            result = sk_pi(self.gbm_model, X, y,
+                           scoring=scoring, n_repeats=n_repeats, n_jobs=n_jobs,
+                           random_state=random_state, sample_weight=sample_weight, max_samples=max_samples)
+
+        # fix the result
+        if columns_out != columns_in:
+            df_importances = pd.DataFrame(result.importances, index=columns_out)
+            df_importances_fake = pd.DataFrame(np.zeros((len(columns_in), n_repeats)), index=columns_in)
+            importances = (df_importances + df_importances_fake).fillna(0.0).values
+            result = Bunch(
+                importances_mean=np.mean(importances, axis=1),
+                importances_std=np.std(importances, axis=1),
+                importances=importances,
+            )
+        return result
+
     def save(self, model_file):
         with fs.open(f'{model_file}', 'wb') as output:
             pickle.dump(self, output, protocol=pickle.HIGHEST_PROTOCOL)
@@ -528,6 +606,15 @@ class HyperGBMEstimator(Estimator):
             state['fit_kwargs'] = fit_kwargs
 
         return state
+
+    def __repr__(self):
+        cv = False if self.cv_gbm_models_ is None else len(self.cv_gbm_models_)
+        r = f'{type(self).__name__}(' \
+            f'task={self.task}, reward_metric={self.reward_metric}, cv={cv},\n' \
+            f'data_pipeline: {self.data_pipeline}\n' \
+            f'gbm_model: {self.gbm_model if cv is False else self.cv_gbm_models_[0]}\n' \
+            f')'
+        return r
 
 
 class HyperGBM(HyperModel):

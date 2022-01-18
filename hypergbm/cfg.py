@@ -81,3 +81,9 @@ class HyperGBMCfg(Configurable):
              config=True,
              help='enable HistGradientBoosting or not.'
              )
+
+    straightforward_excluded = \
+        List(['TruncatedSVD', 'OneHot'],
+             allow_none=True,
+             config=True,
+             help='exclude items when encoding datetime feature.')
