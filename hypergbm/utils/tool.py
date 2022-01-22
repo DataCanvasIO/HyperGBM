@@ -10,11 +10,14 @@ import pandas as pd
 import psutil
 
 import hypergbm
+from hypergbm.cfg import HyperGBMCfg as cfg
 from hypernets.tabular import get_tool_box as get_tool_box_, is_dask_installed, is_cuml_installed
 from hypernets.utils import const, logging, dump_perf
 
 metric_choices = ['accuracy', 'auc', 'f1', 'logloss', 'mse', 'mae', 'msle', 'precision', 'rmse', 'r2', 'recall']
 strategy_choices = ['threshold', 'quantile', 'number']
+
+estimators = ['lightgbm', 'xgboost', 'catboost', 'histgb']
 
 
 def to_bool(v):
@@ -122,6 +125,14 @@ def main(argv=None):
                         help='random state seed (int), default %(default)s')
         tg.add_argument('--model-file', '--model', type=str, default='model.pkl',
                         help='the output pickle file name for trained model, default %(default)s')
+
+        for est in estimators:
+            tg.add_argument(f'--{est}', type=to_bool, default=getattr(cfg, f'estimator_{est}_enabled', True),
+                            help=f'enable {est} or not, default %(default)s')
+            tg.add_argument(f'-{est}', f'-{est}+', dest=est, action='store_true',
+                            help=f'alias of --{est} true')
+            tg.add_argument(f'-{est}-', dest=est, action='store_false',
+                            help=f'alias of --{est} false')
 
         sg = a.add_argument_group('Searcher settings')
         sg.add_argument('--searcher', type=str, default=None,
@@ -425,9 +436,15 @@ def main(argv=None):
 def train(args):
     from hypergbm import make_experiment
 
+    for est in estimators:
+        setting = getattr(args, est)
+        if setting != getattr(cfg, f'estimator_{est}_enabled'):
+            setattr(cfg, f'estimator_{est}_enabled', setting)
+
     reversed_keys = ['command', 'enable_dask', 'overload', 'enable_gpu', 'version',
                      'perf_file', 'perf_interval', 'perf_recursive',
-                     'train_data', 'eval_data', 'test_data', 'model_file']
+                     'train_data', 'eval_data', 'test_data', 'model_file',
+                     ] + estimators
     kwargs = {k: v for k, v in args.__dict__.items() if k not in reversed_keys and not k.startswith('_')}
 
     if args.enable_gpu and not is_cuml_installed:
