@@ -86,4 +86,4 @@ class HyperGBMCfg(Configurable):
         List(['TruncatedSVD', 'OneHot'],
              allow_none=True,
              config=True,
-             help='exclude items when encoding datetime feature.')
+             help='no-straightforward transformer name list.')
