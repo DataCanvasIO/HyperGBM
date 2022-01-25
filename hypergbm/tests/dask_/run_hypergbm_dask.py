@@ -7,8 +7,7 @@ from dask.distributed import default_client
 from hypergbm import make_experiment
 from hypernets.tabular.dask_ex import DaskToolBox
 from hypernets.tabular.datasets import dsutils
-from hypernets.tabular.metrics import evaluate
-from hypernets.tests.tabular.dask_transofromer_test import setup_dask
+from hypernets.tests.tabular.tb_dask import setup_dask
 
 
 def main(max_trials=10, log_level='info'):
