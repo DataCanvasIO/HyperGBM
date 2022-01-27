@@ -125,6 +125,8 @@ def main(argv=None):
                         help='random state seed (int), default %(default)s')
         tg.add_argument('--model-file', '--model', type=str, default='model.pkl',
                         help='the output pickle file name for trained model, default %(default)s')
+        tg.add_argument('--history-file', '--history', type=str, default=None,
+                        help='the output file name for search history, default %(default)s')
 
         for est in estimators:
             tg.add_argument(f'--{est}', type=to_bool, default=getattr(cfg, f'estimator_{est}_enabled', True),
@@ -443,7 +445,7 @@ def train(args):
 
     reversed_keys = ['command', 'enable_dask', 'overload', 'enable_gpu', 'version',
                      'perf_file', 'perf_interval', 'perf_recursive',
-                     'train_data', 'eval_data', 'test_data', 'model_file',
+                     'train_data', 'eval_data', 'test_data', 'model_file', 'history_file',
                      ] + estimators
     kwargs = {k: v for k, v in args.__dict__.items() if k not in reversed_keys and not k.startswith('_')}
 
@@ -471,6 +473,13 @@ def train(args):
 
     if args.verbose:
         print(f'>>> model saved to {args.model_file}')
+
+    if args.history_file:
+        history = experiment.hyper_model_.history
+        history.save(args.history_file)
+
+        if args.verbose:
+            print(f'>>> history saved to {args.history_file}')
 
 
 def evaluate(args):

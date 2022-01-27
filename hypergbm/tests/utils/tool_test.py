@@ -1,9 +1,11 @@
 import os
 import os.path as path
+import pickle
 
 import pandas as pd
 
 from hypergbm.utils.tool import main
+from hypernets.core import TrialHistory
 from hypernets.tabular.datasets import dsutils
 
 
@@ -14,15 +16,12 @@ class TestTool:
 
     @classmethod
     def teardown_class(cls):
-        try:
-            if path.exists('model.pkl'):
-                os.remove('model.pkl')
-            if path.exists('prediction.csv'):
-                os.remove('prediction.csv')
-            if path.exists('perf.csv'):
-                os.remove('perf.csv')
-        except:
-            pass
+        for f in ['model.pkl', 'prediction.csv', 'perf.csv', 'history.pkl']:
+            try:
+                if path.exists(f):
+                    os.remove(f)
+            except:
+                pass
 
     def test_version(self):
         argv = ['-version', ]
@@ -60,6 +59,28 @@ class TestTool:
 
         perf = pd.read_csv('perf.csv')
         assert perf is not None
+
+    def test_train_with_history(self):
+        if path.exists('model.pkl'):
+            os.remove('model.pkl')
+        if path.exists('history.pkl'):
+            os.remove('history.pkl')
+
+        data_file = f'{self.data_dir}/blood.csv'
+        argv = [
+            # '-info','-v',
+            'train',
+            '--train-data', data_file,
+            '--target', 'Class',
+            '--history', 'history.pkl',
+        ]
+        main(argv)
+        assert path.exists('model.pkl')
+        assert path.exists('history.pkl')
+
+        with open('history.pkl', 'rb') as f:
+            history = pickle.load(f)
+            assert isinstance(history, TrialHistory)
 
     def test_predict(self):
         if not path.exists('model.pkl'):
