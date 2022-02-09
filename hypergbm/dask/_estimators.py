@@ -24,6 +24,8 @@ histgb_dask_distributed = False
 if lgbm_dask_distributed:
     class LGBMEstimatorDaskMixin(LGBMEstimatorMixin):
         def prepare_fit_kwargs(self, X, y, kwargs):
+            kwargs.pop('eval_reward_metric', None)
+
             # if self.boosting_type != 'dart':
             #     if kwargs.get('early_stopping_rounds') is None and kwargs.get('eval_set') is not None:
             #         kwargs['early_stopping_rounds'] = _default_early_stopping_rounds(self)
