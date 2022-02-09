@@ -27,10 +27,11 @@ def categorical_pipeline_simple(seq_no=0):
     steps = [
         HyperTransformer(_tfs['ConstantImputer'], missing_values=[np.nan, None], fill_value='',
                          name=f'categorical_imputer_{seq_no}'),
-        ModuleChoice([
-            HyperTransformer(_tfs['MultiLabelEncoder'], name=f'categorical_label_encoder_{seq_no}', dtype='float32'),
-            HyperTransformer(_tfs['MultiTargetEncoder'], name=f'categorical_target_encoder_{seq_no}', dtype='float32'),
-        ], name=f'categorical_encoder_{seq_no}')
+        # ModuleChoice([
+        #   HyperTransformer(_tfs['MultiLabelEncoder'], name=f'categorical_label_encoder_{seq_no}', dtype='float32'),
+        #   HyperTransformer(_tfs['MultiTargetEncoder'], name=f'categorical_target_encoder_{seq_no}', dtype='float32'),
+        # ], name=f'categorical_encoder_{seq_no}'),
+        HyperTransformer(_tfs['MultiLabelEncoder'], name=f'categorical_label_encoder_{seq_no}', dtype='float32'),
     ]
 
     pipeline = CumlHyperPipeline(steps, columns=_cs.column_object_category_bool,

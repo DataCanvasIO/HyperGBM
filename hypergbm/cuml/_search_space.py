@@ -34,7 +34,7 @@ class CumlGeneralSearchSpaceGenerator(GeneralSearchSpaceGenerator):
         dataframe_mapper_default = options.pop('dataframe_mapper_default', False)
 
         if num_pipeline_mode == 'simple':
-            num_pipeline = ops.numeric_pipeline_complex()(hyper_input)
+            num_pipeline = ops.numeric_pipeline_simple()(hyper_input)
         else:
             num_pipeline = ops.numeric_pipeline_complex()(hyper_input)
 

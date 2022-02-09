@@ -228,7 +228,8 @@ class HistGBEstimator(HyperEstimator):
 
 # see: https://lightgbm.readthedocs.io/en/latest/Parameters.html#metric
 LGBM_REWARD2METRIC = {
-    'auc': 'auc',
+    # 'auc': 'auc',
+    'auc': 'logloss',
     'accuracy': 'logloss',
     'recall': 'logloss',
     'precision': 'logloss',

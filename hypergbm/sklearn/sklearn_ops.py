@@ -8,20 +8,19 @@ from hypergbm.cfg import HyperGBMCfg as cfg
 from hypernets.core.ops import ModuleChoice, Optional, Choice
 from hypernets.pipeline.base import Pipeline
 from hypernets.pipeline.transformers import SimpleImputer, SafeOneHotEncoder, TruncatedSVD, \
-    StandardScaler, MinMaxScaler, MaxAbsScaler, RobustScaler, SafeOrdinalEncoder, MultiTargetEncoder, \
+    StandardScaler, MinMaxScaler, MaxAbsScaler, RobustScaler, MultiLabelEncoder, MultiTargetEncoder, \
     LogStandardScaler, DatetimeEncoder, TfidfEncoder, AsTypeTransformer, PassThroughEstimator
 from hypernets.tabular import column_selector
 
 
 def categorical_pipeline_simple(impute_strategy='constant', seq_no=0):
     imputer = SimpleImputer(missing_values=np.nan, strategy=impute_strategy, name=f'categorical_imputer_{seq_no}')
-    label_encoder = SafeOrdinalEncoder(name=f'categorical_label_encoder_{seq_no}')
-    target_encoder = MultiTargetEncoder(split_method=Choice(['random', 'continuous', 'interleaved']),
-                                        smooth=Choice([None, 0, 10]),
-                                        name=f'categorical_target_encoder_{seq_no}')
-    encoders = ModuleChoice([label_encoder, target_encoder],
-                            name=f'categorical_encoder_{seq_no}')
-    steps = [imputer, encoders]
+    label_encoder = MultiLabelEncoder(name=f'categorical_label_encoder_{seq_no}')
+    # target_encoder = MultiTargetEncoder(name=f'categorical_target_encoder_{seq_no}')
+    # encoders = ModuleChoice([label_encoder, target_encoder],
+    #                         name=f'categorical_encoder_{seq_no}')
+    # steps = [imputer, encoders]
+    steps = [imputer, label_encoder]
     if cfg.category_pipeline_auto_detect:
         cs = column_selector.AutoCategoryColumnSelector(
             dtype_include=column_selector.column_object_category_bool.dtype_include,
@@ -50,7 +49,7 @@ def categorical_pipeline_complex(impute_strategy=None, svd_components=3, seq_no=
         return optional_svd
 
     imputer = SimpleImputer(missing_values=np.nan, strategy=impute_strategy, name=f'categorical_imputer_{seq_no}')
-    label_encoder = SafeOrdinalEncoder(name=f'categorical_label_encoder_{seq_no}')
+    label_encoder = MultiLabelEncoder(name=f'categorical_label_encoder_{seq_no}')
     target_encoder = MultiTargetEncoder(split_method=Choice(['random', 'continuous', 'interleaved']),
                                         smooth=Choice([None, 0, 10]),
                                         name=f'categorical_target_encoder_{seq_no}')
