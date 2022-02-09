@@ -12,6 +12,9 @@ from hypernets.experiment import make_experiment as _make_experiment
 from hypernets.tabular import get_tool_box
 from hypernets.utils import DocLens
 
+from hypergbm.callbacks import HyperGBMLogEventExperimentCallback, \
+    HyperGBMLogEventHyperModelCallback, HyperGBMNotebookHyperModelCallback, HyperGBMNotebookExperimentCallback
+
 
 def make_experiment(train_data,
                     target=None,
@@ -140,6 +143,10 @@ def make_experiment(train_data,
                                   clear_cache=clear_cache,
                                   discriminator=discriminator,
                                   log_level=log_level,
+                                  webui_hyper_model_callback_cls=HyperGBMLogEventHyperModelCallback,
+                                  webui_experiment_callback_cls=HyperGBMLogEventExperimentCallback,
+                                  notebook_hyper_model_callback_cls=HyperGBMNotebookHyperModelCallback,
+                                  notebook_experiment_callback_cls=HyperGBMNotebookExperimentCallback,
                                   **kwargs
                                   )
     return experiment
