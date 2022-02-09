@@ -11,6 +11,7 @@ import pandas as pd
 from hypernets.experiment import make_experiment as _make_experiment
 from hypernets.tabular import get_tool_box
 from hypernets.utils import DocLens
+from hypernets.utils import logging
 
 
 def make_experiment(train_data,
@@ -76,6 +77,10 @@ def make_experiment(train_data,
     assert train_data is not None, 'train_data is required.'
     assert eval_data is None or type(eval_data) is type(train_data)
     assert test_data is None or type(test_data) is type(train_data)
+
+    if log_level is None:
+        log_level = logging.WARN
+    logging.set_level(log_level)
 
     if isinstance(train_data, str):
         tb = get_tool_box(pd.DataFrame)
