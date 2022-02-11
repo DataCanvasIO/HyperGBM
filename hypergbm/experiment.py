@@ -8,7 +8,9 @@ import copy
 
 import pandas as pd
 
-from hypernets.experiment import make_experiment as _make_experiment
+from hypernets.experiment import make_experiment as _make_experiment,\
+    default_experiment_callbacks as default_experiment_callbacks_,\
+    default_search_callbacks as default_search_callbacks_
 from hypernets.tabular import get_tool_box
 from hypernets.utils import DocLens, isnotebook, load_module, logging
 from hypernets.experiment.cfg import ExperimentCfg as cfg
@@ -152,14 +154,14 @@ def make_experiment(train_data,
         if is_notebook_ready():
             cbs = [HyperGBMNotebookExperimentCallback()]
         else:
-            cbs = [load_module(cb)() if isinstance(cb, str) else cb for cb in cfg.experiment_callbacks_console]
+            cbs = default_experiment_callbacks_()
         return cbs
 
     def default_search_callbacks():
         if is_notebook_ready():
             cbs = [HyperGBMNotebookHyperModelCallback()]
         else:
-            cbs = [load_module(cb)() if isinstance(cb, str) else cb for cb in cfg.hyper_model_callbacks_console]
+            cbs = default_search_callbacks_()
         return cbs
 
     if callbacks is None:

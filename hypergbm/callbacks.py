@@ -263,7 +263,7 @@ class HyperGBMLogEventExperimentCallback(ExperimentCallbackProxy):
             self.internal_callback = LogEventExperimentCallback(HyperGBMLogEventHyperModelCallback, **kwargs)
         except Exception as e:
             logger.warning("No visualization module detected, please install by command:"
-                           "pip install experiment-notebook-widget ")
+                           "pip install experiment-notebook-widget")
             logger.exception(e)
 
 
