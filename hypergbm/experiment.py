@@ -85,6 +85,10 @@ def make_experiment(train_data,
     assert eval_data is None or type(eval_data) is type(train_data)
     assert test_data is None or type(test_data) is type(train_data)
 
+    if log_level is None:
+        log_level = logging.WARN
+    logging.set_level(log_level)
+
     if isinstance(train_data, str):
         tb = get_tool_box(pd.DataFrame)
     else:
