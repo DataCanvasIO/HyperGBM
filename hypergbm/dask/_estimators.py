@@ -33,6 +33,7 @@ if lgbm_dask_distributed:
             # lightgbm.dask does not support early_stopping_rounds
             if 'early_stopping_rounds' in kwargs.keys():
                 kwargs.pop('early_stopping_rounds')
+            self.feature_names_in_ = X.columns.tolist()
             return kwargs
 
 
