@@ -82,12 +82,19 @@ def make_experiment(train_data,
         log_level = logging.WARN
     logging.set_level(log_level)
 
+    data_adaption_target = kwargs.get('data_adaption_target')
+    data_adaption_to_cuml = str(data_adaption_target).lower() in {'cuml', 'cudf', 'cuda', 'gpu'}
+    if data_adaption_to_cuml:
+        import cudf
+        assert isinstance(train_data, (str, pd.DataFrame, cudf.DataFrame)), \
+            'Only pandas or cudf DataFrame can be adapted to cuml'
+
     if isinstance(train_data, str):
         tb = get_tool_box(pd.DataFrame)
     else:
         tb = get_tool_box(train_data)
 
-    if tb.__name__.lower().find('cuml') >= 0:
+    if data_adaption_to_cuml or tb.__name__.lower().find('cuml') >= 0:
         from hypergbm.cuml import CumlHyperGBM
         hyper_model_cls = CumlHyperGBM
     else:
@@ -112,7 +119,7 @@ def make_experiment(train_data,
         if tb.__name__.lower().find('dask') >= 0:
             from hypergbm.dask.search_space import search_space_general as dask_search_space
             result = dask_search_space
-        elif tb.__name__.lower().find('cuml') >= 0:
+        elif data_adaption_to_cuml or tb.__name__.lower().find('cuml') >= 0:
             from hypergbm.cuml import search_space_general as cuml_search_space
             result = cuml_search_space
         else:

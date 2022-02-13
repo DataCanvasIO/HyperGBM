@@ -37,9 +37,10 @@ def detect_lgbm_gpu():
         detected = tb.estimator_detector('lightgbm.LGBMClassifier', const.TASK_BINARY,
                                          init_kwargs={'device': 'GPU'},
                                          fit_kwargs={})()
-        _detected_lgbm_gpu = 'fitted' in detected
+        logger.info(f'detect_estimator lightgbm.LGBMClassifier as {detected}')
+        _detected_lgbm_gpu = detected
 
-    return _detected_lgbm_gpu
+    return 'fitted' in _detected_lgbm_gpu
 
 
 def get_categorical_features(X):
