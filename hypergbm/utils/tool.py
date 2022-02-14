@@ -157,8 +157,17 @@ def main(argv=None):
         eg.add_argument('--estimator_early_stopping_rounds', type=int, default=None,
                         help='default %(default)s')
 
+        fg = a.add_argument_group('Data adaption')
+        fg.add_argument('--data-adaption', type=to_bool, default=None,
+                        help='Enable/disable data adaption, default %(default)s')
+        fg.add_argument('--data-adaption-memory-limit', type=float, default=0.05,
+                        help='proportion of the system free memory, default %(default)s')
+        fg.add_argument('--data-adaption-min-cols', type=float, default=0.1,
+                        help='proportion of the original dataframe column number, default %(default)s')
+
         fg = a.add_argument_group('Feature generation')
-        fg.add_argument('--feature-generation', type=to_bool, default=False)
+        fg.add_argument('--feature-generation', type=to_bool, default=False,
+                        help='Enable/disable feature generation, default %(default)s')
         fg.add_argument('-fg', '-fg+', dest='feature_generation', action='store_true',
                         help='alias of "--feature_generation true"')
         fg.add_argument('-fg-', dest='feature_generation', action='store_false',
@@ -466,6 +475,9 @@ def train(args):
     if args.verbose:
         print('>>> running experiment with train data {train_data}, '
               f'eval data: {args.eval_data}, test data: {args.test_data}.')
+    del train_data
+    del eval_data
+    del test_data
 
     estimator = experiment.run()
     with open(args.model_file, 'wb') as f:
