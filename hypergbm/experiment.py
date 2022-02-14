@@ -8,10 +8,17 @@ import copy
 
 import pandas as pd
 
-from hypernets.experiment import make_experiment as _make_experiment
+from hypernets.experiment import make_experiment as _make_experiment,\
+    default_experiment_callbacks as default_experiment_callbacks_,\
+    default_search_callbacks as default_search_callbacks_
 from hypernets.tabular import get_tool_box
-from hypernets.utils import DocLens
-from hypernets.utils import logging
+from hypernets.utils import DocLens, isnotebook, load_module, logging
+from hypernets.experiment.cfg import ExperimentCfg as cfg
+
+from hypergbm.callbacks import HyperGBMLogEventExperimentCallback, \
+    HyperGBMLogEventHyperModelCallback, HyperGBMNotebookHyperModelCallback, HyperGBMNotebookExperimentCallback
+
+logger = logging.get_logger(__name__)
 
 
 def make_experiment(train_data,
@@ -34,6 +41,8 @@ def make_experiment(train_data,
                     clear_cache=None,
                     discriminator=None,
                     log_level=None,
+                    webui=False,
+                    webui_options=None,
                     **kwargs):
     """
     Utility to make CompeteExperiment instance with HyperGBM.
@@ -133,6 +142,51 @@ def make_experiment(train_data,
 
     if (searcher is None or isinstance(searcher, str)) and search_space is None:
         search_space = default_search_space()
+
+    def is_notebook_ready():
+        try:
+            import experiment_notebook_widget
+            return isnotebook()
+        except:
+            return False
+
+    def is_webui_ready():
+        try:
+            import experiment_visualization
+            return True
+        except Exception as e:
+            return False
+
+    def default_experiment_callbacks():
+        if is_notebook_ready():
+            cbs = [HyperGBMNotebookExperimentCallback()]
+        else:
+            cbs = default_experiment_callbacks_()
+        return cbs
+
+    def default_search_callbacks():
+        if is_notebook_ready():
+            cbs = [HyperGBMNotebookHyperModelCallback()]
+        else:
+            cbs = default_search_callbacks_()
+        return cbs
+
+    if callbacks is None:
+        callbacks = default_experiment_callbacks()
+
+    if search_callbacks is None:
+        search_callbacks = default_search_callbacks()
+
+    if webui:
+        if webui_options is None:
+            webui_options = {}
+        if is_webui_ready():
+            search_callbacks.append(HyperGBMLogEventHyperModelCallback())
+            callbacks.append(HyperGBMLogEventExperimentCallback(**webui_options))
+        else:
+            pass
+            logger.warning("No visualization module detected, please install by command:"
+                           "pip install experiment-notebook-widget ")
 
     experiment = _make_experiment(hyper_model_cls, train_data,
                                   target=target,
