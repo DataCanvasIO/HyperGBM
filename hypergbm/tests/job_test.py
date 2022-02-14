@@ -8,6 +8,7 @@ from hypernets.hyperctl import get_context
 from hypernets.hyperctl.batch import ShellJob
 from hypernets.hyperctl.executor import LocalExecutorManager
 
+test_source_dir = __file__
 
 def test_create_hypergbm_experiment_job():
     batches_data_dir = tempfile.mkdtemp(prefix="hypergbm-test-batches")
@@ -15,7 +16,8 @@ def test_create_hypergbm_experiment_job():
 
     job_name = "eVqNV5Uo0"
     batch_name = "eVqNV5Ut"
-
+    source_dir = (Path(test_source_dir).parent.parent).as_posix()
+    print(source_dir)
     config_dict = {
         "jobs": [
             {
@@ -26,7 +28,7 @@ def test_create_hypergbm_experiment_job():
                     "report_render": 'excel',
                 },
                 "execution": {
-                    "command": f"{sys.executable} -m hypergbm.job"
+                    "command": f"PYTHONPATH={source_dir};{sys.executable} -m hypergbm.job"
                 }
             }
         ],
