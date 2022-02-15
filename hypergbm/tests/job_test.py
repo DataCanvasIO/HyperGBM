@@ -11,7 +11,7 @@ from hypernets.hyperctl.executor import LocalExecutorManager
 from hypergbm import job
 
 
-def test_create_hypergbm_experiment_job():
+def run_test_create_hypergbm_experiment_job():
     batches_data_dir = tempfile.mkdtemp(prefix="hypergbm-test-batches")
     from hypernets.tabular.datasets.dsutils import basedir
 
