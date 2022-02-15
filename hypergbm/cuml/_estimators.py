@@ -47,6 +47,10 @@ def wrap_estimator(estimator, methods=None):
 
 
 def _as_local(estimator, methods=None):
+    if isinstance(estimator, es.LabelEncoderMixin):
+        le = estimator.get_label_encoder()
+        if hasattr(le, 'as_local'):
+            estimator.set_label_encoder(le.as_local())
     estimator = CumlToolBox.unwrap_local_estimator(estimator, methods=methods)
     delattr(estimator, 'as_local')
     return estimator
