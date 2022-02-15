@@ -187,7 +187,7 @@ class ParseTrailEventHyperModelCallback(Callback):
             "earlyStopping": early_stopping_status
         }
         data = {
-            'modelInstanceId': id(hyper_model),
+            'stepIndex': self.current_running_step_index,
             'trialData': trial_data
         }
         self.on_trial_end_(hyper_model, space, trial_no, reward, improved, elapsed, data)
