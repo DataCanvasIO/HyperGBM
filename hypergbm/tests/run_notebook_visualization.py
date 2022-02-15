@@ -1,5 +1,5 @@
 # -*- encoding: utf-8 -*-
-from hypergbm.callbacks import HyperGBMNotebookExperimentCallback, HyperGBMNotebookHyperModelCallback
+from hypergbm.experiment_callbacks import HyperGBMNotebookExperimentCallback, HyperGBMNotebookHyperModelCallback
 from hypernets.utils import logging
 
 from sklearn.model_selection import train_test_split

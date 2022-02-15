@@ -15,8 +15,8 @@ from hypernets.experiment import default_search_callbacks as default_search_call
 from hypernets.tabular import get_tool_box
 from hypernets.utils import DocLens, isnotebook, logging
 
-from hypergbm.callbacks import HyperGBMLogEventExperimentCallback, HyperGBMLogEventHyperModelCallback
-from hypergbm.callbacks import HyperGBMNotebookHyperModelCallback, HyperGBMNotebookExperimentCallback
+from hypergbm.experiment_callbacks import HyperGBMLogEventExperimentCallback, HyperGBMLogEventHyperModelCallback
+from hypergbm.experiment_callbacks import HyperGBMNotebookHyperModelCallback, HyperGBMNotebookExperimentCallback
 
 logger = logging.get_logger(__name__)
 
