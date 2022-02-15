@@ -3,11 +3,13 @@ import json
 
 import pytest
 
-from hypergbm.experiment_callbacks import HyperGBMLogEventHyperModelCallback, HyperGBMLogEventExperimentCallback, \
-    HyperGBMNotebookHyperModelCallback, HyperGBMNotebookExperimentCallback
-from hypergbm import make_experiment
 from hypernets.utils import logging
 from hypernets.tests.experiment import experiment_factory
+
+from hypergbm.experiment_callbacks.callbacks import HyperGBMLogEventHyperModelCallback, HyperGBMLogEventExperimentCallback, \
+    HyperGBMNotebookHyperModelCallback, HyperGBMNotebookExperimentCallback
+from hypergbm import make_experiment
+
 
 logger = logging.get_logger(__name__)
 
