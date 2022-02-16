@@ -15,8 +15,6 @@ from hypernets.experiment import default_search_callbacks as default_search_call
 from hypernets.tabular import get_tool_box
 from hypernets.utils import DocLens, isnotebook, logging
 
-from hypergbm.callbacks import HyperGBMLogEventExperimentCallback, HyperGBMLogEventHyperModelCallback
-from hypergbm.callbacks import HyperGBMNotebookHyperModelCallback, HyperGBMNotebookExperimentCallback
 
 logger = logging.get_logger(__name__)
 
@@ -159,6 +157,7 @@ def make_experiment(train_data,
 
     def default_experiment_callbacks():
         if is_notebook_ready():
+            from hypergbm.experiment_callbacks.callbacks import HyperGBMNotebookExperimentCallback
             cbs = [HyperGBMNotebookExperimentCallback()]
         else:
             cbs = default_experiment_callbacks_()
@@ -166,6 +165,7 @@ def make_experiment(train_data,
 
     def default_search_callbacks():
         if is_notebook_ready():
+            from hypergbm.experiment_callbacks.callbacks import HyperGBMNotebookHyperModelCallback
             cbs = [HyperGBMNotebookHyperModelCallback()]
         else:
             cbs = default_search_callbacks_()
@@ -181,7 +181,9 @@ def make_experiment(train_data,
         if webui_options is None:
             webui_options = {}
         if is_webui_ready():
+            from hypergbm.experiment_callbacks.callbacks import HyperGBMLogEventHyperModelCallback
             search_callbacks.append(HyperGBMLogEventHyperModelCallback())
+            from hypergbm.experiment_callbacks.callbacks import HyperGBMLogEventExperimentCallback
             callbacks.append(HyperGBMLogEventExperimentCallback(**webui_options))
         else:
             pass
