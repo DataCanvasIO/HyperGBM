@@ -1,4 +1,4 @@
-DataCanvas
+HyperGBM
 ==================
 HyperGBM is an open source project created by `DataCanvas <https://www.datacanvas.com>`_ .
 
@@ -16,7 +16,7 @@ HyperGBM is an open source project created by `DataCanvas <https://www.datacanva
 
 
 
-ces and tables
+Indices and tables
 ==================
 
 * :ref:`genindex`
