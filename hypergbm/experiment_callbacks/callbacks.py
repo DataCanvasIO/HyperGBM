@@ -1,18 +1,13 @@
 import abc
 import pickle
 import time
-import json
-import os
-import datetime
-from pathlib import Path
 
-from hypernets.core.callbacks import Callback, EarlyStoppingCallback
+from hypernets.core.callbacks import EarlyStoppingCallback
+from hypernets.experiment import ABSExpVisHyperModelCallback
 from hypernets.experiment import EarlyStoppingStatusMeta, ActionType
-from hypernets.experiment import ExperimentCallback, \
-    ExperimentExtractor, StepMeta, ExperimentMeta
+from hypernets.experiment import ExperimentCallback
 from hypernets.utils import fs, logging as hyn_logging
 from hypernets.utils import get_tree_importances
-from hypernets.experiment import ExperimentCallback
 
 logger = hyn_logging.get_logger(__name__)
 
@@ -22,23 +17,7 @@ def _prompt_installing():
                    "pip install experiment-visualization ")
 
 
-class ParseTrailEventHyperModelCallback(Callback):
-
-    def __init__(self, **kwargs):
-        super(ParseTrailEventHyperModelCallback, self).__init__()
-        self.max_trials = None
-        self.current_running_step_index = None
-        self.exp_id = None
-
-    def set_exp_id(self, exp_id):
-        self.exp_id = exp_id
-
-    def set_current_running_step_index(self, value):
-        self.current_running_step_index = value
-
-    def assert_ready(self):
-        assert self.exp_id is not None
-        assert self.current_running_step_index is not None
+class ABSParseTrailEventHyperModelCallback(ABSExpVisHyperModelCallback, metaclass=abc.ABCMeta):
 
     @staticmethod
     def sort_imp(imp_dict, sort_imp_dict, n_features=10):
@@ -59,53 +38,6 @@ class ParseTrailEventHyperModelCallback(Callback):
                 'imp': imp_dict[f]
             })
         return imps
-
-    def on_search_start(self, hyper_model, X, y, X_eval, y_eval, cv,
-                        num_folds, max_trials, dataset_id, trial_store, **fit_kwargs):
-        self.max_trials = max_trials  # to record trail summary info
-
-    @staticmethod
-    def get_early_stopping_status_data(hyper_model):
-        """ Return early stopping if triggered
-        :param hyper_model:
-        :return:
-        """
-        # check whether end cause by early stopping
-        for c in hyper_model.callbacks:
-            if isinstance(c, EarlyStoppingCallback):
-                if c.triggered:
-                    if c.start_time is not None:
-                        elapsed_time = time.time() - c.start_time
-                    else:
-                        elapsed_time = None
-                    ess = EarlyStoppingStatusMeta(c.best_reward, c.best_trial_no, c.counter_no_improvement_trials,
-                                                  c.triggered, c.triggered_reason, elapsed_time)
-                    return ess
-        return None
-
-    def on_search_end(self, hyper_model):
-        self.assert_ready()
-        early_stopping_data = self.get_early_stopping_status_data(hyper_model)
-        self.on_search_end_(hyper_model, early_stopping_data)
-
-    def on_search_end_(self, hyper_model, early_stopping_data):
-        pass
-
-    @staticmethod
-    def get_space_params(space):
-        params_dict = {}
-        for hyper_param in space.get_assigned_params():
-            # param_name = hyper_param.alias[len(list(hyper_param.references)[0].name) + 1:]
-            param_name = hyper_param.alias
-            param_value = hyper_param.value
-            # only show number param
-            # if isinstance(param_value, int) or isinstance(param_value, float):
-            #     if not isinstance(param_value, bool):
-            #         params_dict[param_name] = param_value
-            if param_name is not None and param_value is not None:
-                # params_dict[param_name.split('.')[-1]] = str(param_value)
-                params_dict[param_name] = str(param_value)
-        return params_dict
 
     @staticmethod
     def assert_int_param(value, var_name):
@@ -192,21 +124,22 @@ class ParseTrailEventHyperModelCallback(Callback):
         }
         self.on_trial_end_(hyper_model, space, trial_no, reward, improved, elapsed, data)
 
+    @abc.abstractmethod
     def on_trial_end_(self, hyper_model, space, trial_no, reward, improved, elapsed, trial_data):
-        pass
+        raise NotImplemented
 
 
-class HyperGBMLogEventHyperModelCallback(ParseTrailEventHyperModelCallback):
+class HyperGBMLogEventHyperModelCallbackABS(ABSParseTrailEventHyperModelCallback):
 
     def __init__(self):
-        super(HyperGBMLogEventHyperModelCallback, self).__init__()
+        super(HyperGBMLogEventHyperModelCallbackABS, self).__init__()
         self.log_file = None
 
     def set_log_file(self, log_file):
         self.log_file = log_file
 
     def assert_ready(self):
-        super(HyperGBMLogEventHyperModelCallback, self).assert_ready()
+        super(HyperGBMLogEventHyperModelCallbackABS, self).assert_ready()
         assert self.log_file is not None
 
     def on_search_end_(self, hyper_model, early_stopping_data):
@@ -260,14 +193,14 @@ class HyperGBMLogEventExperimentCallback(ExperimentCallbackProxy):
         super(HyperGBMLogEventExperimentCallback, self).__init__()
         try:
             from experiment_visualization.callbacks import LogEventExperimentCallback
-            self.internal_callback = LogEventExperimentCallback(HyperGBMLogEventHyperModelCallback, **kwargs)
+            self.internal_callback = LogEventExperimentCallback(HyperGBMLogEventHyperModelCallbackABS, **kwargs)
         except Exception as e:
             logger.warning("No visualization module detected, please install by command:"
                            "pip install experiment-notebook-widget")
             logger.exception(e)
 
 
-class HyperGBMNotebookHyperModelCallback(ParseTrailEventHyperModelCallback):
+class HyperGBMNotebookHyperModelCallback(ABSParseTrailEventHyperModelCallback):
 
     def send_action(self, action_type, payload):
         from experiment_notebook_widget.callbacks import NotebookExperimentCallback

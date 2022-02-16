@@ -181,8 +181,8 @@ def make_experiment(train_data,
         if webui_options is None:
             webui_options = {}
         if is_webui_ready():
-            from hypergbm.experiment_callbacks.callbacks import HyperGBMLogEventHyperModelCallback
-            search_callbacks.append(HyperGBMLogEventHyperModelCallback())
+            from hypergbm.experiment_callbacks.callbacks import HyperGBMLogEventHyperModelCallbackABS
+            search_callbacks.append(HyperGBMLogEventHyperModelCallbackABS())
             from hypergbm.experiment_callbacks.callbacks import HyperGBMLogEventExperimentCallback
             callbacks.append(HyperGBMLogEventExperimentCallback(**webui_options))
         else:
@@ -235,6 +235,15 @@ _cross_validator_doc = """ : cross-validation generator, optional
 _estimator_early_stopping_rounds_doc = """ int, optional, (default=None)
     Estimator *early_stopping_rounds* option, inferred from *n_estimators* by default."""
 
+_webui_doc = """ : bool (default False),
+    Whether to start the experiment visualization web server
+"""
+
+_webui_options_doc= """ : dict, optional, (default None),
+    Dictionary of parameters to initialize the `LogEventExperimentCallback` instance.
+    If None, will be initialized the instance with default values.
+"""
+
 
 def _merge_doc():
     my_doc = DocLens(make_experiment.__doc__)
@@ -244,6 +253,10 @@ def _merge_doc():
     params['class_balancing'] = _class_balancing_doc
     params['cross_validator'] = _cross_validator_doc
     params['estimator_early_stopping_rounds'] = _estimator_early_stopping_rounds_doc
+
+    params['webui'] = _webui_doc
+    params['webui_options'] = _webui_options_doc
+
     for k in ['clear_cache', 'log_level']:
         params.move_to_end(k)
 
