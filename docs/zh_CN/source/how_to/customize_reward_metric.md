@@ -1,14 +1,16 @@
-## How to customize reward_metric in HyperGBM?
+## 如何在HyperGBM中自定义评价指标?
 
-To customize a new reward_metric, do the followings:
-1. Create a reward_metric  object with following features:
-    * `__name__` attribute
-    * be callable with argument `y_true` and `y_preds`
-    * can be checked in dict or not (override `__hash__` and `__eq__`)
-2. Make a sklearn scorer with sklearn.metrics.make_scorer
-3. Call make_experiment with your reward_metric and scorer
 
-Example code:
+
+您可通过如下方式其定义一个新的模型评价指标：
+
+1. 定义一个参数 为 `y_true` and `y_preds` 的函数 (not lambda) 
+2. 使用您定义的函数创建一个 sklearn scorer
+3. 使用您定义的评价函数和scorer创建实验 
+
+
+
+参考示例：
 
 ```python
 from sklearn.metrics import make_scorer, accuracy_score
@@ -17,27 +19,16 @@ from hypergbm import make_experiment
 from hypernets.tabular.datasets import dsutils
 
 
-class MyRewardMetric:
-    __name__ = 'foo'
+def foo(y_true, y_preds):
+    return accuracy_score(y_true, y_preds)  # replace this line with yours
 
-    def __hash__(self):
-        return hash(self.__name__)
-
-    def __eq__(self, other):
-        return self.__name__ == str(other)
-
-    def __call__(self, y_true, y_preds):
-        return accuracy_score(y_true, y_preds)  # replace this line with yours
-
-
-my_reward_metric = MyRewardMetric()
-my_scorer = make_scorer(my_reward_metric, greater_is_better=True, needs_proba=False)
+my_scorer = make_scorer(foo, greater_is_better=True, needs_proba=False)
 
 train_data = dsutils.load_adult()
 train_data.columns = [f'c{i}' for i in range(14)] + ['target']
 
 exp = make_experiment(train_data.copy(), target='target',
-                      reward_metric=my_reward_metric,
+                      reward_metric=foo,
                       scorer=my_scorer,
                       max_trials=3,
                       log_level='info')
