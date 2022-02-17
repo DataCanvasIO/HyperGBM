@@ -1,14 +1,17 @@
 # -*- coding:utf-8 -*-
 __author__ = 'yangjian'
 
+from hypernets.core import Callback
+
 """
 
 """
 import copy
+from typing import List
 
 import pandas as pd
 
-from hypernets.experiment import make_experiment as _make_experiment
+from hypernets.experiment import make_experiment as _make_experiment, ExperimentCallback
 from hypernets.experiment import default_experiment_callbacks as default_experiment_callbacks_
 from hypernets.experiment import default_search_callbacks as default_search_callbacks_
 
@@ -152,12 +155,12 @@ def make_experiment(train_data,
         try:
             import experiment_visualization
             return True
-        except Exception as e:
+        except :
             return False
 
     def default_experiment_callbacks():
         if is_notebook_ready():
-            from hypergbm.experiment_callbacks.callbacks import HyperGBMNotebookExperimentCallback
+            from hypergbm.experiment_callbacks import HyperGBMNotebookExperimentCallback
             cbs = [HyperGBMNotebookExperimentCallback()]
         else:
             cbs = default_experiment_callbacks_()
@@ -165,26 +168,26 @@ def make_experiment(train_data,
 
     def default_search_callbacks():
         if is_notebook_ready():
-            from hypergbm.experiment_callbacks.callbacks import HyperGBMNotebookHyperModelCallback
+            from hypergbm.experiment_callbacks import HyperGBMNotebookHyperModelCallback
             cbs = [HyperGBMNotebookHyperModelCallback()]
         else:
             cbs = default_search_callbacks_()
         return cbs
 
     if callbacks is None:
-        callbacks = default_experiment_callbacks()
+        callbacks: List[ExperimentCallback] = default_experiment_callbacks()
 
     if search_callbacks is None:
-        search_callbacks = default_search_callbacks()
+        search_callbacks: List[Callback] = default_search_callbacks()
 
     if webui:
         if webui_options is None:
             webui_options = {}
         if is_webui_ready():
-            from hypergbm.experiment_callbacks.callbacks import HyperGBMLogEventHyperModelCallbackABS
-            search_callbacks.append(HyperGBMLogEventHyperModelCallbackABS())
-            from hypergbm.experiment_callbacks.callbacks import HyperGBMLogEventExperimentCallback
-            callbacks.append(HyperGBMLogEventExperimentCallback(**webui_options))
+            from hypergbm.experiment_callbacks import HyperGBMWebVisHyperModelCallback
+            search_callbacks.append(HyperGBMWebVisHyperModelCallback())
+            from hypergbm.experiment_callbacks import HyperGBMWebVisExperimentCallback
+            callbacks.append(HyperGBMWebVisExperimentCallback(**webui_options))
         else:
             pass
             logger.warning("No visualization module detected, please install by command:"
