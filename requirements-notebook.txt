@@ -1,4 +1,4 @@
 jupyterlab
 ipywidgets
 jupyterlab_widgets
-hypernets-jupyter-widget
+experiment-notebook-widget

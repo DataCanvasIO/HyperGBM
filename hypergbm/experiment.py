@@ -1,14 +1,17 @@
 # -*- coding:utf-8 -*-
 __author__ = 'yangjian'
 
+from hypernets.core import Callback
+
 """
 
 """
 import copy
+from typing import List
 
 import pandas as pd
 
-from hypernets.experiment import make_experiment as _make_experiment
+from hypernets.experiment import make_experiment as _make_experiment, ExperimentCallback
 from hypernets.experiment import default_experiment_callbacks as default_experiment_callbacks_
 from hypernets.experiment import default_search_callbacks as default_search_callbacks_
 
@@ -152,12 +155,12 @@ def make_experiment(train_data,
         try:
             import experiment_visualization
             return True
-        except Exception as e:
+        except :
             return False
 
     def default_experiment_callbacks():
         if is_notebook_ready():
-            from hypergbm.experiment_callbacks.callbacks import HyperGBMNotebookExperimentCallback
+            from hypergbm.experiment_callbacks import HyperGBMNotebookExperimentCallback
             cbs = [HyperGBMNotebookExperimentCallback()]
         else:
             cbs = default_experiment_callbacks_()
@@ -165,26 +168,26 @@ def make_experiment(train_data,
 
     def default_search_callbacks():
         if is_notebook_ready():
-            from hypergbm.experiment_callbacks.callbacks import HyperGBMNotebookHyperModelCallback
+            from hypergbm.experiment_callbacks import HyperGBMNotebookHyperModelCallback
             cbs = [HyperGBMNotebookHyperModelCallback()]
         else:
             cbs = default_search_callbacks_()
         return cbs
 
     if callbacks is None:
-        callbacks = default_experiment_callbacks()
+        callbacks: List[ExperimentCallback] = default_experiment_callbacks()
 
     if search_callbacks is None:
-        search_callbacks = default_search_callbacks()
+        search_callbacks: List[Callback] = default_search_callbacks()
 
     if webui:
         if webui_options is None:
             webui_options = {}
         if is_webui_ready():
-            from hypergbm.experiment_callbacks.callbacks import HyperGBMLogEventHyperModelCallback
-            search_callbacks.append(HyperGBMLogEventHyperModelCallback())
-            from hypergbm.experiment_callbacks.callbacks import HyperGBMLogEventExperimentCallback
-            callbacks.append(HyperGBMLogEventExperimentCallback(**webui_options))
+            from hypergbm.experiment_callbacks import HyperGBMWebVisHyperModelCallback
+            search_callbacks.append(HyperGBMWebVisHyperModelCallback())
+            from hypergbm.experiment_callbacks import HyperGBMWebVisExperimentCallback
+            callbacks.append(HyperGBMWebVisExperimentCallback(**webui_options))
         else:
             pass
             logger.warning("No visualization module detected, please install by command:"
@@ -235,6 +238,15 @@ _cross_validator_doc = """ : cross-validation generator, optional
 _estimator_early_stopping_rounds_doc = """ int, optional, (default=None)
     Estimator *early_stopping_rounds* option, inferred from *n_estimators* by default."""
 
+_webui_doc = """ : bool (default False),
+    Whether to start the experiment visualization web server
+"""
+
+_webui_options_doc= """ : dict, optional, (default None),
+    Dictionary of parameters to initialize the `LogEventExperimentCallback` instance.
+    If None, will be initialized the instance with default values.
+"""
+
 
 def _merge_doc():
     my_doc = DocLens(make_experiment.__doc__)
@@ -244,6 +256,10 @@ def _merge_doc():
     params['class_balancing'] = _class_balancing_doc
     params['cross_validator'] = _cross_validator_doc
     params['estimator_early_stopping_rounds'] = _estimator_early_stopping_rounds_doc
+
+    params['webui'] = _webui_doc
+    params['webui_options'] = _webui_options_doc
+
     for k in ['clear_cache', 'log_level']:
         params.move_to_end(k)
 

@@ -6,7 +6,7 @@ import pytest
 from hypernets.utils import logging
 from hypernets.tests.experiment import experiment_factory
 
-from hypergbm.experiment_callbacks.callbacks import HyperGBMLogEventHyperModelCallback, HyperGBMLogEventExperimentCallback, \
+from hypergbm.experiment_callbacks import HyperGBMWebVisHyperModelCallback, HyperGBMWebVisExperimentCallback, \
     HyperGBMNotebookHyperModelCallback, HyperGBMNotebookExperimentCallback
 from hypergbm import make_experiment
 
@@ -28,8 +28,8 @@ deps_ready = pytest.mark.skipif(not _notebook_widget_and_web_app_ready(),
 
 
 def _run_experiment(creator):
-    webui_model_callback = HyperGBMLogEventHyperModelCallback()
-    webui_callback = HyperGBMLogEventExperimentCallback(exit_web_server_on_finish=True)
+    webui_model_callback = HyperGBMWebVisHyperModelCallback()
+    webui_callback = HyperGBMWebVisExperimentCallback(exit_web_server_on_finish=True)
     nb_model_callback = HyperGBMNotebookHyperModelCallback()
     nb_callback = HyperGBMNotebookExperimentCallback()
 
