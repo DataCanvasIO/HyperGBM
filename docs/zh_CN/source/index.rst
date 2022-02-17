@@ -14,7 +14,7 @@ HyperGBM is an open source project created by `DataCanvas <https://www.datacanva
     :maxdepth: 2
 
     概览<overview.rst>
-    安装<installation.md>
+    安装HyperGBM<installation.md>
     快速开始<quick_start.rst>
     使用示例<example.rst>
     How-To<how_to.rst>

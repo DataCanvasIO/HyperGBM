@@ -63,3 +63,17 @@ docker run -ti -e NotebookToken="your-token" -p 8888:8888 datacanvas/hypergbm
 
 打开浏览器，访问`http://<your-ip>:8888`，输入您设置的token即可开始使用。
 
+
+### 安装 GPU 加速的依赖包
+
+* cuML and cuDF
+
+HyperGBM利用NVIDIA RAPIDS中的 cuML 和 cuDF对数据处理进行加速，所以如果要利用GPU对HyperGBM进行加速的话，您需要在运行HyperGBM之前安装这两个软件。这两个软件的安装方法请参考 NVIDIA RAPIDS官网 [https://rapids.ai/start.html#get-rapids](https://rapids.ai/start.html#get-rapids) for more details.
+
+* 支持 GPU 的 LightGBM 
+
+通过默认方式安装的LightGBM并不能利用GPU进行训练，所以您需要自己编译和安装能够支持GPU的LightGBM。建议您在安装HyperGBM之前就安装好支持GPU的LightGMB，HyperGBM安装程序会服用已经存在的软件包。关于如何在LightGBM中开启GPU支持的方法请参考其官网  [LightGBM GPU Tutorial](https://lightgbm.readthedocs.io/en/latest/GPU-Tutorial.html) 。
+
+* 支持GPU的 XGBoost 和 CatBoost
+
+通过默认方式安装的 XGBoost 和 CatBoost已经内置了对GPU的支持，所以您不要再做其他的动作。但是，如果您希望自己手动从源代码中编译和安装这两个软件的话，请开启他们支持GPU的选项。

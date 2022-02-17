@@ -8,3 +8,5 @@ While a lot of AutoML tools mainly focus on the hyperparameter tuning of differe
 For the machine learning models, HyperGBM uses popular gradient-boosting tree models ranging from XGBoost, LightGBM and HistGradientBoosting. Besides, HyperGBM also involves many advanced features of CompeteExperiment from Hypernets in data cleaning, feature engineering and model ensemble.
 
 The optimization algorithms, representations of search space and CompeteExperiment are based on [Hypernets](https://github.com/DataCanvasIO/Hypernets).
+
+Hypergbm also supports full pipeline GPU acceleration, including all data processing and model training steps. When training with NVIDIA A100, we got a 50x performance improvement!  More importantly, the model trained on GPU could be deployed to the environment without GPU hardware and software (CUDA and cuML), which greatly reduces the cost of model deployment.

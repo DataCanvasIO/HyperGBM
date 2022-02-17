@@ -17,7 +17,7 @@ HyperGBM optimizes the end-to-end ML processing stages within one search space, 
 
 HyperGBM, as indicated in the name, involves several gradient boosting tree models (GBM), namely, XGBoost, LightGBM and Catboost. What's more, it could access the [Hypernets](https://github.com/DataCanvasIO/Hypernets), a general automated machine learning framework, and introduce its advanced characteristics in data cleaning, feature engineering and model ensemble. Additionally, the search space representation and search algorithm inside Hyper GBM are also supported by Hypernets.
 
-Hypergbm also supports full pipeline GPU acceleration, including all data processing and model training steps. When training with NVIDIA A100, we got get up to 50 times performance improvement!  More importantly, the model trained with GPU could be deployed to the environment without GPU hardware and software (CUDA and cuML), which greatly reduces the cost of model deployment.
+Hypergbm also supports full pipeline GPU acceleration, including all data processing and model training steps. When training with NVIDIA A100, we got a 50x performance improvement!  More importantly, the model trained on GPU could be deployed to the environment without GPU hardware and software (CUDA and cuML), which greatly reduces the cost of model deployment.
 
 
 ## Tutorial
@@ -68,8 +68,6 @@ pip install hypergbm[zhcn]
 ```bash
 pip install hypergbm[all]
 ```
-
-To accelerate HyperGBM with NVIDIA GPU devices，you need to install cuML and cuDF from NVIDIA RAPIDS also. See [https://rapids.ai/start.html#get-rapids](https://rapids.ai/start.html#get-rapids) for RAPIDS installation.
 
 ## Examples
 
