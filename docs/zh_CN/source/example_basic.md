@@ -251,3 +251,55 @@ Pipeline(steps=[('data_clean',
 ```
 
 
+### 实验Web可视化
+
+如果希望在训练过程中看到实验可视化信息，可通过`webui`打开实验可视化服务，可以是`True`或`False`。
+还可以通过`webui_options`参数设置web服务的端口、实验可视化数据持久化目录、是否退出web进程当训练完毕后。
+
+*注意：使用该功能时请确保您是通过`pip install hypergbm[board]` 安装的hypergbm。*
+
+
+开启基于web的实验可视化示例代码如下：
+```python
+from sklearn.model_selection import train_test_split
+
+from hypergbm import make_experiment
+from hypernets.tabular.datasets import dsutils
+
+df = dsutils.load_bank()
+df_train, df_test = train_test_split(df, test_size=0.8, random_state=42)
+
+experiment = make_experiment(df_train, target='y', webui=True)
+estimator = experiment.run(max_trials=10)
+
+print(estimator)
+```
+
+输出：
+```console
+02-17 19:08:48 I hypernets.t.estimator_detector.py 85 - EstimatorDetector error: GPU Tree Learner was not enabled in this build.
+Please recompile with CMake option -DUSE_GPU=1
+...
+server is running at: 0.0.0.0:8888 
+...
+
+02-17 19:08:55 I hypernets.t.metrics.py 153 - calc_score ['auc', 'accuracy'], task=binary, pos_label=yes, classes=['no' 'yes'], average=None
+final result:{'auc': 0.8913467492260062, 'accuracy': 0.8910699474702792}
+```
+
+这时候您可以打开浏览器访问`http://localhost:888` 查看实验运行情况：
+
+![web-experiment-visualization](images/web-experiment-visualization.png)
+
+
+将开启训练可视化，并把端口设置为`8888`，持久化目录设置为`./events`，实验结束后退出web进程设置为`False` 的代码示例如下：
+```python
+...
+webui_options = {
+    'event_file_dir': "./events",  # persist experiment running events log to './events'
+    'server_port': 8888, # http server port
+    'exit_web_server_on_finish': False  # exit http server after experiment finished
+}
+experiment = make_experiment(df_train, target='y', webui=True, webui_options=webui_options)
+...
+```

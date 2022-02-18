@@ -31,6 +31,11 @@ pip install hypergbm[notebook]
 pip install hypergbm[zhcn]
 ```
 
+可选的, 如果您希望使用基于Web的实验可视化，可通过如下命令安装HyperGBM:
+```bash
+pip install hypergbm[board]
+```
+
 可选的, 如果您希望安装HyperGBM以及所有依赖包，则可通过如下形式安装：
 
 ```bash
