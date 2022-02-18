@@ -8,4 +8,5 @@ Examples
    Advanced applications<example_advanced.rst>
    Handling Imbalanced Data<example_imbalance.md>
    Defining SearchSpace<example_customize.md>
+   GPU acceleration<example_cuml.md>
    Distributed training<example_dask.md>

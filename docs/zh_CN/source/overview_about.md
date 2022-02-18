@@ -9,3 +9,5 @@ HyperGBM是一款全Pipeline自动机器学习工具，可以端到端的完整�
 正如名字中的含义，HyperGBM中的机器学习算法使用了目前最流行的几种GBM算法（更准确的说是梯度提升树模型），目前包括XGBoost、LightGBM、CatBoost和HistGridientBoosting。同时，HyperGBM也引入了Hypernets的CompeteExperiment在数据清洗、特征工程、模型融合等环节的很多高级特性。
 
 HyperGBM中的优化算法和搜索空间表示技术以及CompeteExperiment由 [Hypernets](https://github.com/DataCanvasIO/Hypernets)项目提供支撑。
+
+值得强调的是，HyperGBM还支持全Pipeline的GPU加速，包括所有的数据处理和模型训练环节，在使用NVIDIA A100进行训练时，可得到最多超过50倍的性能提升 ！更重要的是，使用GPU训练的模型可以部署到没有GPU硬件和软件（CUDA）的环境中，大大降低模型上线的成本。

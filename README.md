@@ -17,6 +17,8 @@ HyperGBM optimizes the end-to-end ML processing stages within one search space, 
 
 HyperGBM, as indicated in the name, involves several gradient boosting tree models (GBM), namely, XGBoost, LightGBM and Catboost. What's more, it could access the [Hypernets](https://github.com/DataCanvasIO/Hypernets), a general automated machine learning framework, and introduce its advanced characteristics in data cleaning, feature engineering and model ensemble. Additionally, the search space representation and search algorithm inside Hyper GBM are also supported by Hypernets.
 
+Hypergbm also supports full pipeline GPU acceleration, including all data processing and model training steps. When training with NVIDIA A100, we got a 50x performance improvement!  More importantly, the model trained on GPU could be deployed to the environment without GPU hardware and software (CUDA and cuML), which greatly reduces the cost of model deployment.
+
 
 ## Tutorial
 * [Quick Start](https://hypergbm.readthedocs.io/en/latest/quick_start.html)
@@ -90,7 +92,7 @@ Pipeline(steps=[('data_clean',
                  DataCleanStep(...),
                 ('estimator',
                  GreedyEnsemble(...)])
-``` 
+```
 To see more examples, please read [Quick Start](https://hypergbm.readthedocs.io/en/latest/quick_start_python.html#create-experiment-with-make-experiment) and [Examples](https://hypergbm.readthedocs.io/en/latest/example.html).
 
 
@@ -101,8 +103,8 @@ Hypergbm also supports command line tools to perform model training, evaluation 
 hypergbm -h
 
 usage: hypergbm [-h] [--log-level LOG_LEVEL] [-error] [-warn] [-info] [-debug]
-                [--verbose VERBOSE] [-v] [--enable-dask ENABLE_DASK] [-dask]
-                [--overload OVERLOAD]
+                [--verbose VERBOSE] [-v] [--enable-gpu ENABLE_GPU] [-gpu] 
+                [--enable-dask ENABLE_DASK] [-dask] [--overload OVERLOAD]
                 {train,evaluate,predict} ...
 ```
 
@@ -124,7 +126,7 @@ For more details, please read [Quick Start](https://hypergbm.readthedocs.io/en/l
 ## Documents
 
 * [Overview](https://hypergbm.readthedocs.io/en/latest/overview.html)
-* [Installation](https://hypergbm.readthedocs.io/en/latest/overview.html)
+* [Installation](https://hypergbm.readthedocs.io/en/latest/installation.html)
 * [Quick Start](https://hypergbm.readthedocs.io/en/latest/quick_start.html)
 * [Examples](https://hypergbm.readthedocs.io/en/latest/example.html)
 * [How-To](https://hypergbm.readthedocs.io/en/latest/how_to.html)

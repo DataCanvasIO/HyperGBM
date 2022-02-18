@@ -1,9 +1,9 @@
-## Installing HyperGBM
+## Installation Guide
 We recommend installing HyperGBM with `conda` or `pip`. Installing and using HyperGBM in a Docker container are also possible if you have a Docker environment.
 
-Python version 3.6 or above is necessary before installing HyperGBM with `conda` or `pip`.
+Python version 3.6 or above is necessary to install HyperGBM.
 
-### Conda
+### Using Conda
 
 Install HyperGBM with `conda` from the channel *conda-forge*:
 
@@ -17,7 +17,8 @@ On the Windows system, recommend install pyarrow(required by hypernets) 4.0 or e
 conda install -c conda-forge hypergbm "pyarrow<=4.0"
 ```
 
-### Pip
+
+### Using Pip
 Install HyperGBM with different `pip` options:
 
 * Typical installation:
@@ -43,8 +44,7 @@ pip install hypergbm[all]
 ```
 
 
-
-### Docker
+### Using Docker
 
 It is possible to use HyperGBM in a Docker container. To do this, users can install HyperGBM with `pip` in the Dockerfile. We also publish a mirror image in Docker Hub which can be downloaded directly and includes the following components:
 
@@ -64,3 +64,18 @@ docker run -ti -e NotebookToken="your-token" -p 8888:8888 datacanvas/hypergbm
 ```
 
 Then one can visit `http://<your-ip>:8888` in the browser and type in the default token to start.
+
+
+### Requirements for GPU acceleration
+
+* cuML and cuDF
+
+HyperGBM accelerate data processing with NVIDIA RAPIDS cuML and cuDF, please install them before running HyperGBM on GPU. See [https://rapids.ai/start.html#get-rapids](https://rapids.ai/start.html#get-rapids) for more details.
+
+* LightGBM with GPU support
+
+Default installation of LightGBM does not support GPU training, please build and install LightGBM with GPU support before installing HyperGBM.  See [LightGBM GPU Tutorial](https://lightgbm.readthedocs.io/en/latest/GPU-Tutorial.html) for more details.
+
+* XGBoost and CatBoost with GPU support
+
+The default installation of XGBoost and CatBoost can train model on GPU, so you don't need to do any action for them to run HyperGBM on GPU. If you build them form source code yourself, please enable GPU support.

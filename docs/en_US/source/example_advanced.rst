@@ -6,6 +6,7 @@ HyperGBM *make_experiment* create an instance of *CompeteExperiment* in Hypernet
 .. mermaid::
 
     flowchart LR
+        da[Data<br/>Adaption]
         dc[Data<br/>Cleaning]
         fg[Feature generation]
         cd[collinearity detection]
@@ -36,16 +37,25 @@ HyperGBM *make_experiment* create an instance of *CompeteExperiment* in Hypernet
             end
             op2-->s2
         end
-        dc-->1st-stage-->2nd-stage-->em
+        da-->dc-->1st-stage-->2nd-stage-->em
 
         style 2nd-stage stroke:#6666,stroke-width:2px,stroke-dasharray: 5, 5;
 
 
+Data Adaption
+-----------------
+
+This step supports Pandas/Cuml data types only, relevant parameters:
+
+* data_adaption：(default True). Whether to enable data adaption.
+* data_adaption_memory_limit：(default 0.05). If float, should be between 0.0 and 1.0 and represent the proportion of the system free memory. If int, represents the absolute byte number of memory.
+* data_adaption_min_cols：(default 0.1). If float, should be between 0.0 and 1.0 and represent the proportion of the original dataframe column number. If int, represents the absolute column number.
+* data_adaption_target：(default None)，Whether to run the next steps. 'cuml' or 'cuda', adapt training data into cuml datatypes and run next steps on nvidia GPU Devices. None, not change the training data types.
 
 Data cleaning
 -----------------
 
-The first step of the *CompeteExperiment* is to perform data cleaning with DataCleaner in Hypernets. Note that this step can not be disabled but can be adjusted with DataCleaner in the following ways：
+ *CompeteExperiment* performs data cleaning with DataCleaner in Hypernets. Note that this step can not be disabled but can be adjusted with DataCleaner in the following ways：
 
 * nan_chars： value or list, (default None), replace some characters with np.nan
 * correct_object_dtype： bool, (default True), whether correct the data types

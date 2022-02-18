@@ -10,7 +10,6 @@ Suppose that your training data file is '/opt/data/my_data.csv', the following c
 from dask.distributed import LocalCluster, Client
 
 from hypergbm import make_experiment
-from hypernets.tabular.datasets import dsutils
 
 
 def train():
@@ -31,13 +30,12 @@ if __name__ == '__main__':
 
 
 
-We recommend spliting the data to multiple files and save them in a single location such as '/opt/data/my_data' for large-scale data to speed up the loading process. After doing this, one can create an exmperiment with the splited files:
+We recommend splitting the data to multiple files and save them in a single location such as '/opt/data/my_data' for large-scale data to speed up the loading process. After doing this, one can create an exmperiment with the splited files:
 
 ```python
 from dask.distributed import LocalCluster, Client
 
 from hypergbm import make_experiment
-from hypernets.tabular.datasets import dsutils
 
 
 def train():
@@ -74,7 +72,7 @@ from dask import dataframe as dd
 from dask.distributed import LocalCluster, Client
 
 from hypergbm import make_experiment
-from hypergbm.dask.search_space import search_space_general
+from hypergbm.dask import search_space_general
 from hypernets.tabular.datasets import dsutils
 
 
