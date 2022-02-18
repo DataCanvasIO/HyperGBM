@@ -6,6 +6,7 @@ HyperGBM *make_experiment* 所创建的是 Hypernets 的 *CompeteExeriment* 实�
 .. mermaid::
 
     flowchart LR
+        da[数<br/>据<br/>适<br/>配]
         dc[数<br/>据<br/>清<br/>洗]
         fg[特征衍生]
         cd[共线性检测]
@@ -36,17 +37,26 @@ HyperGBM *make_experiment* 所创建的是 Hypernets 的 *CompeteExeriment* 实�
             end
             op2-->s2
         end
-        dc-->一阶段-->二阶段-->em
+        da-->dc-->一阶段-->二阶段-->em
 
         style 二阶段 stroke:#6666,stroke-width:2px,stroke-dasharray: 5, 5;
         style 二阶段 stroke:#6666,stroke-width:2px,stroke-dasharray: 5, 5;
 
 
+数据适配
+---------
+
+此步骤仅当输入数据是pandas或cudf的数据类型时生效，该步骤检测是否有足够的系统内存容纳输入数据进行建模，如果发现内存不足则尝试对输入数据进行缩减。可通过如下参数对数据适配的细节进行调整：
+
+* data_adaption：(default True)，是否开启数据适配
+* data_adaption_memory_limit：(default 0.05)，将输入数据缩减到系统可用内存的多大比例
+* data_adaption_min_cols：(default 0.1)，如果需要缩减数据的话，至少保留多少列
+* data_adaption_target：(default None)，此选项仅当输入数据是pandas DataFrame时生效，将此选项设置为'cuml'或'cuda'则会利用主机的CPU和MEM对数据进行缩减，然后转换为cudf.DataFrame，使得后续实验步骤在GPU中运行
 
 数据清洗
 ---------
 
-*CompeteExeriment* 的第一步就是利用Hypernets的DataCleaner进行数据清洗，此步骤不可禁用，但可通过参数对DataCleaner的行为进行调整，包括：
+*CompeteExeriment* 利用Hypernets的DataCleaner进行数据清洗，此步骤不可禁用，但可通过参数对DataCleaner的行为进行调整，包括：
 
 * nan_chars： value or list, (default None), 将哪些值字符替换为np.nan
 * correct_object_dtype： bool, (default True), 是否尝试修正数据类型
