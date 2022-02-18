@@ -24,7 +24,6 @@ Kaggle中为每个用户提供免费的GPU资源（有时间限制），HyperGBM
    
 
 
-实际使用示例可参考 [notebook_hypergbm_bank_marketing_gpu_kaggle](https://www.kaggle.com/tele6224/notebook-hypergbm-bank-marking-gpu)：
-
+实际使用示例可参考 [notebook_hypergbm_bank_marketing_gpu_kaggle](https://www.kaggle.com/tele6224/notebook-hypergbm-bank-marking-gpu)。
 
 

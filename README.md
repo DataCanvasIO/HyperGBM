@@ -126,7 +126,7 @@ For more details, please read [Quick Start](https://hypergbm.readthedocs.io/en/l
 ## Documents
 
 * [Overview](https://hypergbm.readthedocs.io/en/latest/overview.html)
-* [Installation](https://hypergbm.readthedocs.io/en/latest/overview.html)
+* [Installation](https://hypergbm.readthedocs.io/en/latest/installation.html)
 * [Quick Start](https://hypergbm.readthedocs.io/en/latest/quick_start.html)
 * [Examples](https://hypergbm.readthedocs.io/en/latest/example.html)
 * [How-To](https://hypergbm.readthedocs.io/en/latest/how_to.html)

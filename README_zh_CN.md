@@ -132,7 +132,7 @@ hypergbm train --train-file=blood.csv --target=Class --model-file=model.pkl
 ## 参考文档
 
 * [概览](https://hypergbm.readthedocs.io/zh_CN/latest/overview.html)
-* [安装](https://hypergbm.readthedocs.io/zh_CN/latest/overview.html)
+* [安装](https://hypergbm.readthedocs.io/zh_CN/latest/installation.html)
 * [快速开始](https://hypergbm.readthedocs.io/zh_CN/latest/quick_start.html)
 * [使用示例](https://hypergbm.readthedocs.io/zh_CN/latest/example.html)
 * [How-To](https://hypergbm.readthedocs.io/zh_CN/latest/how_to.html)
