@@ -1,4 +1,4 @@
-## GUP acceleration
+## GPU acceleration
 
 To accelerate HyperGBM with NVIDIA GPU devices, you must install NVIDIA RAPIDS cuML and cuDF, and enable GPU support of all estimators, see [Installation Guide](installation.html) for more details. 
 
