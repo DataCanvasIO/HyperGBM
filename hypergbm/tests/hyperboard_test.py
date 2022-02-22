@@ -6,8 +6,8 @@ import pytest
 from hypernets.utils import logging
 from hypernets.tests.experiment import experiment_factory
 
-from hypergbm.experiment_callbacks import HyperGBMWebVisHyperModelCallback, HyperGBMWebVisExperimentCallback, \
-    HyperGBMNotebookHyperModelCallback, HyperGBMNotebookExperimentCallback
+from hypergbm.experiment_callbacks import create_web_vis_experiment_callback, create_notebook_experiment_callback, \
+    create_notebook_hyper_model_callback, create_web_vis_hyper_model_callback
 from hypergbm import make_experiment
 
 
@@ -28,10 +28,10 @@ deps_ready = pytest.mark.skipif(not _notebook_widget_and_web_app_ready(),
 
 
 def _run_experiment(creator):
-    webui_model_callback = HyperGBMWebVisHyperModelCallback()
-    webui_callback = HyperGBMWebVisExperimentCallback(exit_web_server_on_finish=True)
-    nb_model_callback = HyperGBMNotebookHyperModelCallback()
-    nb_callback = HyperGBMNotebookExperimentCallback()
+    webui_model_callback = create_web_vis_hyper_model_callback()
+    webui_callback = create_web_vis_experiment_callback(exit_web_server_on_finish=True)
+    nb_model_callback = create_notebook_hyper_model_callback()
+    nb_callback = create_notebook_experiment_callback()
 
     exp = creator(maker=make_experiment,
                   callbacks=[webui_callback, nb_callback],
@@ -39,7 +39,7 @@ def _run_experiment(creator):
     estimator = exp.run(max_trials=10)
     assert estimator
     
-    logfile = webui_callback.internal_callback.get_log_file(exp)
+    logfile = webui_callback.get_log_file(exp)
     assert logfile
     with open(logfile, 'r', newline='\n') as f:
         events = [json.loads(line) for line in f.readlines()]

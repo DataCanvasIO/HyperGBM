@@ -1,2 +1,2 @@
-from ._experiment import HyperGBMNotebookExperimentCallback, HyperGBMWebVisExperimentCallback
-from ._hyper_model import HyperGBMWebVisHyperModelCallback, HyperGBMNotebookHyperModelCallback
+from ._experiment import create_notebook_experiment_callback, create_web_vis_experiment_callback
+from ._hyper_model import create_notebook_hyper_model_callback, create_web_vis_hyper_model_callback

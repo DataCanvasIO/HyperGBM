@@ -1,6 +1,5 @@
 import pickle
 
-from experiment_visualization.callbacks import WebVisHyperModelCallback
 from hypernets.experiment import ABSExpVisHyperModelCallback
 from hypernets.experiment import ActionType
 from hypernets.utils import fs, logging as hyn_logging
@@ -105,21 +104,6 @@ def _parse_trial_end_event(hyper_model, space, trial_no, reward, improved,
     return data
 
 
-class HyperGBMWebVisHyperModelCallback(WebVisHyperModelCallback):
-
-    def on_search_end_(self, hyper_model, early_stopping_data):
-
-        if early_stopping_data is not None:
-            payload = early_stopping_data.to_dict()
-            self.send_event(ActionType.EarlyStopped, payload)
-
-    def on_trial_end(self, hyper_model, space, trial_no, reward, improved, elapsed):
-        self.assert_ready()
-        trial_event_data = _parse_trial_end_event(hyper_model, space, trial_no, reward, improved, elapsed,
-                                                  self.max_trials, self.current_running_step_index)
-        self.send_event(ActionType.TrialEnd, trial_event_data)
-
-
 class HyperGBMNotebookHyperModelCallback(ABSExpVisHyperModelCallback):
 
     def send_action(self, action_type, payload):
@@ -140,3 +124,12 @@ class HyperGBMNotebookHyperModelCallback(ABSExpVisHyperModelCallback):
         trial_event_data = _parse_trial_end_event(hyper_model, space, trial_no, reward, improved, elapsed,
                                                   self.max_trials, self.current_running_step_index)
         self.send_action(ActionType.TrialEnd, trial_event_data)
+
+
+def create_notebook_hyper_model_callback():
+    return HyperGBMNotebookHyperModelCallback()
+
+
+def create_web_vis_hyper_model_callback():
+    from experiment_visualization.callbacks import WebVisHyperModelCallback
+    return WebVisHyperModelCallback(_parse_trial_end_event)
