@@ -1,4 +1,4 @@
-## GUP加速
+## GPU加速
 
 为了使用 NVIDIA GPU 加速 HyperGBM 训练过程，您需要安装 NVIDIA RAPIDS 中的 cuML 和 cuDF , 同时也需要安装支持 GPU 的LightGBM、XGBoost、CatBoost, 关于软件安装的信息请参考 [安装HyperGBM](installation.html)。 
 
