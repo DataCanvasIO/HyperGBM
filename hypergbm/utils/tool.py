@@ -11,6 +11,7 @@ import psutil
 
 import hypergbm
 from hypergbm.cfg import HyperGBMCfg as cfg
+from hypernets.experiment import ExperimentCallback, StepNames
 from hypernets.tabular import get_tool_box as get_tool_box_, is_dask_installed, is_cuml_installed
 from hypernets.utils import const, logging, dump_perf
 
@@ -18,6 +19,16 @@ metric_choices = ['accuracy', 'auc', 'f1', 'logloss', 'mse', 'mae', 'msle', 'pre
 strategy_choices = ['threshold', 'quantile', 'number']
 
 estimators = ['lightgbm', 'xgboost', 'catboost', 'histgb']
+
+
+class FreeDataCallback(ExperimentCallback):
+    def step_end(self, exp, step, output, elapsed):
+        if step == StepNames.DATA_ADAPTION:
+            exp.X_train = None
+            exp.y_train = None
+            exp.X_eval = None
+            exp.y_eval = None
+            exp.X_test = None
 
 
 def to_bool(v):
@@ -125,6 +136,8 @@ def main(argv=None):
                         help='random state seed (int), default %(default)s')
         tg.add_argument('--model-file', '--model', type=str, default='model.pkl',
                         help='the output pickle file name for trained model, default %(default)s')
+        tg.add_argument('--as-local', type=to_bool, default=True,
+                        help='output the model file as local (only if GPU is enabled), default %(default)s')
         tg.add_argument('--history-file', '--history', type=str, default=None,
                         help='the output file name for search history, default %(default)s')
 
@@ -160,6 +173,10 @@ def main(argv=None):
         fg = a.add_argument_group('Data adaption')
         fg.add_argument('--data-adaption', type=to_bool, default=None,
                         help='Enable/disable data adaption, default %(default)s')
+        fg.add_argument('-da', '-da+', '-data-adaption', '-data-adaption+', dest='data_adaption', action='store_true',
+                        help='alias of "--data-adaption true"')
+        fg.add_argument('-da-', '-data-adaption-', dest='data_adaption', action='store_false',
+                        help='alias of "--data-adaption false"')
         fg.add_argument('--data-adaption-memory-limit', type=float, default=0.05,
                         help='proportion of the system free memory, default %(default)s')
         fg.add_argument('--data-adaption-min-cols', type=float, default=0.1,
@@ -455,6 +472,7 @@ def train(args):
     reversed_keys = ['command', 'enable_dask', 'overload', 'enable_gpu', 'version',
                      'perf_file', 'perf_interval', 'perf_recursive',
                      'train_data', 'eval_data', 'test_data', 'model_file', 'history_file',
+                     'as_local',
                      ] + estimators
     kwargs = {k: v for k, v in args.__dict__.items() if k not in reversed_keys and not k.startswith('_')}
 
@@ -472,6 +490,11 @@ def train(args):
 
     experiment = make_experiment(train_data, eval_data=eval_data, test_data=test_data, **kwargs)
 
+    if experiment.callbacks is None:
+        experiment.callbacks = []
+    if len(experiment.callbacks) == 0:
+        experiment.callbacks.append(FreeDataCallback())
+
     if args.verbose:
         print('>>> running experiment with train data {train_data}, '
               f'eval data: {args.eval_data}, test data: {args.test_data}.')
@@ -480,11 +503,6 @@ def train(args):
     del test_data
 
     estimator = experiment.run()
-    with open(args.model_file, 'wb') as f:
-        pickle.dump(estimator, f, protocol=pickle.HIGHEST_PROTOCOL)
-
-    if args.verbose:
-        print(f'>>> model saved to {args.model_file}')
 
     if args.history_file:
         history = experiment.hyper_model_.history
@@ -492,6 +510,15 @@ def train(args):
 
         if args.verbose:
             print(f'>>> history saved to {args.history_file}')
+
+    if args.enable_gpu and is_cuml_installed and args.as_local and hasattr(estimator, 'as_local'):
+        estimator = estimator.as_local()
+
+    with open(args.model_file, 'wb') as f:
+        pickle.dump(estimator, f, protocol=pickle.HIGHEST_PROTOCOL)
+
+    if args.verbose:
+        print(f'>>> model saved to {args.model_file}')
 
 
 def evaluate(args):
@@ -569,8 +596,7 @@ def predict(args):
     df = tb.concat_df([data, y], axis=1) if data is not None else y
 
     if args.enable_dask:
-        from hypernets.tabular.persistence import to_parquet
-        to_parquet(df, output_file)
+        tb.parquet().store(df, output_file)
     else:
         df, = tb.to_local(df)
         if output_file.endswith('.parquet') or output_file.endswith('.par'):
