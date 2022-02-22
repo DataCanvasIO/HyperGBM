@@ -9,4 +9,4 @@ For the machine learning models, HyperGBM uses popular gradient-boosting tree mo
 
 The optimization algorithms, representations of search space and CompeteExperiment are based on [Hypernets](https://github.com/DataCanvasIO/Hypernets).
 
-Hypergbm also supports full pipeline GPU acceleration, including all data processing and model training steps. When training with NVIDIA A100, we got a 50x performance improvement!  More importantly, the model trained on GPU could be deployed to the environment without GPU hardware and software (CUDA and cuML), which greatly reduces the cost of model deployment.
+Hypergbm also supports full pipeline GPU acceleration, including all data processing and model training steps. In our experiments, we got a 50x performance improvement!  More importantly, the model trained on GPU could be deployed to the environment without GPU hardware and software (CUDA and cuML), which greatly reduces the cost of model deployment.
