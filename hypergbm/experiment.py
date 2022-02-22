@@ -144,10 +144,10 @@ def make_experiment(train_data,
     if (searcher is None or isinstance(searcher, str)) and search_space is None:
         search_space = default_search_space()
 
-    def is_notebook_ready():
+    def is_notebook_widget_ready():
         try:
             import experiment_notebook_widget
-            return isnotebook()
+            return True
         except:
             return False
 
@@ -159,17 +159,22 @@ def make_experiment(train_data,
             return False
 
     def default_experiment_callbacks():
-        if is_notebook_ready():
-            from hypergbm.experiment_callbacks import HyperGBMNotebookExperimentCallback
-            cbs = [HyperGBMNotebookExperimentCallback()]
+        if isnotebook():
+            if is_notebook_widget_ready():
+                from hypergbm.experiment_callbacks import create_notebook_experiment_callback
+                cbs = [create_notebook_experiment_callback()]
+            else:
+                logger.info("you can install experiment notebook widget by command "
+                            "\"pip install experiment-notebook-widget\" for better user experience in jupyter notebook")
+                cbs = default_experiment_callbacks_()
         else:
             cbs = default_experiment_callbacks_()
         return cbs
 
     def default_search_callbacks():
-        if is_notebook_ready():
-            from hypergbm.experiment_callbacks import HyperGBMNotebookHyperModelCallback
-            cbs = [HyperGBMNotebookHyperModelCallback()]
+        if isnotebook() and is_notebook_widget_ready():
+            from hypergbm.experiment_callbacks import create_notebook_hyper_model_callback
+            cbs = [create_notebook_hyper_model_callback()]
         else:
             cbs = default_search_callbacks_()
         return cbs
@@ -184,14 +189,13 @@ def make_experiment(train_data,
         if webui_options is None:
             webui_options = {}
         if is_webui_ready():
-            from hypergbm.experiment_callbacks import HyperGBMWebVisHyperModelCallback
-            search_callbacks.append(HyperGBMWebVisHyperModelCallback())
-            from hypergbm.experiment_callbacks import HyperGBMWebVisExperimentCallback
-            callbacks.append(HyperGBMWebVisExperimentCallback(**webui_options))
+            from hypergbm.experiment_callbacks import create_web_vis_hyper_model_callback, \
+                create_web_vis_experiment_callback
+            search_callbacks.append(create_web_vis_hyper_model_callback())
+            callbacks.append(create_web_vis_experiment_callback(**webui_options))
         else:
-            pass
-            logger.warning("No visualization module detected, please install by command:"
-                           "pip install experiment-notebook-widget ")
+            logger.warning("No web visualization module detected, please install by command:"
+                           "\"pip install experiment-visualization\"")
 
     experiment = _make_experiment(hyper_model_cls, train_data,
                                   target=target,

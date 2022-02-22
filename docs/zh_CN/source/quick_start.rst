@@ -10,4 +10,4 @@
 
    通过Python使用HyperGBM<quick_start_python.md>
    通过命令行使用HyperGBM<quick_start_cmdline.md>
-   与Hyperctl整合<quick_start_hyperctl.md>
+   通过Hyperctl使用GBM<quick_start_hyperctl.md>
