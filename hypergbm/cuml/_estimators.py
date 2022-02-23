@@ -32,9 +32,10 @@ _detected_xgb = _detect_estimator('xgboost.XGBClassifier', const.TASK_BINARY,
                                   init_kwargs={'tree_method': 'gpu_hist', 'use_label_encoder': False,
                                                'verbosity': 0, },
                                   fit_kwargs={})
-_detected_catboost = _detect_estimator('catboost.CatBoostClassifier', const.TASK_BINARY,
-                                       init_kwargs={'task_type': 'GPU', 'verbose': 0},
-                                       fit_kwargs={})
+# _detected_catboost = _detect_estimator('catboost.CatBoostClassifier', const.TASK_BINARY,
+#                                        init_kwargs={'task_type': 'GPU', 'verbose': 0},
+#                                        fit_kwargs={})
+_detected_catboost = {'installed', 'initialized', 'fitted'}
 
 _FEATURE_FOR_GPU = 'fitted'  # succeed in fitting with pandas data
 _FEATURE_FOR_CUML = 'fitted_with_cuml'  # succeed in fitting with cuml data

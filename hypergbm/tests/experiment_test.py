@@ -4,7 +4,7 @@ __author__ = 'yangjian'
 
 """
 from datetime import datetime
-
+import pandas as pd
 from sklearn.metrics import get_scorer
 from sklearn.model_selection import train_test_split
 
@@ -120,6 +120,7 @@ class Test_Experiment():
     def run_multiclass(self, train_test_split_strategy=None, cv=False, feature_reselection=False, pseudo_labeling=False,
                        collinearity_detection=False, drift_detection=True, max_trials=3, cross_validator=None):
         df = dsutils.load_glass_uci()
+        df = pd.concat([df] * 2).sample(frac=1.0).reset_index(drop=True)
         df.columns = [f'x_{c}' for c in df.columns.to_list()]
         df.pop('x_0')
         y = df.pop('x_10')
@@ -193,6 +194,7 @@ class Test_Experiment():
                                        train_test_split_strategy=train_test_split_strategy,
                                        callbacks=[log_callback],
                                        scorer=get_scorer(scoring),
+                                       data_adaption=False,
                                        collinearity_detection=collinearity_detection,
                                        drift_detection=drift_detection,
                                        cv=cv,

@@ -10,4 +10,4 @@ HyperGBM是一款全Pipeline自动机器学习工具，可以端到端的完整�
 
 HyperGBM中的优化算法和搜索空间表示技术以及CompeteExperiment由 [Hypernets](https://github.com/DataCanvasIO/Hypernets)项目提供支撑。
 
-值得强调的是，HyperGBM还支持全Pipeline的GPU加速，包括所有的数据处理和模型训练环节，在使用NVIDIA A100进行训练时，可得到最多超过50倍的性能提升 ！更重要的是，使用GPU训练的模型可以部署到没有GPU硬件和软件（CUDA）的环境中，大大降低模型上线的成本。
+值得强调的是，HyperGBM还支持全Pipeline的GPU加速，包括所有的数据处理和模型训练环节，在我们的实验环境中可得到最多超过50倍的性能提升 ！更重要的是，使用GPU训练的模型可以部署到没有GPU硬件和软件（CUDA）的环境中，大大降低模型上线的成本。

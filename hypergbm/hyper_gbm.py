@@ -25,8 +25,8 @@ from hypernets.pipeline.base import ComposeTransformer
 from hypernets.tabular import get_tool_box
 from hypernets.tabular.cache import cache
 from hypernets.utils import logging, fs, const
-from .estimators import HyperEstimator
 from .cfg import HyperGBMCfg as cfg
+from .estimators import HyperEstimator
 
 try:
     import shap
@@ -37,6 +37,8 @@ except:
     has_shap = False
 
 logger = logging.get_logger(__name__)
+
+GB = 1024 ** 3
 
 
 def get_sampler(sampler):
@@ -227,17 +229,19 @@ class HyperGBMEstimator(Estimator):
     def fit_cross_validation(self, X, y, verbose=0, stratified=True, num_folds=3, pos_label=None,
                              shuffle=False, random_state=9527, metrics=None, skip_if_file=None, **kwargs):
         starttime = time.time()
+        tb = get_tool_box(X, y)
+        tb.gc()
+
         if verbose is None:
             verbose = 0
         if verbose > 0:
-            logger.info('transforming the train set')
+            logger.info(f'transforming the train set, memory free:{tb.memory_free() / GB:.3f}')
 
         pbar = self.transients_.get('pbar')
         if pbar is not None:
             pbar.reset()
             pbar.set_description('fit_transform_data')
 
-        tb = get_tool_box(X, y)
         X = self.fit_transform_data(X, y, verbose=verbose)
 
         cross_validator = kwargs.pop('cross_validator', None)
@@ -286,6 +290,7 @@ class HyperGBMEstimator(Estimator):
             self._prepare_callbacks(fit_kwargs, fold_est, self.discriminator, skip_if_file)
 
             fold_start_at = time.time()
+            tb.gc()
             fold_est.fit(x_train_fold, y_train_fold, **fit_kwargs)
             if verbose:
                 logger.info(f'fit fold {n_fold} with {time.time() - fold_start_at} seconds')
@@ -350,10 +355,14 @@ class HyperGBMEstimator(Estimator):
 
     def fit(self, X, y, pos_label=None, skip_if_file=None, verbose=0, **kwargs):
         starttime = time.time()
+        tb = get_tool_box(X, y)
+        tb.gc()
+
         if verbose is None:
             verbose = 0
         if verbose > 0:
-            logger.info('estimator is transforming the train set')
+            logger.info(f'transforming the train set, memory free:{tb.memory_free() / GB:.3f}')
+
         X = self.fit_transform_data(X, y, verbose=verbose)
 
         eval_set = kwargs.pop('eval_set', None)
@@ -387,7 +396,6 @@ class HyperGBMEstimator(Estimator):
             if sampler is None:
                 if verbose > 0:
                     logger.info('setting sample weight')
-                tb = get_tool_box(y)
                 sample_weight = tb.compute_sample_weight(y)
                 kwargs['sample_weight'] = sample_weight
             else:
@@ -402,6 +410,7 @@ class HyperGBMEstimator(Estimator):
         self.gbm_model.group_id = f'{self.gbm_model.__class__.__name__}'
         self._prepare_callbacks(fit_kwargs, self.gbm_model, self.discriminator, skip_if_file)
 
+        tb.gc()
         self.gbm_model.fit(X, y, **fit_kwargs)
 
         if self.classes_ is None and hasattr(self.gbm_model, 'classes_'):
