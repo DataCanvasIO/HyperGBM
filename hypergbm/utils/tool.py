@@ -179,7 +179,7 @@ def main(argv=None):
                         help='alias of "--data-adaption false"')
         fg.add_argument('--data-adaption-memory-limit', type=float, default=0.05,
                         help='proportion of the system free memory, default %(default)s')
-        fg.add_argument('--data-adaption-min-cols', type=float, default=0.1,
+        fg.add_argument('--data-adaption-min-cols', type=float, default=0.3,
                         help='proportion of the original dataframe column number, default %(default)s')
 
         fg = a.add_argument_group('Feature generation')

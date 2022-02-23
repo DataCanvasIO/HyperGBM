@@ -50,7 +50,7 @@ HyperGBM *make_experiment* 所创建的是 Hypernets 的 *CompeteExeriment* 实�
 
 * data_adaption：(default True)，是否开启数据适配
 * data_adaption_memory_limit：(default 0.05)，将输入数据缩减到系统可用内存的多大比例
-* data_adaption_min_cols：(default 0.1)，如果需要缩减数据的话，至少保留多少列
+* data_adaption_min_cols：(default 0.3)，如果需要缩减数据的话，至少保留多少列
 * data_adaption_target：(default None)，此选项仅当输入数据是pandas DataFrame时生效，将此选项设置为'cuml'或'cuda'则会利用主机的CPU和MEM对数据进行缩减，然后转换为cudf.DataFrame，使得后续实验步骤在GPU中运行
 
 数据清洗

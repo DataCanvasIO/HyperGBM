@@ -49,7 +49,7 @@ This step supports Pandas/Cuml data types only, relevant parameters:
 
 * data_adaption：(default True). Whether to enable data adaption.
 * data_adaption_memory_limit：(default 0.05). If float, should be between 0.0 and 1.0 and represent the proportion of the system free memory. If int, represents the absolute byte number of memory.
-* data_adaption_min_cols：(default 0.1). If float, should be between 0.0 and 1.0 and represent the proportion of the original dataframe column number. If int, represents the absolute column number.
+* data_adaption_min_cols：(default 0.3). If float, should be between 0.0 and 1.0 and represent the proportion of the original dataframe column number. If int, represents the absolute column number.
 * data_adaption_target：(default None)，Where to run the next steps. 'cuml' or 'cuda', adapt training data into cuml datatypes and run next steps on nvidia GPU Devices. None, not change the training data types.
 
 Data cleaning
