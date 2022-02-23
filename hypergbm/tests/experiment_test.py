@@ -193,6 +193,7 @@ class Test_Experiment():
                                        train_test_split_strategy=train_test_split_strategy,
                                        callbacks=[log_callback],
                                        scorer=get_scorer(scoring),
+                                       data_adaption=False,
                                        collinearity_detection=collinearity_detection,
                                        drift_detection=drift_detection,
                                        cv=cv,
