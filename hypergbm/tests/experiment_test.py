@@ -120,7 +120,7 @@ class Test_Experiment():
     def run_multiclass(self, train_test_split_strategy=None, cv=False, feature_reselection=False, pseudo_labeling=False,
                        collinearity_detection=False, drift_detection=True, max_trials=3, cross_validator=None):
         df = dsutils.load_glass_uci()
-        df = pd.concat([df] * 2).sample(frac=1.0).reset_index(drop=True)
+        df = pd.concat([df] * 10).sample(frac=1.0).reset_index(drop=True)
         df.columns = [f'x_{c}' for c in df.columns.to_list()]
         df.pop('x_0')
         y = df.pop('x_10')
