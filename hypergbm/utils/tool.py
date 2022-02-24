@@ -488,6 +488,11 @@ def train(args):
     eval_data = tb.load_data(args.eval_data) if args.eval_data is not None else None
     test_data = tb.load_data(args.test_data) if args.test_data is not None else None
 
+    if kwargs.get('id') is None:
+        kwargs['id'] = 'hypergbm-' + tb.data_hasher()(args.__dict__)
+        if args.verbose:
+            print(f'experiment id: {kwargs["id"]}')
+
     experiment = make_experiment(train_data, eval_data=eval_data, test_data=test_data, **kwargs)
 
     if experiment.callbacks is None:
