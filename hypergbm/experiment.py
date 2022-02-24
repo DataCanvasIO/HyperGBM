@@ -18,7 +18,6 @@ from hypernets.experiment import default_search_callbacks as default_search_call
 from hypernets.tabular import get_tool_box
 from hypernets.utils import DocLens, isnotebook, logging
 
-
 logger = logging.get_logger(__name__)
 
 
@@ -143,6 +142,16 @@ def make_experiment(train_data,
 
     if (searcher is None or isinstance(searcher, str)) and search_space is None:
         search_space = default_search_space()
+        if isinstance(train_data, pd.DataFrame) and search_space.enable_catboost:
+            tb = get_tool_box(pd.DataFrame)
+            mem_usage = tb.memory_usage(train_data, test_data, eval_data)
+            mem_free = tb.memory_free()
+            if mem_usage / (mem_free + mem_usage) > 0.03:
+                search_space = copy.deepcopy(search_space)
+                catboost_init_kwargs = search_space.options.get('catboost_init_kwargs', {})
+                catboost_init_kwargs['max_ctr_complexity'] = 1  # reduce training memory
+                search_space.options['catboost_init_kwargs'] = catboost_init_kwargs
+            logger.info(f'search space options: {search_space.options}')
 
     def is_notebook_widget_ready():
         try:
@@ -155,7 +164,7 @@ def make_experiment(train_data,
         try:
             import experiment_visualization
             return True
-        except :
+        except:
             return False
 
     def default_experiment_callbacks():
@@ -246,7 +255,7 @@ _webui_doc = """ : bool (default False),
     Whether to start the experiment visualization web server
 """
 
-_webui_options_doc= """ : dict, optional, (default None),
+_webui_options_doc = """ : dict, optional, (default None),
     Dictionary of parameters to initialize the `LogEventExperimentCallback` instance.
     If None, will be initialized the instance with default values.
 """
