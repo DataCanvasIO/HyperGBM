@@ -253,9 +253,9 @@ class HyperGBMEstimator(Estimator):
             else:
                 iterators = tb.kfold(n_splits=num_folds, shuffle=True, random_state=9527)
 
-        kwargs = self.fit_kwargs
-        if kwargs.get('verbose') is None:
-            kwargs['verbose'] = verbose
+        # kwargs = self.fit_kwargs.copy()
+        # if kwargs.get('verbose') is None:
+        #     kwargs['verbose'] = verbose
 
         if metrics is None:
             metrics = [self.reward_metric] if self.reward_metric is not None else ['accuracy']
@@ -268,51 +268,73 @@ class HyperGBMEstimator(Estimator):
             pbar.set_description('cross_validation')
         sel = tb.select_1d
         for n_fold, (train_idx, valid_idx) in enumerate(iterators.split(X, y)):
+            if verbose > 0:
+                logger.info(f'fold {n_fold} started, memory free:{tb.memory_free() / GB:.3f}')
             x_train_fold, y_train_fold = sel(X, train_idx), sel(y, train_idx)
             x_val_fold, y_val_fold = sel(X, valid_idx), sel(y, valid_idx)
 
-            kwargs['eval_set'] = [(x_val_fold, y_val_fold)]
-            if self.reward_metric is not None and 'eval_reward_metric' not in kwargs.keys():
-                kwargs['eval_reward_metric'] = self.reward_metric
+            fit_kwargs = self.fit_kwargs.copy()
+            fit_kwargs['eval_set'] = [(x_val_fold, y_val_fold)]
+            if self.reward_metric is not None and 'eval_reward_metric' not in fit_kwargs.keys():
+                fit_kwargs['eval_reward_metric'] = self.reward_metric
 
             sample_weight = None
             if self.task != const.TASK_REGRESSION and self.class_balancing is not None:
                 sampler = get_sampler(self.class_balancing)
                 if sampler is None:
+                    if verbose > 0:
+                        logger.info(f'fold {n_fold} compute_sample_weight')
                     sample_weight = tb.compute_sample_weight(y_train_fold)
                 else:
+                    if verbose > 0:
+                        logger.info(f'fold {n_fold} fit_resample')
                     x_train_fold, y_train_fold = sampler.fit_resample(x_train_fold, y_train_fold)
-            kwargs['sample_weight'] = sample_weight
+            fit_kwargs['sample_weight'] = sample_weight
 
             fold_est = copy.deepcopy(self.gbm_model)
             fold_est.group_id = f'{fold_est.__class__.__name__}_cv_{n_fold}'
-            fit_kwargs = {**kwargs, 'verbose': 0}
+
+            fit_kwargs['verbose'] = 0
             self._prepare_callbacks(fit_kwargs, fold_est, self.discriminator, skip_if_file)
 
             fold_start_at = time.time()
             tb.gc()
+            if verbose > 0:
+                logger.info(f'fold {n_fold} fitting estimator')
             fold_est.fit(x_train_fold, y_train_fold, **fit_kwargs)
-            if verbose:
-                logger.info(f'fit fold {n_fold} with {time.time() - fold_start_at} seconds')
             # print(fold_est.__class__)
             # print(fold_est.evals_result_)
             # print(f'fold {n_fold}, est:{fold_est.__class__},  best_n_estimators:{fold_est.best_n_estimators}')
             if self.classes_ is None and hasattr(fold_est, 'classes_'):
                 self.classes_ = np.array(tb.to_local(fold_est.classes_)[0])
+
+            if verbose > 0:
+                logger.info(f'fold {n_fold} predict x_val_fold')
             if self.task == const.TASK_REGRESSION:
                 proba = fold_est.predict(x_val_fold)
             else:
                 proba = fold_est.predict_proba(x_val_fold)
 
+            if verbose > 0:
+                logger.info(f'fold {n_fold} get scores')
             fold_scores = self.get_scores(y_val_fold, proba, metrics)
             oof_scores.append(fold_scores)
             oof_.append((valid_idx, proba))
             self.cv_gbm_models_.append(fold_est)
 
+            del fit_kwargs, sample_weight
+            del x_train_fold, y_train_fold, x_val_fold, y_val_fold, proba
+            tb.gc()
+
+            if verbose > 0:
+                logger.info(f'fold {n_fold} done with {time.time() - fold_start_at} seconds')
             if pbar is not None:
                 pbar.update(1)
 
         logger.info(f'oof_scores:{oof_scores}')
+
+        if verbose > 0:
+            logger.info(f'get total scores')
         oof_ = tb.merge_oof(oof_)
         scores = self.get_scores(y, oof_, metrics)
         if verbose > 0:
