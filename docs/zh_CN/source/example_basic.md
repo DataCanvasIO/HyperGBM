@@ -289,7 +289,7 @@ final result:{'auc': 0.8913467492260062, 'accuracy': 0.8910699474702792}
 
 这时候您可以打开浏览器访问`http://localhost:8888` 查看实验运行情况：
 
-![](images/web-experiment-visualization.png)
+![](images/experiment-web-visualization.png)
 
 以将开启训练可视化，并把端口设置为`8888`，持久化目录设置为`./events`，实验结束后退出web进程设置为`False` 的代码示例如下：
 ```python
