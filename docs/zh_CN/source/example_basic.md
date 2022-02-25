@@ -251,7 +251,7 @@ Pipeline(steps=[('data_clean',
 ```
 
 
-### 实验Web可视化
+### 实验可视化
 
 如果希望在训练过程中看到实验可视化信息，可通过`webui`打开实验可视化服务，可以是`True`或`False`。
 还可以通过`webui_options`参数设置web服务的端口、实验可视化数据持久化目录、是否退出web进程当训练完毕后。
@@ -287,7 +287,7 @@ server is running at: 0.0.0.0:8888
 final result:{'auc': 0.8913467492260062, 'accuracy': 0.8910699474702792}
 ```
 
-这时候您可以打开浏览器访问`http://localhost:888` 查看实验运行情况：
+这时候您可以打开浏览器访问`http://localhost:8888` 查看实验运行情况：
 
 ![web-experiment-visualization](images/web-experiment-visualization.png)
 
