@@ -39,7 +39,8 @@ experiment = make_experiment(df_train, target='y')
 experiment
 ```
 
-<img width="80%" height="80%" src="images/hypergbm_experiment_config.png"/>
+![](images/hypergbm_experiment_config.png)
+
 
 3. 可视化实验数据集信息
 
@@ -47,13 +48,13 @@ experiment
 experiment.plot_dataset()
 ```
 
-<img width="80%" height="80%" src="images/hypergbm_experiment_dataset.png"/>
+![](images/hypergbm_experiment_dataset.png)
 
 4. 可视化实验运行信息
 ```python
 experiment.run(max_trials=20)
 ```
 
-<img width="80%" height="80%" src="images/hypergbm_experiment_process.png"/>
+![](images/hypergbm_experiment_process.png)
 
 这个Notebook的例子在[72.hypegbm_experiment_notebook_visualization.ipynb](../../../hypergbm/examples/72.hypegbm_experiment_notebook_visualization.ipynb)
