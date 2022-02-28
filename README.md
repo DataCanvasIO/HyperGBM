@@ -20,13 +20,6 @@ HyperGBM, as indicated in the name, involves several gradient boosting tree mode
 Hypergbm also supports full pipeline GPU acceleration, including all data processing and model training steps. In our experiments, we got a 50x performance improvement!  More importantly, the model trained on GPU could be deployed to the environment without GPU hardware and software (CUDA and cuML), which greatly reduces the cost of model deployment.
 
 
-## Tutorial
-* [Quick Start](https://hypergbm.readthedocs.io/en/latest/quick_start.html)
-* [Examples](https://hypergbm.readthedocs.io/en/latest/example.html)
-* [CompeteExperiment](https://hypergbm.readthedocs.io/en/latest/compete_experiment.html)
-* [HyperGBM](https://hypergbm.readthedocs.io/en/latest/hypergbm.html)
-* [Searchers](https://hypergbm.readthedocs.io/en/latest/searchers.html)
-
 ## Installation
 
 ### Conda
