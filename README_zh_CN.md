@@ -127,14 +127,16 @@ hypergbm train --train-file=blood.csv --target=Class --model-file=model.pkl
 * [HyperGBM轻松实现Pseudo-labeling半监督学习](https://zhuanlan.zhihu.com/p/355419632)
 
 ## Hypernets 相关项目
-
+ 
+* [Hypernets](https://github.com/DataCanvasIO/Hypernets): 一个通用的自动机器学习框架.
 * [HyperGBM](https://github.com/DataCanvasIO/HyperGBM): 一个集成了多个GBM模型的全Pipeline AutoML工具.
 * [HyperDT/DeepTables](https://github.com/DataCanvasIO/DeepTables): 一个面向结构化数据的AutoDL工具.
-* [HyperKeras](https://github.com/DataCanvasIO/HyperKeras): 一款为Tensorflow和Keras提供神经架构搜索和超参数优化的AutoDL工具.
+* [HyperTS](https://github.com/DataCanvasIO/HyperTS): 一个面向时间序列数据的AutoML和AutoDL工具.
+* [HyperKeras](https://github.com/DataCanvasIO/HyperKeras): 一个为Tensorflow和Keras提供神经架构搜索和超参数优化的AutoDL工具.
+* [HyperBoard](https://github.com/DataCanvasIO/HyperBoard): 一个为Hypernets提供可视化界面的工具.
 * [Cooka](https://github.com/DataCanvasIO/Cooka): 一个交互式的轻量级自动机器学习系统.
-* [Hypernets](https://github.com/DataCanvasIO/Hypernets): 一个通用的自动机器学习框架.
 
-![DataCanvas AutoML Toolkit](docs/static/images/datacanvas_automl_toolkit.png)
+![DataCanvas AutoML Toolkit](docs/static/images/DAT2.5.png)
 
 
 ## 参考文档
