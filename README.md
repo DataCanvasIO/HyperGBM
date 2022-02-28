@@ -3,7 +3,7 @@
 [![Downloads](https://pepy.tech/badge/hypergbm)](https://pepy.tech/project/hypergbm)
 [![PyPI Version](https://img.shields.io/pypi/v/hypergbm.svg)](https://pypi.org/project/hypergbm)
 
-[Doc](https://hypergbm.readthedocs.io/en/latest/) | [中文](https://hypergbm.readthedocs.io/zh_CN/latest/)
+[中文](README_zh_CN.md)
 
 ## We Are Hiring！
 Dear folks, we are offering challenging opportunities located in Beijing for both professionals and students who are keen on AutoML/NAS. Come be a part of DataCanvas! Please send your CV to yangjian@zetyun.com. (Application deadline: TBD.)  
@@ -17,15 +17,6 @@ HyperGBM optimizes the end-to-end ML processing stages within one search space, 
 
 HyperGBM, as indicated in the name, involves several gradient boosting tree models (GBM), namely, XGBoost, LightGBM and Catboost. What's more, it could access the [Hypernets](https://github.com/DataCanvasIO/Hypernets), a general automated machine learning framework, and introduce its advanced characteristics in data cleaning, feature engineering and model ensemble. Additionally, the search space representation and search algorithm inside Hyper GBM are also supported by Hypernets.
 
-Hypergbm also supports full pipeline GPU acceleration, including all data processing and model training steps. In our experiments, we got a 50x performance improvement!  More importantly, the model trained on GPU could be deployed to the environment without GPU hardware and software (CUDA and cuML), which greatly reduces the cost of model deployment.
-
-
-## Tutorial
-* [Quick Start](https://hypergbm.readthedocs.io/en/latest/quick_start.html)
-* [Examples](https://hypergbm.readthedocs.io/en/latest/example.html)
-* [CompeteExperiment](https://hypergbm.readthedocs.io/en/latest/compete_experiment.html)
-* [HyperGBM](https://hypergbm.readthedocs.io/en/latest/hypergbm.html)
-* [Searchers](https://hypergbm.readthedocs.io/en/latest/searchers.html)
 
 ## Installation
 
@@ -114,14 +105,22 @@ hypergbm train --train-file=blood.csv --target=Class --model-file=model.pkl
 ```
 For more details, please read [Quick Start](https://hypergbm.readthedocs.io/en/latest/quick_start_cmdline.html).
 
+## GPU Acceleration
+
+Hypergbm supports full pipeline GPU acceleration, including all steps from data processing to model training. In our experiments, we got a 50x performance improvement!  Most importantly, the model trained on GPU could be deployed to the environment without GPU hardware and software (e.g.,CUDA and cuML), which greatly reduces the cost of model deployment.
+
+![Gpu Acceleration](docs/static/images/gpu_speedup.png)
+
 ## HyperGBM related projects
 * [Hypernets](https://github.com/DataCanvasIO/Hypernets): A general automated machine learning (AutoML) framework.
 * [HyperGBM](https://github.com/DataCanvasIO/HyperGBM): A full pipeline AutoML tool integrated various GBM models.
 * [HyperDT/DeepTables](https://github.com/DataCanvasIO/DeepTables): An AutoDL tool for tabular data.
+* [HyperTS](https://github.com/DataCanvasIO/HyperTS): A full pipeline AutoML&AutoDL tool for time series datasets.
 * [HyperKeras](https://github.com/DataCanvasIO/HyperKeras): An AutoDL tool for Neural Architecture Search and Hyperparameter Optimization on Tensorflow and Keras.
+* [HyperBoard](https://github.com/DataCanvasIO/HyperBoard): A visualization tool for Hypernets.
 * [Cooka](https://github.com/DataCanvasIO/Cooka): Lightweight interactive AutoML system.
 
-![DataCanvas AutoML Toolkit](docs/static/images/datacanvas_automl_toolkit.png)
+![DataCanvas AutoML Toolkit](docs/static/images/DAT2.5.png)
 
 ## Documents
 

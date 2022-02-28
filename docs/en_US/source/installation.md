@@ -1,7 +1,7 @@
 ## Installation Guide
-We recommend installing HyperGBM with `conda` or `pip`. Installing and using HyperGBM in a Docker container are also possible if you have a Docker environment.
+We recommend installing HyperGBM with `conda` or `pip`. It's also possible to install and use HyperGBM in a Docker container if you have a Docker environment.
 
-Python version 3.6 or above is necessary to install HyperGBM.
+As for software, Python version 3.6 or above is necessary to install HyperGBM.
 
 ### Using Conda
 
@@ -70,12 +70,12 @@ Then one can visit `http://<your-ip>:8888` in the browser and type in the defaul
 
 * cuML and cuDF
 
-HyperGBM accelerate data processing with NVIDIA RAPIDS cuML and cuDF, please install them before running HyperGBM on GPU. See [https://rapids.ai/start.html#get-rapids](https://rapids.ai/start.html#get-rapids) for more details.
+HyperGBM accelerates data processing with NVIDIA RAPIDS cuML and cuDF. Please install them before running HyperGBM on GPU. For detailed instructions, check the link [Get RAPIDS](https://rapids.ai/start.html#get-rapids).
 
 * LightGBM with GPU support
 
-Default installation of LightGBM does not support GPU training, please build and install LightGBM with GPU support before installing HyperGBM.  See [LightGBM GPU Tutorial](https://lightgbm.readthedocs.io/en/latest/GPU-Tutorial.html) for more details.
+Default installation of LightGBM does not support GPU training. Please ensure LightGBM with GPU support before installing HyperGBM. For detailed instructions, check the link [LightGBM GPU Tutorial](https://lightgbm.readthedocs.io/en/latest/GPU-Tutorial.html).
 
 * XGBoost and CatBoost with GPU support
 
-The default installation of XGBoost and CatBoost can train model on GPU, so you don't need to do any action for them to run HyperGBM on GPU. If you build them form source code yourself, please enable GPU support.
+Default installations of XGBoost and CatBoost have supported GPU training. However, if you build them from source code, please enable GPU support.

@@ -57,9 +57,7 @@ print(estimator)
 
 ### Set the Number of Search Trials
 
-One can set the max search trial number by adjusting `max_trials`.
-
-The following code sets the max searching time as 100:
+One can set the max search trial number by adjusting `max_trials`. The following code sets the max searching time as 100:
 
 ```python
 from hypergbm import make_experiment
@@ -74,7 +72,7 @@ print(estimator)
 
 ### Use Cross Validation
 
-Users can apply cross validation in the experiment by manually setting parameter `cv`. Setting `cv=False' will lead the experiment to avoid using cross validation and apply `train_test_split` instead. On the other hand, when `cv=True`, the experiment will use cross validation where the number of folds can be adjusted through the parameter `num_folds`, whose default value is 3.
+Users can apply cross validation in the experiment by manually setting parameter `cv`. Setting `cv=False` means the experiment will not apply cross validation but applying `train_test_split`. On the other hand, when `cv=True`, the experiment will apply cross validation. And the number of folds can be adjusted through the parameter `num_folds`, whose default value is 3.
 
 
 Example code when `cv=True`:
@@ -207,7 +205,7 @@ experiment = make_experiment(train_data, ensemble_size=10, ...)
 
 
 
-### Change the log level
+### Set Log Levels
 
 The progress messages during training can be printed by setting `log_level` (`str` or `int`). Please refer the `logging` package of python for further details. Besides, more comprehensive messages will be printed when setting `verbose` as `1`.
 
@@ -249,4 +247,60 @@ Pipeline(steps=[('data_clean',
                 ('estimator',
                  GreedyEnsemble(...)
 ```
+
+
+
+### Experiment Visualization
+
+HyperGBM supports user interface based on webpage by setting the argument `webui= True`, where you see all the processing and parameters information displayed in a dashboard. 
+
+Note: This function requires to install hypergbm with the command:
+```python
+pip install hypergbm[board]
+```
+
+The example codes of enabling experiment visualization based on website is shown below:
+```python
+from sklearn.model_selection import train_test_split
+
+from hypergbm import make_experiment
+from hypernets.tabular.datasets import dsutils
+
+df = dsutils.load_bank()
+df_train, df_test = train_test_split(df, test_size=0.8, random_state=42)
+
+experiment = make_experiment(df_train, target='y', webui=True)
+estimator = experiment.run(max_trials=10)
+
+print(estimator)
+```
+
+The output is:
+```console
+02-17 19:08:48 I hypernets.t.estimator_detector.py 85 - EstimatorDetector error: GPU Tree Learner was not enabled in this build.
+Please recompile with CMake option -DUSE_GPU=1
+...
+server is running at: 0.0.0.0:8888 
+...
+
+02-17 19:08:55 I hypernets.t.metrics.py 153 - calc_score ['auc', 'accuracy'], task=binary, pos_label=yes, classes=['no' 'yes'], average=None
+final result:{'auc': 0.8913467492260062, 'accuracy': 0.8910699474702792}
+```
+
+Then you could see the experiment progress dashboard by accessing the web server `http://localhost:8888`. One screenshot is displayed below:
+![](images/experiment-web-visualization.png)
+
+
+It also support other options to configure the `webui`: defining the file directory by `event_file_dir`, setting the server port by `server_port`, and defining if exiting the web server after finishing the current experiment by `exit_web_server_on_finish`. See example:
+```python
+...
+webui_options = {
+    'event_file_dir': "./events",  # persist experiment running events log to './events'
+    'server_port': 8888, # http server port
+    'exit_web_server_on_finish': False  # exit http server after experiment finished
+}
+experiment = make_experiment(df_train, target='y', webui=True, webui_options=webui_options)
+...
+```
+
 
