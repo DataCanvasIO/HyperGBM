@@ -3,7 +3,7 @@
 [![Downloads](https://pepy.tech/badge/hypergbm)](https://pepy.tech/project/hypergbm)
 [![PyPI Version](https://img.shields.io/pypi/v/hypergbm.svg)](https://pypi.org/project/hypergbm)
 
-[Doc](https://hypergbm.readthedocs.io/en/latest/) | [中文](https://hypergbm.readthedocs.io/zh_CN/latest/)
+[中文](README_zh_CN.md)
 
 ## We Are Hiring！
 Dear folks, we are offering challenging opportunities located in Beijing for both professionals and students who are keen on AutoML/NAS. Come be a part of DataCanvas! Please send your CV to yangjian@zetyun.com. (Application deadline: TBD.)  
