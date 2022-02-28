@@ -107,7 +107,7 @@ For more details, please read [Quick Start](https://hypergbm.readthedocs.io/en/l
 
 ## GPU Acceleration
 
-Hypergbm supports full pipeline GPU acceleration, including all data processing and model training steps. In our experiments, we got a 50x performance improvement!  More importantly, the model trained on GPU could be deployed to the environment without GPU hardware and software (CUDA and cuML), which greatly reduces the cost of model deployment.
+Hypergbm supports full pipeline GPU acceleration, including all steps from data processing to model training. In our experiments, we got a 50x performance improvement!  Most importantly, the model trained on GPU could be deployed to the environment without GPU hardware and software (e.g.,CUDA and cuML), which greatly reduces the cost of model deployment.
 
 ![Gpu Acceleration](docs/static/images/gpu_speedup.png)
 
@@ -115,10 +115,12 @@ Hypergbm supports full pipeline GPU acceleration, including all data processing 
 * [Hypernets](https://github.com/DataCanvasIO/Hypernets): A general automated machine learning (AutoML) framework.
 * [HyperGBM](https://github.com/DataCanvasIO/HyperGBM): A full pipeline AutoML tool integrated various GBM models.
 * [HyperDT/DeepTables](https://github.com/DataCanvasIO/DeepTables): An AutoDL tool for tabular data.
+* [HyperTS](https://github.com/DataCanvasIO/HyperTS): A full pipeline AutoML&AutoDL tool for time series datasets.
 * [HyperKeras](https://github.com/DataCanvasIO/HyperKeras): An AutoDL tool for Neural Architecture Search and Hyperparameter Optimization on Tensorflow and Keras.
+* [HyperBoard](https://github.com/DataCanvasIO/HyperBoard): A visualization tool for Hypernets.
 * [Cooka](https://github.com/DataCanvasIO/Cooka): Lightweight interactive AutoML system.
 
-![DataCanvas AutoML Toolkit](docs/static/images/datacanvas_automl_toolkit.png)
+![DataCanvas AutoML Toolkit](docs/static/images/DAT2.5.png)
 
 ## Documents
 
