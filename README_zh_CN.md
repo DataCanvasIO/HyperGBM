@@ -13,8 +13,6 @@ HyperGBM是一款全Pipeline自动机器学习工具，可以端到端的完整�
 
 正如名字中的含义，HyperGBM中的机器学习算法使用了目前最流行的几种GBM算法（更准确的说是梯度提升树模型），目前包括XGBoost、LightGBM和Catboos。HyperGBM中的优化算法和搜索空间表示技术由 [Hypernets](https://github.com/DataCanvasIO/Hypernets) 项目提供支撑。同时HyeprGBM复用了Hypernets提供的许多高级建模特性，如数据漂移检测、特征生成、特征筛选、伪标签、模型融合等。
 
-值得强调的是，HyperGBM还支持全Pipeline的GPU加速，包括所有的数据处理和模型训练环节，在我们的实验环境中可得到最多超过50倍的性能提升 ！更重要的是，使用GPU训练的模型可以部署到没有GPU硬件和软件（CUDA）的环境中，大大降低模型上线的成本。
-
 ## 安装
 
 ### Conda
@@ -113,6 +111,12 @@ hypergbm train --train-file=blood.csv --target=Class --model-file=model.pkl
 ```
 
 更多使用示例请参考 [Quick Start](https://hypergbm.readthedocs.io/zh_CN/latest/quick_start_cmdline.html).
+
+## GPU 加速
+
+值得强调的是，HyperGBM还支持全Pipeline的GPU加速，包括所有的数据处理和模型训练环节，在我们的实验环境中可得到最多超过50倍的性能提升 ！更重要的是，使用GPU训练的模型可以部署到没有GPU硬件和软件（CUDA）的环境中，大大降低模型上线的成本。
+
+![Gpu Acceleration](docs/static/images/gpu_speedup.png)
 
 ## 相关文章
 
