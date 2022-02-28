@@ -26,7 +26,7 @@ cd /tmp/hyperctl-example
 python -c "from hypernets.tabular.datasets.dsutils import load_heart_disease_uci;load_heart_disease_uci().to_csv('heart-disease-uci.csv', index=False)"
 ```
 
-创建hyperclt任务配置文件 `batch.json` 并写入以下配置:
+创建hyperctl任务配置文件 `batch.json` 并写入以下配置:
 ```json
 {
     "jobs": [
