@@ -2,8 +2,9 @@ Quick Start
 ============
 
 
-We will introduce main features of HyperGBM in this section and assuming that you have knowledge of machine learning such as loading data and training a model. If you have not completed installation, please refer to Installation<installation.md> to install HyperGBM.
-You can use HyperGBM with Python and command line tools.
+This section will introduce the main features of HyperGBM with assumption that users already have knowledge of machine learning such as loading data and training a model. If you have not completed HyperGBM installation, please refer to :doc:`Installation<installation.md>`. 
+
+Below are two examples of using GBM with python and command line tool. 
 
 .. toctree::
    :maxdepth: 2
