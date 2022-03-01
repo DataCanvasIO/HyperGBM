@@ -9,7 +9,7 @@ We add the following new features to this version:
   * Feature selection
   * Data drift detection
   * Feature selection(2nd stage)
-  * Pseudo labeling(2dn stage)
+  * Pseudo labeling(2nd stage)
   * Optimization
     * Data preprocessing
     * Model fitting  
@@ -17,7 +17,7 @@ We add the following new features to this version:
   * Metrics
 * Model training
   * Add TargetEncoder for categories 
-  * Set estimator eval_metric from experiment reward_metric  
+  * Set estimator eval_metric based on experiment reward_metric  
 * Advanced Features
   * Data adaption in experiment
 * Experiment Visualization
