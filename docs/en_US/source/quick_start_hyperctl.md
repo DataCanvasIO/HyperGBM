@@ -1,11 +1,11 @@
-# HyperGBM： Job management with Hyperctl
+# HyperGBM：Job management with Hyperctl
 
 [Hyperctl](https://hypernets.readthedocs.io/en/latest/hyperctl.html) is a general multi-job management tool, which includes but not limit to training, testing and comparison. This section will introduce how to use hyperctl to manage the HyperGBM training tasks. 
 
 Firstly, use the python script `hypergbm/job.py` provided by HyperGBM to read all parameters of the job of hyperctl. Then configure these parameters and transfer them to the function `hypergbm.make_experiment` to create an experiment. Lastly, the experiment is executed.
 
 
-## Example: use Hyperctl to train a HyperGBM classification model 
+## Example: Use Hyperctl to train a HyperGBM classification model 
 
 - Create an directory and all operation will be executed within this directory
 ```shell
