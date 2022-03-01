@@ -27,3 +27,4 @@ We add the following new features to this version:
 * Multijob management
   * Series and parallel jobs scheduling
   * Local and remote jobs execution
+* Export experiment report
