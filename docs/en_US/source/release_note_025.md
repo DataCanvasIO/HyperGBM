@@ -20,7 +20,10 @@ We add the following new features to this version:
   * Set estimator eval_metric from experiment reward_metric  
 * Advanced Features
   * Data adaption in experiment
-* Visualization
-  * <tbd>  
-* Scheduling tool
-  * <tbd>
+* Experiment Visualization
+  * Experiment configurations
+  * Dataset information
+  * Processing information
+* Multijob management
+  * Series and parallel jobs scheduling
+  * Local and remote jobs execution
