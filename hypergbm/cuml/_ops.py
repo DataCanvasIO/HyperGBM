@@ -3,6 +3,7 @@
 
 """
 
+import cudf
 import numpy as np
 
 from hypernets.core import ModuleChoice, Choice
@@ -11,6 +12,8 @@ from hypernets.tabular.cuml_ex import CumlToolBox
 
 _cs = CumlToolBox.column_selector
 _tfs = CumlToolBox.transformers
+
+_support_median = hasattr(cudf.DataFrame(), 'median')
 
 
 class CumlPipelineOutput(PipelineOutput):
@@ -78,7 +81,10 @@ def numeric_pipeline_simple(impute_strategy='mean', seq_no=0):
 
 def numeric_pipeline_complex(impute_strategy=None, seq_no=0):
     if impute_strategy is None:
-        impute_strategy = Choice(['mean', 'median', 'constant', ])  # 'most_frequent'
+        if _support_median:
+            impute_strategy = Choice(['mean', 'median', 'constant', ])  # 'most_frequent'
+        else:
+            impute_strategy = Choice(['mean', 'constant', ])  # 'median',  'most_frequent'
     elif isinstance(impute_strategy, list):
         impute_strategy = Choice(impute_strategy)
 
