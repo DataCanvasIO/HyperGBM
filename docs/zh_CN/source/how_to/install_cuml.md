@@ -13,7 +13,7 @@ cuML是英伟达 [RAPIDS](https://rapids.ai/) 框架中的一部分 ，使用GPU
     通过conda命令安装 cuML和 HyperGBM，示例:
 
     ```bash
-    conda create -n hypergbm_with_cuml -c defaults -c rapidsai -c nvidia -c conda-forge python=3.8 cudatoolkit=11.2 cudf=21.12 cuml=21.12  hypergbm 
+    conda create -n hypergbm_with_cuml -c rapidsai -c nvidia -c conda-forge python=3.8 cudatoolkit=11.2 cudf=21.12 cuml=21.12  hypergbm 
     ```
     
     注意，请将示例命令中的软件版本替换为适您的选项。
