@@ -16,15 +16,15 @@ logger = logging.get_logger(__name__)
 
 def _notebook_widget_and_web_app_ready():
     try:
-        import experiment_visualization
-        import experiment_notebook_widget
+        import hyperboard
+        import hyperboard_widget
         return True
     except:
         return False
 
 
 deps_ready = pytest.mark.skipif(not _notebook_widget_and_web_app_ready(),
-                                reason='experiment-visualization or experiment-notebook-widget not installed')
+                                reason='hyperboard or hyperboard-widget not installed')
 
 
 def _run_experiment(creator):

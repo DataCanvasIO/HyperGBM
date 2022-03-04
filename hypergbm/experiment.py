@@ -155,14 +155,14 @@ def make_experiment(train_data,
 
     def is_notebook_widget_ready():
         try:
-            import experiment_notebook_widget
+            import hyperboard_widget
             return True
         except:
             return False
 
     def is_webui_ready():
         try:
-            import experiment_visualization
+            import hyperboard
             return True
         except:
             return False
@@ -174,7 +174,7 @@ def make_experiment(train_data,
                 cbs = [create_notebook_experiment_callback()]
             else:
                 logger.info("you can install experiment notebook widget by command "
-                            "\"pip install experiment-notebook-widget\" for better user experience in jupyter notebook")
+                            "\"pip install hyperboard-widget\" for better user experience in jupyter notebook")
                 cbs = default_experiment_callbacks_()
         else:
             cbs = default_experiment_callbacks_()
@@ -204,7 +204,7 @@ def make_experiment(train_data,
             callbacks.append(create_web_vis_experiment_callback(**webui_options))
         else:
             logger.warning("No web visualization module detected, please install by command:"
-                           "\"pip install experiment-visualization\"")
+                           "\"pip install hyperboard\"")
 
     experiment = _make_experiment(hyper_model_cls, train_data,
                                   target=target,

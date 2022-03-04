@@ -1,13 +1,13 @@
 # HyperGBM: Experiment Visualization in Notebook
 
-This section demonstrates how to visualize a HyperGBM experiment in [Jupyter Notebook](https://jupyter.org/). With the [visualization tool](https://github.com/DataCanvasIO/HyperBoard/tree/main/experiment-notebook-widget), you could:  
+This section demonstrates how to visualize a HyperGBM experiment in [Jupyter Notebook](https://jupyter.org/). With the [visualization tool](https://github.com/DataCanvasIO/HyperBoard/tree/main/hyperboard-widget), you could:  
 1. check the experiment configurations
 2. check the dataset information
 3. check the processing information
 
 To use these features, an additional package needs to be installed:
 ```
-pip install experiment-notebook-widget
+pip install hyperboard-widget
 ```
 
 ## Example
