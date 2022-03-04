@@ -107,7 +107,7 @@ def _parse_trial_end_event(hyper_model, space, trial_no, reward, improved,
 class HyperGBMNotebookHyperModelCallback(ABSExpVisHyperModelCallback):
 
     def send_action(self, action_type, payload):
-        from experiment_notebook_widget.callbacks import NotebookExperimentCallback
+        from hyperboard_widget.callbacks import NotebookExperimentCallback
         self.assert_ready()
         NotebookExperimentCallback.send_action(self.exp_id, action_type, payload)
 
@@ -131,5 +131,5 @@ def create_notebook_hyper_model_callback():
 
 
 def create_web_vis_hyper_model_callback():
-    from experiment_visualization.callbacks import WebVisHyperModelCallback
+    from hyperboard.callbacks import WebVisHyperModelCallback
     return WebVisHyperModelCallback(_parse_trial_end_event)

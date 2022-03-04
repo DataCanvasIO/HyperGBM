@@ -1,7 +1,7 @@
 # 通过Hyperctl使用HyperGBM
 
 Hyperctl 是一个批量任务管理工具，可以使用它来运行HyperGBM的训练实验。
-HyperGBM提供了一个脚本`hypergbm/job.py`用来读取hyperctl中的任务参数并创建实验来运行。
+HyperGBM提供了脚本`hypergbm/job.py`和`hypergbm/gpu_job.py`(用来使用gpu训练)用来读取hyperctl中的任务参数并创建实验来运行。
 它把读取的参数送给方法`hypergbm.make_experiment`去构建实验并运行实验。
 
 值得注意的点： 
