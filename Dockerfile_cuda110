@@ -25,7 +25,6 @@ RUN echo building... \
     && rm -rf /tmp/*
 
 ARG PIP_OPTS="--disable-pip-version-check --no-cache-dir -i https://pypi.tuna.tsinghua.edu.cn/simple/"
-#SHELL ["/bin/bash", "-i", "-c"]
 
 RUN echo building... \
     && bash -i -c "pip install $PIP_OPTS hypernets-jupyter-widget experiment-visualization experiment-notebook-widget" \
@@ -37,8 +36,6 @@ RUN echo building... \
     && rm -rf /root/.cache \
     && rm -rf /tmp/*
 
-#    && sed -i 's/\\n/\n/g' entrypoint.sh
-
 EXPOSE 8888
 
 ENV NotebookToken="" \
@@ -47,7 +44,3 @@ ENV NotebookToken="" \
 CMD ["/entrypoint.sh"]
 
 # docker run --rm --name hypergbm -p 8830:8888 -e NotebookToken=your-token  datacanvas/hypergbm
-
-
-
-

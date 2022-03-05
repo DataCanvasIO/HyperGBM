@@ -49,7 +49,3 @@ ENV NotebookToken="" \
 CMD ["/entrypoint.sh"]
 
 # docker run --rm --name hypergbm -p 8830:8888 -e NotebookToken=your-token  datacanvas/hypergbm
-
-
-
-
