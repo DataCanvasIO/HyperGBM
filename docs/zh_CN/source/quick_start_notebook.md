@@ -1,14 +1,14 @@
 # 通过Notebook使用HyperGBM
 
-HyperGBM与[hyperboard](https://github.com/DataCanvasIO/HyperBoard/tree/main/hyperboard) 整合使您在notebook使用使用HyperGBM时可以：
+HyperGBM与[HyperBoard](https://github.com/DataCanvasIO/HyperBoard) 整合使您在notebook使用使用HyperGBM时可以：
 1. 查看实验配置信息
 2. 查看实验数据集信息
 3. 查看实验运行信息
 
-注意，这些特性依赖`hyperboard`并且是可选的，如果要使用请确认您已经安装过了notebook相关依赖，如果没有您可以通过以下命令补充安装：
+注意，这些特性依赖`HyperBoard`并且是可选的，如果要使用请确认您已经安装过了notebook相关依赖，如果没有您可以通过以下命令补充安装：
 
 ```
-pip install hyperboard-widget
+pip install hboard-widget
 ```
 
 ## 可视化HyperGBM的实验

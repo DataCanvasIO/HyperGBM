@@ -6,10 +6,10 @@ logger = hyn_logging.get_logger(__name__)
 
 
 def create_notebook_experiment_callback():
-    from hyperboard_widget.callbacks import NotebookExperimentCallback
+    from hboard_widget.callbacks import NotebookExperimentCallback
     return NotebookExperimentCallback(HyperGBMNotebookHyperModelCallback)
 
 
 def create_web_vis_experiment_callback(**kwargs):
-    from hyperboard.callbacks import WebVisExperimentCallback
+    from hboard.callbacks import WebVisExperimentCallback
     return WebVisExperimentCallback(**kwargs)
