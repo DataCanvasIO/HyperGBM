@@ -49,7 +49,7 @@ HyperGBM支持在Docker容器中运行，您可在Dockerfile中通过 `pip` 安�
 
 我们在Docker Hub中发布了一个参考镜像，可直接下载使用，该镜像中包括：
 
-* Python3.7
+* Python 3.8
 * HyperGBM及其依赖包
 * JupyterLab
 

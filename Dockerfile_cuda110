@@ -27,7 +27,7 @@ RUN echo building... \
 ARG PIP_OPTS="--disable-pip-version-check --no-cache-dir -i https://pypi.tuna.tsinghua.edu.cn/simple/"
 
 RUN echo building... \
-    && bash -i -c "pip install $PIP_OPTS hypernets-jupyter-widget experiment-visualization experiment-notebook-widget" \
+    && bash -i -c "pip install $PIP_OPTS hboard hboard-widget" \
     && mkdir -p /opt/datacanvas \
     && cp -r $CONDA_ROOT/envs/hypergbm/lib/python3.8/site-packages/hypergbm/examples /opt/datacanvas/ \
     && echo "#!/bin/bash\n\ncd /opt\n$CONDA_ROOT/envs/hypergbm/bin/jupyter lab --notebook-dir=/opt/datacanvas --ip=0.0.0.0 --port=\$NotebookPort --no-browser --allow-root --NotebookApp.token=\$NotebookToken" > /entrypoint.sh \

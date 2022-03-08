@@ -53,7 +53,7 @@ pip install hypergbm[all]
 
 It is possible to use HyperGBM in a Docker container. To do this, users can install HyperGBM with `pip` in the Dockerfile. We also publish a mirror image in Docker Hub which can be downloaded directly and includes the following components:
 
-* Python3.7
+* Python 3.8
 * HyperGBM and its dependent packages
 * JupyterLab
 
