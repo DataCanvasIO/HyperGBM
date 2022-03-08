@@ -57,4 +57,4 @@ experiment.run(max_trials=20)
 
 ![](images/hypergbm_experiment_process.png)
 
-这个Notebook的例子在[72.hypegbm_experiment_notebook_visualization.ipynb](../../../hypergbm/examples/72.hypegbm_experiment_notebook_visualization.ipynb)
+这个Notebook的例子在[72.hypegbm_experiment_notebook_visualization.ipynb](https://github.com/DataCanvasIO/HyperGBM/blob/main/hypergbm/examples/72.hypegbm_experiment_notebook_visualization.ipynb)

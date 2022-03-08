@@ -252,7 +252,7 @@ Pipeline(steps=[('data_clean',
 
 ### Experiment Visualization
 
-HyperGBM supports user interface based on webpage by setting the argument `webui= True`, where you see all the processing and parameters information displayed in a dashboard. 
+HyperGBM supports user interface based on webpage by setting the argument `webui=True`, where you see all the processing and parameters information displayed in a dashboard. 
 
 Note: This function requires to install hypergbm with the command:
 ```python

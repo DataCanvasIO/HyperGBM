@@ -48,6 +48,11 @@ pip install hypergbm
 pip install hypergbm[notebook]
 ```
 
+* To support experiment visualization base on web, install with command:
+```bash
+pip install hypergbm[board]
+```
+
 * To support dataset with simplified Chinese in feature generation,
   * Install `jieba` package before running HyperGBM. 
   * OR install with command:
