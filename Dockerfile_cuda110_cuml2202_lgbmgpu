@@ -1,0 +1,78 @@
+######## build ###########################################################################
+FROM nvidia/cuda:11.0.3-base-ubuntu18.04 as builder
+
+ARG VER_CUDA=11.0
+ARG VER_RAPIDS=22.02
+ARG CONDA_INSTALLER=Miniconda3-latest-Linux-x86_64.sh
+ARG CONDA_ROOT=/opt/miniconda3
+ARG PYENV_ROOT=/opt/pyenv
+
+#ARG PIP_OPTS="--disable-pip-version-check --no-cache-dir"
+ARG PIP_OPTS="--disable-pip-version-check --no-cache-dir -i https://pypi.tuna.tsinghua.edu.cn/simple/"
+
+RUN echo building... \
+    && cd /tmp/ \
+    && mv /etc/apt/sources.list.d /etc/apt/sources.list.d.bak \
+    && apt-get update \
+    && apt-get install -y wget libxml2 ocl-icd-libopencl1 clinfo \
+    && mkdir -p /etc/OpenCL/vendors \
+    && echo "libnvidia-opencl.so.1" > /etc/OpenCL/vendors/nvidia.icd \
+    && apt-get clean \
+    && wget -q https://repo.anaconda.com/miniconda/$CONDA_INSTALLER \
+    && sh $CONDA_INSTALLER -b -p $CONDA_ROOT \
+    && $CONDA_ROOT/bin/conda init \
+    && $CONDA_ROOT/bin/conda install conda-pack \
+    && $CONDA_ROOT/bin/conda create -p $PYENV_ROOT -c rapidsai -c nvidia -c conda-forge python=3.8 cudatoolkit=$VER_CUDA cudatoolkit-dev=$VER_CUDA cudf=$VER_RAPIDS cuml=$VER_RAPIDS pynvml xgboost catboost python-geohash boost  make cmake gcc gxx glib \
+    && $CONDA_ROOT/bin/conda run -p $PYENV_ROOT pip install $PIP_OPTS lightgbm --install-option=--gpu \
+    && $CONDA_ROOT/bin/conda run -p $PYENV_ROOT pip install $PIP_OPTS hypergbm[all] \
+    && echo "created env: $PYENV_ROOT"
+
+RUN echo packing... \
+    && $CONDA_ROOT/bin/conda pack -p $PYENV_ROOT -o $PYENV_ROOT.tar -d $PYENV_ROOT\
+    && mkdir /opt/foo \
+    && tar xf $PYENV_ROOT.tar -C /opt/foo \
+    && mkdir -p /opt/foo/pkgs \
+    && cp -r $PYENV_ROOT/pkgs/cuda-toolkit/targets/x86_64-linux /opt/foo/pkgs/cuda-toolkit \
+    && cd opt/foo/pkgs/cuda-toolkit \
+    && ln -s lib lib64 \
+    && echo done
+
+#    && echo conda activate hypergbm >> /root/.bashrc \
+#    && $CONDA_ROOT/bin/conda clean -a -y -q
+
+######## install ###########################################################################
+FROM nvidia/cuda:11.0.3-base-ubuntu18.04
+
+ARG PYENV_ROOT=/opt/pyenv
+ARG DC_ROOT=/opt/datacanvas
+
+COPY --from=builder /opt/foo $PYENV_ROOT
+#COPY --from=builder $PYENV_ROOT/pkgs $PYENV_ROOT/pkgs
+
+RUN echo installing... \
+    && mv /etc/apt/sources.list.d /etc/apt/sources.list.d.bak \
+    && apt-get update \
+    && apt-get install -y ocl-icd-libopencl1 clinfo \
+    && mkdir -p /etc/OpenCL/vendors \
+    && echo "libnvidia-opencl.so.1" > /etc/OpenCL/vendors/nvidia.icd \
+    && apt-get clean \
+    && echo source $PYENV_ROOT/bin/activate >> /root/.bashrc \
+    && mkdir -p /opt/datacanvas \
+    && cp -r $PYENV_ROOT/lib/python3.8/site-packages/hypergbm/examples $DC_ROOT/ \
+    && echo "#!/bin/bash\n"  > /entrypoint.sh \
+    && echo "source $PYENV_ROOT/bin/activate" >> /entrypoint.sh \
+    && echo "cd $DC_ROOT" >> /entrypoint.sh \
+    && echo "jupyter lab --notebook-dir=$DC_ROOT --ip=0.0.0.0 --port=\$NotebookPort --no-browser --allow-root --ServerApp.token=\$NotebookToken" >> /entrypoint.sh \
+    && chmod +x /entrypoint.sh \
+    && rm -rf /var/cache \
+    && rm -rf /root/.cache \
+    && rm -rf /tmp/*
+
+EXPOSE 8888
+
+ENV NotebookToken="" \
+    NotebookPort=8888
+
+CMD ["/entrypoint.sh"]
+
+# docker run --rm --name hypergbm -p 8830:8888 -e NotebookToken=your-token  datacanvas/hypergbm
