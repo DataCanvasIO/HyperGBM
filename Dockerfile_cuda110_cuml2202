@@ -17,8 +17,7 @@ RUN echo building... \
     && sh $CONDA_INSTALLER -b -p $CONDA_ROOT \
     && $CONDA_ROOT/bin/conda init \
     && $CONDA_ROOT/bin/conda install conda-pack \
-    && $CONDA_ROOT/bin/conda create -p $PYENV_ROOT -c rapidsai -c nvidia -c conda-forge python=3.8 cudatoolkit=$VER_CUDA cudf=$VER_RAPIDS cuml=$VER_RAPIDS pynvml hypergbm jupyterlab jupyterlab_widgets ipywidgets \
-    && $CONDA_ROOT/bin/conda run -p $PYENV_ROOT pip install $PIP_OPTS hboard hboard-widget \
+    && $CONDA_ROOT/bin/conda create -p $PYENV_ROOT -c rapidsai -c nvidia -c conda-forge python=3.8 cudatoolkit=$VER_CUDA cudf=$VER_RAPIDS cuml=$VER_RAPIDS pynvml hypergbm jupyterlab jupyterlab_widgets ipywidgets hboard hboard-widget \
     && echo "created env: $PYENV_ROOT"
 
 RUN echo packing... \
@@ -26,12 +25,6 @@ RUN echo packing... \
     && mkdir /opt/foo \
     && tar xf $PYENV_ROOT.tar -C /opt/foo \
     && echo done
-
-#    && echo conda activate hypergbm >> /root/.bashrc \
-#    && $CONDA_ROOT/bin/conda clean -a -y -q \
-#    && rm -rf /var/cache \
-#    && rm -rf /root/.cache \
-#    && rm -rf /tmp/*
 
 ######## install ###########################################################################
 FROM nvidia/cuda:11.0.3-base-ubuntu18.04 
@@ -44,7 +37,7 @@ COPY --from=builder /opt/foo $PYENV_ROOT
 
 RUN echo installing... \
     && echo source $PYENV_ROOT/bin/activate >> /root/.bashrc \
-    && mkdir -p /opt/datacanvas \
+    && mkdir -p $DC_ROOT \
     && cp -r $PYENV_ROOT/lib/python3.8/site-packages/hypergbm/examples $DC_ROOT/ \
     && echo "#!/bin/bash\n"  > /entrypoint.sh \
     && echo "source $PYENV_ROOT/bin/activate" >> /entrypoint.sh \
@@ -59,3 +52,5 @@ ENV NotebookToken="" \
     NotebookPort=8888
 
 CMD ["/entrypoint.sh"]
+
+# docker run --rm --name hypergbm -p 8830:8888 -e NotebookToken=your-token  datacanvas/hypergbm
