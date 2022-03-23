@@ -18,9 +18,7 @@ def main():
     df_train, df_test = train_test_split(df, test_size=0.8, random_state=42)
 
     experiment = make_experiment(df_train, target='y',
-                                 max_trials=50,
                                  log_level='info',
-                                 verbose=1,
                                  webui=True)
 
     estimator = experiment.run(max_trials=20)

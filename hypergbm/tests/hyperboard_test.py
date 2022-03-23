@@ -87,3 +87,13 @@ def test_pseudo_labeling_experiment():
 @deps_ready
 def test_disable_cv():
     _run_experiment(experiment_factory.create_disable_cv_experiment)
+
+
+@deps_ready
+def test_custom_metric_func():
+    _run_experiment(experiment_factory.create_custom_reward_metric_func_experiment)
+
+
+@deps_ready
+def test_custom_metric_class():
+    _run_experiment(experiment_factory.create_custom_reward_metric_class_experiment)

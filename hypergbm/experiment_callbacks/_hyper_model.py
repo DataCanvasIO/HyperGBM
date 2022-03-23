@@ -84,6 +84,12 @@ def _parse_trial_end_event(hyper_model, space, trial_no, reward, improved,
     early_stopping_status = ABSExpVisHyperModelCallback.get_early_stopping_status_data(hyper_model)
     hyper_params = ABSExpVisHyperModelCallback.get_space_params(space)
 
+    def get_reward_metric_name(reward_metric):  # reward_metric maybe a function/str/instance of custom class(callable)
+        if isinstance(reward_metric, str):
+            return reward_metric
+        else:
+            return str(reward_metric.__name__)  # custom metrics or function
+
     trial_data = {
         "trialNo": trial_no,
         "maxTrials": max_trials,
@@ -92,7 +98,7 @@ def _parse_trial_end_event(hyper_model, space, trial_no, reward, improved,
         "reward": reward,
         "elapsed": elapsed,
         "is_cv": is_cv,
-        "metricName": hyper_model.reward_metric,
+        "metricName": get_reward_metric_name(hyper_model.reward_metric),
         "earlyStopping": early_stopping_status
     }
 
