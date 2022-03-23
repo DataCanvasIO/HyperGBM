@@ -82,3 +82,8 @@ def test_feature_selection_experiment():
 @deps_ready
 def test_pseudo_labeling_experiment():
     _run_experiment(experiment_factory.create_pseudo_labeling_experiment)
+
+
+@deps_ready
+def test_disable_cv():
+    _run_experiment(experiment_factory.create_disable_cv_experiment)
