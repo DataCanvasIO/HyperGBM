@@ -85,7 +85,7 @@ class HyperGBMExplainer:
         self.hypergbm_estimator = hypergbm_estimator
         if data is not None:
             data = self.hypergbm_estimator.transform_data(data)
-        self.explainer = TreeExplainer(self.hypergbm_estimator.gbm_model, data)
+        self.explainer = TreeExplainer(self.hypergbm_estimator.model, data)
 
     @property
     def expected_value(self):
@@ -113,7 +113,7 @@ class HyperGBMEstimator(Estimator):
         self.reward_metric = reward_metric
 
         # built
-        self.gbm_model = None
+        # self.gbm_model = None
         self.class_balancing = None
         self.fit_kwargs = None
         self.data_pipeline = None
@@ -121,13 +121,21 @@ class HyperGBMEstimator(Estimator):
 
         # fitted
         self.data_cleaner = None
-        self.cv_gbm_models_ = None
+        # self.cv_gbm_models_ = None
         self.classes_ = None
         self.pos_label = None
         self.transients_ = {}
 
         if space_sample is not None:
             self._build_model(space_sample)
+
+    @property
+    def gbm_model(self):
+        return self.model
+
+    @property
+    def cv_gbm_models_(self):
+        return self.cv_models_
 
     def _build_model(self, space_sample):
         space, _ = space_sample.compile_and_forward()
@@ -137,7 +145,7 @@ class HyperGBMEstimator(Estimator):
         assert isinstance(outputs[0], HyperEstimator), 'The output of space must be `HyperEstimator`.'
         if outputs[0].estimator is None:
             outputs[0].build_estimator(self.task)
-        self.gbm_model = outputs[0].estimator
+        self.model = outputs[0].estimator
         self.class_balancing = outputs[0].class_balancing
         self.fit_kwargs = outputs[0].fit_kwargs
 
@@ -262,8 +270,8 @@ class HyperGBMEstimator(Estimator):
 
         oof_ = []
         oof_scores = []
+        cv_models_ = []
         self.pos_label = pos_label
-        self.cv_gbm_models_ = []
         if pbar is not None:
             pbar.set_description('cross_validation')
         sel = tb.select_1d
@@ -291,7 +299,7 @@ class HyperGBMEstimator(Estimator):
                     x_train_fold, y_train_fold = sampler.fit_resample(x_train_fold, y_train_fold)
             fit_kwargs['sample_weight'] = sample_weight
 
-            fold_est = copy.deepcopy(self.gbm_model)
+            fold_est = copy.deepcopy(self.model)
             fold_est.group_id = f'{fold_est.__class__.__name__}_cv_{n_fold}'
 
             fit_kwargs['verbose'] = 0
@@ -320,7 +328,7 @@ class HyperGBMEstimator(Estimator):
             fold_scores = self.get_scores(y_val_fold, proba, metrics)
             oof_scores.append(fold_scores)
             oof_.append((valid_idx, proba))
-            self.cv_gbm_models_.append(fold_est)
+            cv_models_.append(fold_est)
 
             del fit_kwargs, sample_weight
             del x_train_fold, y_train_fold, x_val_fold, y_val_fold, proba
@@ -339,6 +347,10 @@ class HyperGBMEstimator(Estimator):
         scores = self.get_scores(y, oof_, metrics)
         if verbose > 0:
             logger.info(f'taken {time.time() - starttime}s')
+
+        self.cv_ = True
+        self.cv_models_ = cv_models_
+
         return scores, oof_, oof_scores
 
     def get_scores(self, y, oof_, metrics):
@@ -368,11 +380,12 @@ class HyperGBMEstimator(Estimator):
                         group_id = gbm_model.__class__.__name__
                 iteration_scores[group_id] = gbm_model.iteration_scores
 
-        if self.cv_gbm_models_:
-            for i, gbm_model in enumerate(self.cv_gbm_models_):
-                get_scores(gbm_model, iteration_scores, i)
+        if self.cv_:
+            assert self.cv_models_ is not None and len(self.cv_models_) > 0
+            for i, model in enumerate(self.cv_models_):
+                get_scores(model, iteration_scores, i)
         else:
-            get_scores(self.gbm_model, iteration_scores)
+            get_scores(self.model, iteration_scores)
         return iteration_scores
 
     def fit(self, X, y, pos_label=None, skip_if_file=None, verbose=0, **kwargs):
@@ -429,18 +442,21 @@ class HyperGBMEstimator(Estimator):
             logger.info('estimator is fitting the data')
 
         fit_kwargs = {**kwargs, 'verbose': 0}
-        self.gbm_model.group_id = f'{self.gbm_model.__class__.__name__}'
-        self._prepare_callbacks(fit_kwargs, self.gbm_model, self.discriminator, skip_if_file)
+        self.model.group_id = f'{self.model.__class__.__name__}'
+        self._prepare_callbacks(fit_kwargs, self.model, self.discriminator, skip_if_file)
 
         tb.gc()
-        self.gbm_model.fit(X, y, **fit_kwargs)
+        self.model.fit(X, y, **fit_kwargs)
 
-        if self.classes_ is None and hasattr(self.gbm_model, 'classes_'):
-            self.classes_ = self.gbm_model.classes_
+        if self.classes_ is None and hasattr(self.model, 'classes_'):
+            self.classes_ = self.model.classes_
         self.pos_label = pos_label
+        self.cv_ = False
 
         if verbose > 0:
             logger.info(f'taken {time.time() - starttime}s')
+
+        return self
 
     @staticmethod
     def _prepare_callbacks(fit_kwargs, est, discriminator, skip_if_file):
@@ -463,17 +479,18 @@ class HyperGBMEstimator(Estimator):
         if verbose is None:
             verbose = 0
 
-        if self.cv_gbm_models_ is not None:
+        if self.cv_:
+            assert self.cv_models_ is not None and len(self.cv_models_) > 0
             if self.task == const.TASK_REGRESSION:
                 pred_sum = None
                 X = self.transform_data(X, verbose=verbose)
-                for est in self.cv_gbm_models_:
+                for est in self.cv_models_:
                     pred = est.predict(X)
                     if pred_sum is None:
                         pred_sum = pred
                     else:
                         pred_sum += pred
-                preds = pred_sum / len(self.cv_gbm_models_)
+                preds = pred_sum / len(self.cv_models_)
             else:
                 proba = self.predict_proba(X)
                 preds = self.proba2predict(proba)
@@ -482,7 +499,7 @@ class HyperGBMEstimator(Estimator):
             X = self.transform_data(X, verbose=verbose)
             if verbose > 0:
                 logger.info('estimator is predicting the data')
-            preds = self.gbm_model.predict(X, **kwargs)
+            preds = self.model.predict(X, **kwargs)
 
         if verbose > 0:
             logger.info(f'taken {time.time() - starttime}s')
@@ -496,22 +513,23 @@ class HyperGBMEstimator(Estimator):
         X = self.transform_data(X, verbose=verbose)
         if verbose > 0:
             logger.info('estimator is predicting the data')
-        if hasattr(self.gbm_model, 'predict_proba'):
+        if hasattr(self.model, 'predict_proba'):
             method = 'predict_proba'
         else:
             method = 'predict'
 
-        if self.cv_gbm_models_ is not None:
+        if self.cv_:
+            assert self.cv_models_ is not None and len(self.cv_models_) > 0
             proba_sum = None
-            for est in self.cv_gbm_models_:
+            for est in self.cv_models_:
                 proba = getattr(est, method)(X)
                 if proba_sum is None:
                     proba_sum = proba
                 else:
                     proba_sum += proba
-            proba = proba_sum / len(self.cv_gbm_models_)
+            proba = proba_sum / len(self.cv_models_)
         else:
-            proba = getattr(self.gbm_model, method)(X)
+            proba = getattr(self.model, method)(X)
 
         if verbose > 0:
             logger.info(f'taken {time.time() - starttime}s')
@@ -549,7 +567,7 @@ class HyperGBMEstimator(Estimator):
             scoring = tb.metrics.metric_to_scoring(scoring)
 
         # optimize 'n_jobs' option
-        if type(self.gbm_model).__name__.lower().find('catboost') >= 0:
+        if type(self.model).__name__.lower().find('catboost') >= 0:
             if n_jobs is None:
                 n_jobs = -1
         else:
@@ -564,7 +582,7 @@ class HyperGBMEstimator(Estimator):
 
         if logger.is_info_enabled():
             logger.info(f'calculate permutation_importance, n_jobs:{n_jobs}, n_repeats:{n_repeats},'
-                        f' gbm_model:{type(self.gbm_model).__name__}, '
+                        f' model:{type(self.model).__name__}, '
                         f' datapipeline:{self.data_pipeline}')
 
         if not self.is_data_pipeline_straightforward():
@@ -578,9 +596,10 @@ class HyperGBMEstimator(Estimator):
         assert set(columns_in).issuperset(set(columns_out))
 
         # compute permutation_importance
-        if self.cv_gbm_models_ is not None:
+        if self.cv_:
+            assert self.cv_models_ is not None and len(self.cv_models_) > 0
             importances = []
-            for est in (self.cv_gbm_models_ * n_repeats)[:n_repeats]:
+            for est in (self.cv_models_ * n_repeats)[:n_repeats]:
                 est_pi = sk_pi(est, X, y, scoring=scoring, n_repeats=1, n_jobs=n_jobs, **options)
                 importances.append(est_pi.importances)
             importances = tb.hstack_array(importances)
@@ -590,7 +609,7 @@ class HyperGBMEstimator(Estimator):
                 importances=importances,
             )
         else:
-            result = sk_pi(self.gbm_model, X, y, scoring=scoring, n_repeats=n_repeats, n_jobs=n_jobs, **options)
+            result = sk_pi(self.model, X, y, scoring=scoring, n_repeats=n_repeats, n_jobs=n_jobs, **options)
 
         # fix the result
         if columns_out != columns_in:
@@ -639,11 +658,11 @@ class HyperGBMEstimator(Estimator):
         return state
 
     def __repr__(self):
-        cv = False if self.cv_gbm_models_ is None else len(self.cv_gbm_models_)
+        cv = False if self.cv_ is None else self.cv_
         r = f'{type(self).__name__}(' \
             f'task={self.task}, reward_metric={self.reward_metric}, cv={cv},\n' \
             f'data_pipeline: {self.data_pipeline}\n' \
-            f'gbm_model: {self.gbm_model if cv is False else self.cv_gbm_models_[0]}\n' \
+            f'gbm_model: {self.model if cv is False else self.cv_models_[0]}\n' \
             f')'
         return r
 
