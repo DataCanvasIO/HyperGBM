@@ -70,7 +70,7 @@ experiment = make_experiment(train_data, max_trials=50)
 
 ### 交叉验证
 
-可通过参数`cv`指定是否启用交叉验证。当`cv`设置为`False`时表示禁用交叉验证并使用经典的train_test_split方式进行模型训练；当`cv`设置为`True`（缺省）时表示开启交叉验证，折数可通过参数`num_folds`设置（默认：3）。
+可通过参数`cv`指定是否启用交叉验证。当`cv`设置为`False`时表示禁用交叉验证并使用经典的train_test_split方式进行模型训练；当`cv`设置为`True`时表示开启交叉验证，折数可通过参数`num_folds`设置（默认：3）。
 
 
 启用交叉验证的示例代码：
