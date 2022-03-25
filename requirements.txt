@@ -1,4 +1,4 @@
-hypernets==0.2.5.2
+hypernets>=0.2.5.3, <0.2.6
 scikit-learn>=0.22.1
 fsspec>=0.8.0
 lightgbm>=3.2.0
