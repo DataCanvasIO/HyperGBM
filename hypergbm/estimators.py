@@ -14,6 +14,7 @@ import xgboost
 from hypernets.core.search_space import ModuleSpace
 from hypernets.discriminators import UnPromisingTrial
 from hypernets.tabular import get_tool_box
+from hypernets.tabular.cache import cache
 from hypernets.tabular.column_selector import column_object_category_bool, column_zero_or_positive_int32
 from hypernets.utils import const, logging, to_repr
 from .gbm_callbacks import LightGBMDiscriminationCallback, XGBoostDiscriminationCallback, CatboostDiscriminationCallback
@@ -29,16 +30,33 @@ logger = logging.get_logger(__name__)
 _detected_lgbm_gpu = None
 
 
+@cache()
+def _tb_detect_estimator(name_or_cls, task, *,
+                         init_kwargs=None, fit_kwargs=None, n_samples=100, n_features=5):
+    r = get_tool_box(pd.DataFrame).estimator_detector(name_or_cls, task,
+                                                      init_kwargs=init_kwargs,
+                                                      fit_kwargs=fit_kwargs,
+                                                      n_samples=n_samples,
+                                                      n_features=n_features)()
+
+    logger.info(f'detect_estimator {name_or_cls} as {r}')
+    return r
+
+
 def detect_lgbm_gpu():
     global _detected_lgbm_gpu
 
     if _detected_lgbm_gpu is None:
-        tb = get_tool_box(pd.DataFrame)
-        detected = tb.estimator_detector('lightgbm.LGBMClassifier', const.TASK_BINARY,
-                                         init_kwargs={'device': 'GPU'},
-                                         fit_kwargs={})()
-        logger.info(f'detect_estimator lightgbm.LGBMClassifier as {detected}')
-        _detected_lgbm_gpu = detected
+        # tb = get_tool_box(pd.DataFrame)
+        # detected = tb.estimator_detector('lightgbm.LGBMClassifier', const.TASK_BINARY,
+        #                                  # init_kwargs={'device': 'GPU', 'verbose': -1},
+        #                                  init_kwargs={'device': 'GPU'},
+        #                                  fit_kwargs={})()
+        # logger.info(f'detect_estimator lightgbm.LGBMClassifier as {detected}')
+        # _detected_lgbm_gpu = detected
+        _detected_lgbm_gpu = _tb_detect_estimator('lightgbm.LGBMClassifier', const.TASK_BINARY,
+                                                  init_kwargs={'device': 'GPU', 'verbose': -1},
+                                                  fit_kwargs={})
 
     return 'fitted' in _detected_lgbm_gpu
 
