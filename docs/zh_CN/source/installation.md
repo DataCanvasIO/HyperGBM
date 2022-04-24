@@ -54,6 +54,12 @@ HyperGBM支持在Docker容器中运行，您可在Dockerfile中通过 `pip` 安�
 * JupyterLab
 
 
+Docker镜像tag命名规则：
+
+* <hypergbm_version>：Python + JupyterLab + HyperGBM + HyperGBM的notebook插件
+* <hypergbm_version>-cuda<cuda_version>-cuml<cuml_version>：上述 + CUDA toolkit + cuML
+* <hypergbm_version>-cuda<cuda_version>-cuda<cuml_version>-lgbmgpu：上述 + 支持GPU的LightGBM
+
 
 下载镜像：
 ```bash

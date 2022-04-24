@@ -57,13 +57,18 @@ It is possible to use HyperGBM in a Docker container. To do this, users can inst
 * HyperGBM and its dependent packages
 * JupyterLab
 
+Docker image tag naming scheme:
 
-Download the mirror image:
+* <hypergbm_version>: Python + JupyterLab + HyperGBM + HyperGBM notebook plugins
+* <hypergbm_version>-cuda<cuda_version>-cuml<cuml_version>: above + CUDA toolkit + cuML
+* <hypergbm_version>-cuda<cuda_version>-cuda<cuml_version>-lgbmgpu: above + GPU enabled LightGBM
+
+Download the docker image:
 ```bash
 docker pull datacanvas/hypergbm
 ```
 
-Use the mirror image:
+Run a docker container:
 ```bash
 docker run -ti -e NotebookToken="your-token" -p 8888:8888 datacanvas/hypergbm
 ```
