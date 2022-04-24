@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 from pandas import DataFrame
 from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import LabelEncoder
 
 from hypergbm import HyperGBMEstimator
 from hypergbm.estimators import LightGBMEstimator, XGBoostEstimator
@@ -110,6 +111,7 @@ class Test_Estimator():
     def test_xgb_early_stoping(self):
         df = dsutils.load_bank().head(1000)
         y = df.pop('y')
+        y = LabelEncoder().fit_transform(y)
 
         X = get_tool_box(df).general_preprocessor(df).fit_transform(df)
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, stratify=y, random_state=9527)

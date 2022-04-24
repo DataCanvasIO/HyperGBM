@@ -464,11 +464,13 @@ class XGBEstimatorMixin:
         if kwargs.get('early_stopping_rounds') is None and kwargs.get('eval_set') is not None:
             kwargs['early_stopping_rounds'] = _default_early_stopping_rounds(self)
 
-        self.feature_names_in_ = X.columns.tolist()
+        if LooseVersion(xgboost.__version__) < LooseVersion('1.6'):
+            self.feature_names_in_ = X.columns.tolist()
+
         return kwargs
 
     def prepare_predict_X(self, X):
-        feature_names = self.feature_names_in_
+        feature_names = list(self.feature_names_in_)
         if feature_names != X.columns.tolist():
             X = X[feature_names]
         return X
