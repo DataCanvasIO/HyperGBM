@@ -53,7 +53,7 @@ pip install hypergbm[notebook]
 pip install hypergbm[board]
 ```
 
-* To run Hypernets in distributed Dask cluster, install with command:
+* To run HyperGBM in distributed Dask cluster, install with command:
 ```bash
 pip install hypergbm[dask]
 ```
