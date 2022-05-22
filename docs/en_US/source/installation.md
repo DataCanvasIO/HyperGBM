@@ -36,6 +36,11 @@ pip install hypergbm[notebook]
 pip install hypergbm[board]
 ```
 
+* To run Hypernets in distributed Dask cluster, install with command:
+```bash
+pip install hypergbm[dask]
+```
+
 * To support dataset with simplified Chinese in feature generation,
   * Install `jieba` package before running HyperGBM. 
   * OR install with command:

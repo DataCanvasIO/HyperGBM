@@ -44,7 +44,13 @@ pip install hypergbm[notebook]
 ```bash
 pip install hypergbm[board]
 ```
-可选的,  如果您希望在特征衍生时支持中文字符中, 可通过如下命令安装HyperGBM:
+
+可选的,  如果您希望在DASK集群中运行HyperGBM, 可通过如下命令安装HyperGBM:
+```bash
+pip install hypergbm[dask]
+```
+
+可选的,  如果您希望在特征衍生时支持中文字符, 可通过如下命令安装HyperGBM:
 ```bash
 pip install hypergbm[zhcn]
 ```
