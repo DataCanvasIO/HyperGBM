@@ -4,12 +4,11 @@
 """
 import copy
 import hashlib
+import numpy as np
+import pandas as pd
 import pickle
 import re
 import time
-
-import numpy as np
-import pandas as pd
 from imblearn.over_sampling import RandomOverSampler, SMOTE, ADASYN
 from imblearn.under_sampling import RandomUnderSampler, NearMiss, TomekLinks, EditedNearestNeighbours
 from sklearn import pipeline as sk_pipeline
@@ -470,9 +469,15 @@ class HyperGBMEstimator(Estimator):
             discriminator_callback = None  # dose not support callback
 
         if skip_if_file and discriminator_callback is not None:
-            callbacks = fit_kwargs.get('callbacks', [])
-            callbacks.append(FileMonitorCallback(skip_if_file))
-            fit_kwargs['callbacks'] = callbacks
+            if hasattr(est, 'build_filemonitor_callback'):
+                fm_callback = est.build_filemonitor_callback(skip_if_file)
+            else:
+                fm_callback = FileMonitorCallback(skip_if_file)
+
+            if fm_callback is not None:
+                callbacks = fit_kwargs.get('callbacks', [])
+                callbacks.append(fm_callback)
+                fit_kwargs['callbacks'] = callbacks
 
     def predict(self, X, verbose=0, **kwargs):
         starttime = time.time()

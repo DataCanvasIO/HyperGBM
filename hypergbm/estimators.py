@@ -2,10 +2,8 @@
 """
 
 """
-import contextlib
-from distutils.version import LooseVersion
-
 import catboost
+import contextlib
 import lightgbm
 import numpy as np
 import pandas as pd
@@ -16,8 +14,9 @@ from hypernets.discriminators import UnPromisingTrial
 from hypernets.tabular import get_tool_box
 from hypernets.tabular.cache import cache
 from hypernets.tabular.column_selector import column_object_category_bool, column_zero_or_positive_int32
-from hypernets.utils import const, logging, to_repr
-from .gbm_callbacks import LightGBMDiscriminationCallback, XGBoostDiscriminationCallback, CatboostDiscriminationCallback
+from hypernets.utils import const, logging, to_repr, Version
+from .gbm_callbacks import LightGBMDiscriminationCallback, CatboostDiscriminationCallback
+from .gbm_callbacks import XGBoostDiscriminationCallback, XGBoostFileMonitorCallback
 
 try:
     from sklearn.ensemble import HistGradientBoostingRegressor, HistGradientBoostingClassifier
@@ -447,7 +446,16 @@ class XGBEstimatorMixin:
     def build_discriminator_callback(self, discriminator):
         if discriminator is None:
             return None
-        callback = XGBoostDiscriminationCallback(discriminator=discriminator, group_id=self.group_id)
+        n_estimator = self.get_params().get('n_estimators', 0)
+        callback = XGBoostDiscriminationCallback(
+            discriminator=discriminator, group_id=self.group_id, n_estimator=n_estimator)
+        return callback
+
+    def build_filemonitor_callback(self, filepath):
+        if filepath is None:
+            return None
+
+        callback = XGBoostFileMonitorCallback(filepath)
         return callback
 
     def prepare_fit_kwargs(self, X, y, kwargs):
@@ -464,7 +472,7 @@ class XGBEstimatorMixin:
         if kwargs.get('early_stopping_rounds') is None and kwargs.get('eval_set') is not None:
             kwargs['early_stopping_rounds'] = _default_early_stopping_rounds(self)
 
-        if LooseVersion(xgboost.__version__) < LooseVersion('1.6'):
+        if Version(xgboost.__version__) < Version('1.6'):
             self.feature_names_in_ = X.columns.tolist()
 
         return kwargs
@@ -633,7 +641,7 @@ class CatBoostEstimatorMixin:
 
         if str(task_type).upper() == 'GPU':
             return None  # User defined loss functions, metrics and callbacks are not supported for GPU
-        elif LooseVersion(catboost.__version__) >= LooseVersion('0.26'):
+        elif Version(catboost.__version__) >= Version('0.26'):
             callback = CatboostDiscriminationCallback(discriminator=discriminator, group_id=self.group_id)
             self.discriminator_callback = callback
             return callback
