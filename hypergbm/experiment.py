@@ -260,6 +260,10 @@ _webui_options_doc = """ : dict, optional, (default None),
     If None, will be initialized the instance with default values.
 """
 
+_skip_if_file_doc = """ : str, optional, (default None),
+    Skip current trial if the file was found and could be removed.
+"""
+
 
 def _merge_doc():
     my_doc = DocLens(make_experiment.__doc__)
@@ -269,6 +273,7 @@ def _merge_doc():
     params['class_balancing'] = _class_balancing_doc
     params['cross_validator'] = _cross_validator_doc
     params['estimator_early_stopping_rounds'] = _estimator_early_stopping_rounds_doc
+    params['skip_if_file'] = _skip_if_file_doc
 
     params['webui'] = _webui_doc
     params['webui_options'] = _webui_options_doc
