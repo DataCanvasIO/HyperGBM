@@ -139,7 +139,7 @@ print(estimator)
 
 ### Set the Early Stopping
 
-One can set the early stopping strategy with settings of `early_stopping_round`, `early_stopping_time_limit` and `early_stopping_reward`.
+One can set the early stopping strategy with settings of `early_stopping_rounds`, `early_stopping_time_limit` and `early_stopping_reward`.
 
 The following code sets the max searching time as 3 hours:
 ```python

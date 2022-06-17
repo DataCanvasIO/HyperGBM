@@ -137,7 +137,7 @@ print(estimator)
 
 ### 设置搜索次数和早停（Early Stopping）策略
 
-使用`make_experiment`时，可通过参数`early_stopping_round`、`early_stopping_time_limit`、`early_stopping_reward`设置实验的早停策略。
+使用`make_experiment`时，可通过参数`early_stopping_rounds`、`early_stopping_time_limit`、`early_stopping_reward`设置实验的早停策略。
 
 将搜索时间设置为最多3小时的示例代码：
 ```python
