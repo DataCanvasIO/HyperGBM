@@ -655,8 +655,14 @@ class CatBoostEstimatorMixin:
 
         if reward_metric is not None and kwargs.get('eval_metric') is None:
             eval_metric = CATBOOST_REWARD2METRIC.get(reward_metric)
-            if eval_metric == 'Logloss' and task == const.TASK_MULTICLASS:
-                eval_metric = 'MultiLogloss'
+            if task == const.TASK_MULTICLASS:
+                if eval_metric == 'Logloss':
+                    eval_metric = 'MultiLogloss'
+                elif eval_metric == 'F1':
+                    eval_metric = 'TotalF1'
+                elif eval_metric in ['Recall', 'Precision']:
+                    eval_metric = None
+
             if eval_metric is not None:
                 self.set_params(eval_metric=eval_metric)
 
@@ -751,4 +757,5 @@ class CatBoostEstimator(HyperEstimator):
             cat = CatBoostRegressionWrapper(**kwargs)
         else:
             cat = CatBoostClassifierWrapper(**kwargs)
+        cat.__dict__['task'] = task
         return cat
