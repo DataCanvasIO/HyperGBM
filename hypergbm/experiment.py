@@ -38,6 +38,7 @@ def make_experiment(train_data,
                     reward_metric=None,
                     optimize_direction=None,
                     estimator_early_stopping_rounds=None,
+                    hyper_model_cls=None,
                     clear_cache=None,
                     discriminator=None,
                     log_level=None,
@@ -102,13 +103,14 @@ def make_experiment(train_data,
         tb = get_tool_box(pd.DataFrame)
     else:
         tb = get_tool_box(train_data)
-
-    if data_adaption_to_cuml or tb.__name__.lower().find('cuml') >= 0:
-        from hypergbm.cuml import CumlHyperGBM
-        hyper_model_cls = CumlHyperGBM
-    else:
-        from hypergbm.hyper_gbm import HyperGBM
-        hyper_model_cls = HyperGBM
+    
+    if hyper_model_cls is None:
+       if data_adaption_to_cuml or tb.__name__.lower().find('cuml') >= 0:
+           from hypergbm.cuml import CumlHyperGBM
+           hyper_model_cls = CumlHyperGBM
+       else:
+           from hypergbm.hyper_gbm import HyperGBM
+           hyper_model_cls = HyperGBM
 
     def default_search_space():
         args = search_space_options if search_space_options is not None else {}

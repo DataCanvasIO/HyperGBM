@@ -1,5 +1,10 @@
 # -*- coding:utf-8 -*-
 __author__ = 'yangjian'
+
+from random import random
+
+from hypergbm.estimators import CatBoostClassifierWrapper
+
 """
 
 """
@@ -9,7 +14,7 @@ from sklearn.metrics import get_scorer
 from sklearn.model_selection import train_test_split
 
 from hypergbm import HyperGBM, CompeteExperiment, make_experiment
-from hypergbm.search_space import search_space_general
+from hypergbm.search_space import search_space_general, GeneralSearchSpaceGenerator
 from hypernets.core import OptimizeDirection, EarlyStoppingCallback
 from hypernets.experiment import GeneralExperiment, ExperimentCallback, ConsoleCallback, StepNames
 from hypernets.searchers import RandomSearcher
@@ -254,3 +259,35 @@ class Test_Experiment():
 
         feature_names = step.get_fitted_params()['output_feature_names']
         assert all([c in feature_names for c in ['TFIDF__title____0__', 'TFIDF__genres____0__', 'DAY__timestamp__']])
+
+    def run_cat_boost_multiclass(self, metric, cat_metric):
+        # iris
+        df = dsutils.load_bank()
+        df.drop(['id'], axis=1, inplace=True)
+        from random import Random
+
+        df['y'] = df['y'].apply(lambda v: str(Random().randint(0, 2)))
+        df = df.sample(1000)
+
+        space = GeneralSearchSpaceGenerator(enable_lightgbm=False, enable_xgb=False,
+                                            enable_catboost=True, enable_histgb=False)
+
+        experiment = make_experiment(df, target='y', cv=False, ensemble_size=0, search_space=space,
+                                     feature_generation=False,
+                                     random_state=2345,
+                                     reward_metric=metric)
+
+        assert isinstance(experiment, CompeteExperiment)
+
+        estimator = experiment.run(max_trials=3)
+        assert estimator is not None
+        assert isinstance(estimator.steps[-1][1].gbm_model, CatBoostClassifierWrapper)
+        if cat_metric is not None:
+            assert estimator.steps[-1][1].gbm_model._init_params['eval_metric'] == cat_metric
+        else:
+            assert estimator.steps[-1][1].gbm_model._init_params.get('eval_metric') is None
+
+    def test_cat_boost_multiclass(self):
+        self.run_cat_boost_multiclass('f1', 'TotalF1')
+        self.run_cat_boost_multiclass('precision', None)
+        self.run_cat_boost_multiclass('recall', None)
