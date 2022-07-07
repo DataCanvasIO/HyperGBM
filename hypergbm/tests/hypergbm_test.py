@@ -3,10 +3,15 @@
 
 """
 import random
+import os
+
+import pytest
 
 from sklearn.model_selection import train_test_split
 
 from hypergbm import HyperGBM
+from hypergbm.estimators import LGBMClassifierWrapper
+from hypergbm.hyper_gbm import HyperGBMShapExplainer
 from hypergbm.search_space import search_space_general, GeneralSearchSpaceGenerator
 from hypergbm.tests import test_output_dir
 from hypernets.core import set_random_state
@@ -16,6 +21,15 @@ from hypernets.discriminators import PercentileDiscriminator
 from hypernets.searchers.random_searcher import RandomSearcher
 from hypernets.tabular.datasets import dsutils
 from hypernets.utils import fs
+
+try:
+    import shap
+    import matplotlib.pyplot as plt
+    is_shap_installed = True
+except:
+    is_shap_installed = False
+
+need_shap = pytest.mark.skipif(not  is_shap_installed, reason="shap is not installed ")
 
 
 class Test_HyperGBM():
@@ -157,3 +171,86 @@ class Test_HyperGBM():
         vectors2 = [t.space_sample.vectors for t in hk2.history.trials]
 
         assert vectors == vectors2
+
+
+@need_shap
+class TestShapExplainer:
+
+    @classmethod
+    def setup_class(cls):
+        pass
+
+    def _train(self, search_space, is_cv=False):
+        df = dsutils.load_bank()
+        df.drop(['id'], axis=1, inplace=True)
+
+        rs = RandomSearcher(search_space, optimize_direction=OptimizeDirection.Maximize)
+        hk = HyperGBM(rs, task='binary', reward_metric='accuracy',
+                      callbacks=[SummaryCallback(), FileLoggingCallback(rs, output_dir=f'{test_output_dir}/hyn_logs')])
+
+        df = dsutils.load_bank()
+        df.drop(['id'], axis=1, inplace=True)
+        X_train, X_test = train_test_split(df.head(1000), test_size=0.2, random_state=42)
+        y_train = X_train.pop('y')
+        y_test = X_test.pop('y')
+        if is_cv:
+            hk.search(X_train, y_train, X_test, y_test, cv=True, num_folds=3, max_trials=2)
+        else:
+            hk.search(X_train, y_train, X_test, y_test, cv=False, max_trials=2)
+
+        best_trial = hk.get_best_trial()
+
+        best_estimator = best_trial.get_model()
+
+        explainer = HyperGBMShapExplainer(best_estimator)
+        return explainer
+
+    def get_random_path(self):
+        import tempfile
+        t_fd, t_path = tempfile.mkstemp(prefix='shap_')
+
+        os.close(t_fd)
+        return t_path
+
+    def run_plot(self, shap_values):
+        # water fall
+        shap.plots.waterfall(shap_values[0], show=False)
+        plt.savefig(self.get_random_path())
+
+        # beeswarm
+        shap.plots.beeswarm(shap_values, show=False)
+        plt.savefig(self.get_random_path(), show=False)
+
+        # force
+        shap.plots.force(shap_values[0], show=False)
+        plt.savefig(self.get_random_path())
+
+    def run_plot_force(self):
+        pass
+
+    def test_cv_models(self):
+        pass
+
+    def test_train_test_split_model(self):
+        for search_space in self._get_search_spaces():
+            explainer = self._train(search_space, is_cv=False)
+            df = dsutils.load_bank().sample(n=100)
+            df.drop(['y'], axis=1, inplace=True)
+            shap_values_list = explainer(df)
+            assert len(shap_values_list) == 1
+            shap_values = shap_values_list[0]
+
+            if isinstance(explainer.hypergbm_estimator.model, LGBMClassifierWrapper):
+                # LightGBM binary classifier with TreeExplainer shap values output has changed to a list of ndarray
+                assert len(shap_values.shape) == 3
+                shap_values = shap_values[:, :, 1]   # shap values of positive label
+
+            self.run_plot(shap_values)
+
+    def _get_search_spaces(self):
+        kwargs_list = [
+            dict(enable_lightgbm=True, enable_xgb=False, enable_catboost=False, enable_histgb=False),
+            dict(enable_lightgbm=False, enable_xgb=True, enable_catboost=False, enable_histgb=False),
+            dict(enable_lightgbm=False, enable_xgb=False, enable_catboost=True, enable_histgb=False)
+        ]
+        return [GeneralSearchSpaceGenerator(**_) for _ in kwargs_list]
