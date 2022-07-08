@@ -225,13 +225,11 @@ class TestShapExplainer:
         shap.plots.force(shap_values[0], show=False)
         plt.savefig(self.get_random_path())
 
-    def run_plot_force(self):
-        pass
+        # plot interaction
+        shap.plots.scatter(shap_values[:, "duration"], color=shap_values, show=False)
+        plt.savefig(self.get_random_path())
 
     def test_cv_models(self):
-        pass
-
-    def test_train_test_split_model(self):
         for search_space in self._get_search_spaces():
             explainer = self._train(search_space, is_cv=False)
             df = dsutils.load_bank().sample(n=100)
@@ -243,9 +241,23 @@ class TestShapExplainer:
             if isinstance(explainer.hypergbm_estimator.model, LGBMClassifierWrapper):
                 # LightGBM binary classifier with TreeExplainer shap values output has changed to a list of ndarray
                 assert len(shap_values.shape) == 3
-                shap_values = shap_values[:, :, 1]   # shap values of positive label
+                shap_values = shap_values[:, :, 1]  # shap values of positive label
 
             self.run_plot(shap_values)
+
+    def test_train_test_split_model(self):
+        for search_space in self._get_search_spaces():
+            explainer = self._train(search_space, is_cv=True)
+            df = dsutils.load_bank().sample(n=100)
+            df.drop(['y'], axis=1, inplace=True)
+            shap_values_list = explainer(df)
+            assert len(shap_values_list) == 3
+            for shap_values in shap_values_list:
+                if isinstance(explainer.hypergbm_estimator.model, LGBMClassifierWrapper):
+                    # LightGBM binary classifier with TreeExplainer shap values output has changed to a list of ndarray
+                    assert len(shap_values.shape) == 3
+                    shap_values = shap_values[:, :, 1]   # shap values of positive label
+                self.run_plot(shap_values)
 
     def _get_search_spaces(self):
         kwargs_list = [
