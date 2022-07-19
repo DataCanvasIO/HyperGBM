@@ -1,4 +1,7 @@
-# HyperGBM
+<p align="center">
+<img src="docs/static/images/HyperGBM.png" width="500" >
+
+
 [![Python Versions](https://img.shields.io/pypi/pyversions/hypergbm.svg)](https://pypi.org/project/hypergbm)
 [![Downloads](https://pepy.tech/badge/hypergbm)](https://pepy.tech/project/hypergbm)
 [![PyPI Version](https://img.shields.io/pypi/v/hypergbm.svg)](https://pypi.org/project/hypergbm)
@@ -130,7 +133,7 @@ Hypergbm supports full pipeline GPU acceleration, including all steps from data 
 * [HyperBoard](https://github.com/DataCanvasIO/HyperBoard): A visualization tool for Hypernets.
 * [Cooka](https://github.com/DataCanvasIO/Cooka): Lightweight interactive AutoML system.
 
-![DataCanvas AutoML Toolkit](docs/static/images/DAT2.5.png)
+![DataCanvas AutoML Toolkit](docs/static/images/DAT_logo.png)
 
 ## Documents
 
