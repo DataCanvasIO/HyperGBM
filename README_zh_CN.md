@@ -1,4 +1,7 @@
-# HyperGBM
+<p align="center">
+<img src="docs/static/images/HyperGBM.png" width="500" >
+
+
 [![Python Versions](https://img.shields.io/pypi/pyversions/hypergbm.svg)](https://pypi.org/project/hypergbm)
 [![Downloads](https://pepy.tech/badge/hypergbm)](https://pepy.tech/project/hypergbm)
 [![PyPI Version](https://img.shields.io/pypi/v/hypergbm.svg)](https://pypi.org/project/hypergbm)
@@ -142,7 +145,7 @@ hypergbm train --train-file=blood.csv --target=Class --model-file=model.pkl
 * [HyperBoard](https://github.com/DataCanvasIO/HyperBoard): 一个为Hypernets提供可视化界面的工具.
 * [Cooka](https://github.com/DataCanvasIO/Cooka): 一个交互式的轻量级自动机器学习系统.
 
-![DataCanvas AutoML Toolkit](docs/static/images/DAT2.5.png)
+![DataCanvas AutoML Toolkit](docs/static/images/DAT_logo.png)
 
 
 ## 参考文档
