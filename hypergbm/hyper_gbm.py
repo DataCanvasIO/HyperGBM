@@ -684,30 +684,31 @@ class HyperGBMShapExplainer:
             data = self.hypergbm_estimator.transform_data(data)
 
         if hypergbm_estimator.cv_ is True:
-            self.explainers = [TreeExplainer(m, data=data, **kwargs) for m in hypergbm_estimator.cv_gbm_models_]
+            self._explainers = [TreeExplainer(m, data=data, **kwargs) for m in hypergbm_estimator.cv_gbm_models_]
         else:
-            self.explainers = [TreeExplainer(self.hypergbm_estimator.gbm_model, data=data, **kwargs)]
+            self._explainers = [TreeExplainer(self.hypergbm_estimator.gbm_model, data=data, **kwargs)]
 
     @property
     def expected_values(self):
-        return [_.expected_value for _ in self.explainers]
+        return [_.expected_value for _ in self._explainers]
 
     def __call__(self, X, transform_kwargs=None, **kwargs):
+
         if transform_kwargs is None:
             transform_kwargs = {}
 
-        x_transformed = self.hypergbm_estimator.transform_data(X, **transform_kwargs)
+        Xt = self.hypergbm_estimator.transform_data(X, **transform_kwargs)
 
         def f(explainer):
             # TO FIX: CatBoostError: 'data' is numpy array of floating point numerical type,
             # it means no categorical features,
             # but 'cat_features' parameter specifies nonzero number of categorical features
+            setattr(explainer, 'data_feature_names', Xt.columns.tolist())
             # pd.Dataframe.values would change the dtype to be a lower-common-denominator dtype (implicit upcasting);
             # see https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.values.html
-            setattr(explainer, 'data_feature_names', x_transformed.columns.tolist())
-            return explainer(x_transformed.to_numpy(dtype='object'), **kwargs)
+            return explainer(Xt.to_numpy(dtype='object'), **kwargs)
 
-        shap_values = [f(explainer) for explainer in self.explainers]
+        shap_values = [f(explainer) for explainer in self._explainers]
 
         return shap_values
 

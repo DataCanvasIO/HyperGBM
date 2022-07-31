@@ -8,17 +8,32 @@ from hypergbm.estimators import CatBoostClassifierWrapper
 """
 
 """
+import os
 from datetime import datetime
 import pandas as pd
 from sklearn.metrics import get_scorer
-from sklearn.model_selection import train_test_split
+import pytest
 
-from hypergbm import HyperGBM, CompeteExperiment, make_experiment
+from hypergbm import HyperGBM, CompeteExperiment
 from hypergbm.search_space import search_space_general, GeneralSearchSpaceGenerator
 from hypernets.core import OptimizeDirection, EarlyStoppingCallback
 from hypernets.experiment import GeneralExperiment, ExperimentCallback, ConsoleCallback, StepNames
 from hypernets.searchers import RandomSearcher
+
+from sklearn.model_selection import train_test_split
+
+from hypergbm import make_experiment
+from hypergbm.experiment import PipelineSHAPExplainer
 from hypernets.tabular.datasets import dsutils
+
+try:
+    import shap
+    import matplotlib.pyplot as plt
+    is_shap_installed = True
+except:
+    is_shap_installed = False
+
+need_shap = pytest.mark.skipif(not is_shap_installed, reason="shap is not installed")
 
 
 class LogCallback(ExperimentCallback):
@@ -291,3 +306,80 @@ class Test_Experiment():
         self.run_cat_boost_multiclass('f1', 'TotalF1')
         self.run_cat_boost_multiclass('precision', None)
         self.run_cat_boost_multiclass('recall', None)
+
+
+@need_shap
+class TestPipelineExplainer:
+
+    def get_random_path(self):
+        import tempfile
+        t_fd, t_path = tempfile.mkstemp(prefix='shap_')
+
+        os.close(t_fd)
+        return t_path
+
+    def run_plot(self, shap_values):
+        # water fall
+        shap.plots.waterfall(shap_values[0], show=False)
+        plt.savefig(self.get_random_path())
+
+        # beeswarm
+        shap.plots.beeswarm(shap_values, show=False)
+        plt.savefig(self.get_random_path(), show=False)
+
+        # force
+        shap.plots.force(shap_values[0], show=False)
+        plt.savefig(self.get_random_path())
+
+        # plot interaction
+        shap.plots.scatter(shap_values[:, "duration"], color=shap_values, show=False)
+        plt.savefig(self.get_random_path())
+
+    def run_cv_plot_shap_value(self, model_indexes, enable_kernel):
+        df = dsutils.load_bank()
+        df_train, df_test = train_test_split(df, test_size=0.8, random_state=42)
+
+        experiment = make_experiment(df_train, target='y',
+                                     max_trials=3,
+                                     log_level='info', cv=True, num_folds=3)
+
+        estimator = experiment.run()
+
+        # test tree explainer
+        tree_explainer = PipelineSHAPExplainer(estimator, model_indexes=model_indexes)
+        tree_values_list = tree_explainer(df_test)
+        assert len(tree_values_list) == len(model_indexes)
+
+        self.run_plot(tree_values_list[0][0])
+
+        if enable_kernel:
+            # test kernel explainer
+            kernel_explainer = PipelineSHAPExplainer(estimator, data=df_test, method='kernel')
+            kernel_values_list = kernel_explainer(df_test.sample(n=10))
+            self.run_plot(kernel_values_list[0])
+
+    def test_cv_plot_shap_value(self):
+        self.run_cv_plot_shap_value(model_indexes=[0], enable_kernel=True)
+
+    def test_select_cv_models(self):
+        self.run_cv_plot_shap_value(model_indexes=[0, 1], enable_kernel=False)
+
+    def test_final_train_plot_shap_value(self):
+        df = dsutils.load_bank()
+        df_train, df_test = train_test_split(df, test_size=0.8, random_state=42)
+
+        experiment = make_experiment(df_train, target='y',
+                                     max_trials=3,
+                                     log_level='info', ensemble=None, cv=True, num_folds=3)
+
+        estimator = experiment.run()
+
+        # test tree explainer
+        tree_explainer = PipelineSHAPExplainer(estimator)
+        tree_values_list = tree_explainer(df_test)
+        self.run_plot(tree_values_list[0][0])
+
+        # test kernel explainer
+        kernel_explainer = PipelineSHAPExplainer(estimator, data=df_test, method='kernel')
+        kernel_values_list = kernel_explainer(df_test.sample(n=5))
+        self.run_plot(kernel_values_list[0])
