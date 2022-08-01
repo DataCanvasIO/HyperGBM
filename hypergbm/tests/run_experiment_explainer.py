@@ -54,6 +54,7 @@ def kernel_test():
     print(values_list2)
     print(values_list2)
 
+
 if __name__ == '__main__':
     t1 = time.time()
     kernel_test()
