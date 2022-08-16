@@ -11,12 +11,22 @@ from typing import List
 
 import pandas as pd
 
+from hypernets.tabular.ensemble import GreedyEnsemble
 from hypernets.experiment import make_experiment as _make_experiment, ExperimentCallback
 from hypernets.experiment import default_experiment_callbacks as default_experiment_callbacks_
 from hypernets.experiment import default_search_callbacks as default_search_callbacks_
 
 from hypernets.tabular import get_tool_box
 from hypernets.utils import DocLens, isnotebook, logging
+
+from hypergbm.hyper_gbm import HyperGBMShapExplainer, HyperGBMEstimator
+
+try:
+    import shap
+    from shap import TreeExplainer, KernelExplainer, Explainer
+    has_shap = True
+except:
+    has_shap = False
 
 logger = logging.get_logger(__name__)
 
@@ -171,23 +181,23 @@ def make_experiment(train_data,
 
     def default_experiment_callbacks():
         if isnotebook():
-            if is_notebook_widget_ready():
-                from hypergbm.experiment_callbacks import create_notebook_experiment_callback
-                cbs = [create_notebook_experiment_callback()]
-            else:
-                logger.info("you can install experiment notebook widget by command "
-                            "\"pip install hboard-widget\" for better user experience in jupyter notebook")
-                cbs = default_experiment_callbacks_()
+            # if is_notebook_widget_ready():
+            #     from hypergbm.experiment_callbacks import create_notebook_experiment_callback
+            #     cbs = [create_notebook_experiment_callback()]
+            # else:
+            logger.info("you can install experiment notebook widget by command "
+                        "\"pip install hboard-widget\" for better user experience in jupyter notebook")
+            cbs = default_experiment_callbacks_()
         else:
             cbs = default_experiment_callbacks_()
         return cbs
 
     def default_search_callbacks():
-        if isnotebook() and is_notebook_widget_ready():
-            from hypergbm.experiment_callbacks import create_notebook_hyper_model_callback
-            cbs = [create_notebook_hyper_model_callback()]
-        else:
-            cbs = default_search_callbacks_()
+        # if isnotebook() and is_notebook_widget_ready():
+        #     from hypergbm.experiment_callbacks import create_notebook_hyper_model_callback
+        #     cbs = [create_notebook_hyper_model_callback()]
+        # else:
+        cbs = default_search_callbacks_()
         return cbs
 
     if callbacks is None:
@@ -289,3 +299,116 @@ def _merge_doc():
 
 
 _merge_doc()
+
+
+class PipelineSHAPExplainer:
+
+    METHOD_TREE = "tree"
+    METHOD_KERNEL = "kernel"
+
+    def __init__(self, pipeline_model, data=None, model_indexes=None, method='tree', **kwargs):
+        """SHAP Explainer for HyperGBM pipeline model
+
+        Parameters
+        ----------
+        pipeline_model: sklearn.pipeline.Pipeline, required
+            hypergbm pipeline model, training by CompeteExperiment
+
+        data: pd.DataFrame, optional
+            the background dataset to use for integrating out features.
+            for method='kernel', it's required, recommend less than 100 rows samples.
+
+        model_indexes: model indexes in GreedEnsemble, the option if only for method='tree' and ensemble model,
+                       default is the first model.
+
+        method: str, default is 'tree',  one of 'tree', 'kernel'
+            explanation method
+
+        kwargs: k-v args for KernelExplainer or HyperGBMShapExplainer
+        """
+
+        if model_indexes is None:
+            model_indexes = [0]
+
+        if not has_shap:
+            raise RuntimeError('Please install `shap` package first. command: pip install shap')
+
+        self.pipeline_model = pipeline_model
+        self.hypergbm_explainers = None
+
+        last_step = pipeline_model.steps[-1][1]
+
+        if method == self.METHOD_KERNEL:
+            if data is None:
+                raise ValueError("Missing param 'data'")
+            self._hypergbm_explainers = [KernelExplainer(pipeline_model.predict_proba, data=data,
+                                                         keep_index=True, **kwargs)]
+        elif method == self.METHOD_TREE:
+            hypergbm_explainers = []
+
+            if data is not None:
+                data = self._transform(data)
+
+            if isinstance(last_step, GreedyEnsemble):
+
+                for model_index in model_indexes:
+                    estimator = last_step.estimators[model_index]
+                    if estimator is not None:
+                        hypergbm_explainers.append(HyperGBMShapExplainer(estimator, data=data, **kwargs))
+                    else:
+                        logger.warning(f"Index of {model_index} is None ")
+                        hypergbm_explainers.append(None)
+
+                self._hypergbm_explainers = hypergbm_explainers
+
+            elif isinstance(last_step, HyperGBMEstimator):
+                self._hypergbm_explainers = [HyperGBMShapExplainer(last_step, data=data, **kwargs)]
+            else:
+                raise RuntimeError(f"Unseen estimator type {type(last_step)}")
+
+        else:
+            raise ValueError(f"Unseen shap explanation method {method}")
+
+    def _transform(self, X):
+        Xt = X
+
+        #  "pipeline_model.transform" requires a passthrough estimator , it's not available for hypergbm pipeline
+        for i, _, transform in self.pipeline_model._iter(with_final=False):
+            Xt = transform.transform(Xt)
+            # if i <= len(self.pipeline_model.steps) - 2:
+            #     Xt = transform.transform(Xt)
+            # else:
+            #     break
+
+        return Xt
+
+    def _tree_explain(self, X, shap_kwargs):
+
+        Xt = self._transform(X)
+
+        shap_values = [_(Xt, **shap_kwargs) if _ is not None else None for _ in self._hypergbm_explainers]
+
+        return shap_values
+
+    def _kernel_explain(self, X, shap_kwargs):
+        explainer: KernelExplainer = self._hypergbm_explainers[0]
+        shap_values = explainer.shap_values(X, **shap_kwargs)
+        return shap_values
+
+    @property
+    def method(self):
+        if len(self._hypergbm_explainers) == 1 and isinstance(self._hypergbm_explainers[0], KernelExplainer):
+            return self.METHOD_KERNEL
+        else:
+            return self.METHOD_TREE
+
+    def __call__(self, X, **kwargs):
+
+        method = self.method
+
+        if method == self.METHOD_KERNEL:
+            return self._kernel_explain(X, kwargs)
+        elif method == self.METHOD_TREE:
+            return self._tree_explain(X, kwargs)
+        else:
+            raise ValueError(f"Unseen shap explanation method {method}")

@@ -105,6 +105,7 @@ class HyperGBMExplainer:
         return X
 
 
+
 class HyperGBMEstimator(Estimator):
     def __init__(self, task, reward_metric, space_sample, data_cleaner_params=None):
         super(HyperGBMEstimator, self).__init__(space_sample=space_sample, task=task)
@@ -670,6 +671,50 @@ class HyperGBMEstimator(Estimator):
             f'gbm_model: {self.model if cv is False else self.cv_models_[0]}\n' \
             f')'
         return r
+
+
+class HyperGBMShapExplainer:
+
+    def __init__(self, hypergbm_estimator: HyperGBMEstimator,  data=None, **kwargs):
+
+        if not has_shap:
+            raise RuntimeError('Please install `shap` package first. command: pip install shap')
+        self.hypergbm_estimator = hypergbm_estimator
+        if data is not None:
+            data = self.hypergbm_estimator.transform_data(data)
+
+        if hypergbm_estimator.cv_ is True:
+            self._explainers = [TreeExplainer(m, data=data, **kwargs) for m in hypergbm_estimator.cv_gbm_models_]
+        else:
+            self._explainers = [TreeExplainer(self.hypergbm_estimator.gbm_model, data=data, **kwargs)]
+
+    @property
+    def expected_values(self):
+        return [_.expected_value for _ in self._explainers]
+
+    def __call__(self, X, transform_kwargs=None, **kwargs):
+
+        if transform_kwargs is None:
+            transform_kwargs = {}
+
+        Xt = self.hypergbm_estimator.transform_data(X, **transform_kwargs)
+
+        def f(explainer):
+            # TO FIX: CatBoostError: 'data' is numpy array of floating point numerical type,
+            # it means no categorical features,
+            # but 'cat_features' parameter specifies nonzero number of categorical features
+            setattr(explainer, 'data_feature_names', Xt.columns.tolist())
+            # pd.Dataframe.values would change the dtype to be a lower-common-denominator dtype (implicit upcasting);
+            # see https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.values.html
+            return explainer(Xt.to_numpy(dtype='object'), **kwargs)
+
+        shap_values = [f(explainer) for explainer in self._explainers]
+
+        return shap_values
+
+    def transform_data(self, X, **kwargs):
+        X = self.hypergbm_estimator.transform_data(X, **kwargs)
+        return X
 
 
 class HyperGBM(HyperModel):
