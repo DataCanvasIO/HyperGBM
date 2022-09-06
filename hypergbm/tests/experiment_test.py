@@ -26,6 +26,8 @@ from hypergbm import make_experiment
 from hypergbm.experiment import PipelineKernelExplainer, PipelineTreeExplainer
 from hypernets.tabular.datasets import dsutils
 
+from hypergbm.tests.hypergbm_test import TestShapExplainer
+
 try:
     import shap
     import matplotlib.pyplot as plt
@@ -311,76 +313,161 @@ class Test_Experiment():
 @need_shap
 class TestPipelineExplainer:
 
-    def get_random_path(self):
-        import tempfile
-        t_fd, t_path = tempfile.mkstemp(prefix='shap_')
+    def run_kernel_explainer(self, estimator, df_test):
+        kernel_explainer = PipelineKernelExplainer(estimator, data=df_test.sample(100))
+        return kernel_explainer(df_test.sample(n=1))
 
-        os.close(t_fd)
-        return t_path
+    def run_tree_explainer(self, estimator, df_test, model_indexes):
+        # test tree explainer
+        tree_explainer = PipelineTreeExplainer(estimator, model_indexes=model_indexes)
+        return tree_explainer(df_test)
 
-    def run_plot(self, shap_values):
-        # water fall
-        shap.plots.waterfall(shap_values[0], show=False)
-        plt.savefig(self.get_random_path())
-
-        # beeswarm
-        shap.plots.beeswarm(shap_values, show=False)
-        plt.savefig(self.get_random_path(), show=False)
-
-        # force
-        shap.plots.force(shap_values[0], show=False)
-        plt.savefig(self.get_random_path())
-
-        # plot interaction
-        shap.plots.scatter(shap_values[:, "duration"], color=shap_values, show=False)
-        plt.savefig(self.get_random_path())
-
-    def run_cv_plot_shap_value(self, model_indexes, enable_kernel):
-        df = dsutils.load_bank()
-        df_train, df_test = train_test_split(df, test_size=0.8, random_state=42)
-
-        experiment = make_experiment(df_train, target='y',
-                                     max_trials=3,
-                                     random_state=1234,
-                                     log_level='info', cv=True, num_folds=3)
-
-        estimator = experiment.run()
-
-        if enable_kernel:
-            # test kernel explainer
-            kernel_explainer = PipelineKernelExplainer(estimator, data=df_test.sample(100))
-            kernel_values_list = kernel_explainer(df_test.sample(n=1))
-            assert len(kernel_values_list) == 2  # binary classification
-            self.run_plot(kernel_values_list[0])
+    def get_regression_model(self, cv, ensemble_size=20):
+        if cv is True:
+            num_folds = 3
         else:
-            # test tree explainer
-            tree_explainer = PipelineTreeExplainer(estimator, model_indexes=model_indexes)
-            tree_values_list = tree_explainer(df_test)
-            self.run_plot(tree_values_list[0][1])
+            num_folds = None
 
-    def test_cv_plot_shap_value(self):
-        self.run_cv_plot_shap_value(model_indexes=[0], enable_kernel=True)
-
-    def test_select_cv_models(self):
-        self.run_cv_plot_shap_value(model_indexes=[0, 1], enable_kernel=False)
-
-    def test_final_train_plot_shap_value(self):
-        df = dsutils.load_bank()
+        df = dsutils.load_boston()
         df_train, df_test = train_test_split(df, test_size=0.8, random_state=42)
 
-        experiment = make_experiment(df_train, target='y',
+        experiment = make_experiment(df_train, target='target',
                                      max_trials=3,
                                      random_state=1234,
-                                     log_level='info', ensemble=None, cv=True, num_folds=3)
+                                     log_level='info', cv=cv, ensemble_size=ensemble_size, num_folds=num_folds)
 
         estimator = experiment.run()
+        return estimator, df_test
+
+    def get_binary_model(self, cv, ensemble_size=20):
+        if cv is True:
+            num_folds = 3
+        else:
+            num_folds = None
+
+        df = dsutils.load_bank().sample(1000, random_state=1234)
+        df_train, df_test = train_test_split(df, test_size=0.8, random_state=42)
+        experiment = make_experiment(df_train.copy(), target='y',
+                                     max_trials=3,
+                                     reward_metric='accuracy',
+                                     optimize_direction='max',
+                                     random_state=1234,
+                                     log_level='info',
+                                     cv=cv,
+                                     ensemble_size=ensemble_size,
+                                     num_folds=num_folds)
+
+        estimator = experiment.run()
+        return estimator, df_test.copy()
+
+    def test_regression_cv_ensemble_plot(self):
+        estimator, df_test = self.get_regression_model(cv=True)
+        kernel_shap_values = self.run_kernel_explainer(estimator, df_test)
+        assert len(kernel_shap_values.shape) == 2
+        TestShapExplainer.run_plot(kernel_shap_values, interaction="CRIM")
+
+        tree_values_list = self.run_tree_explainer(estimator, df_test, model_indexes=[0])
+        assert len(tree_values_list) == 1
+        assert len(tree_values_list[0]) == 3  # cv models
+        TestShapExplainer.run_plot(tree_values_list[0][0], interaction="CRIM")
+
+    def test_regression_disable_cv_ensemble_plot(self):
+        estimator, df_test = self.get_regression_model(cv=False)
+        kernel_shap_values = self.run_kernel_explainer(estimator, df_test)
+        assert len(kernel_shap_values.shape) == 2
+        TestShapExplainer.run_plot(kernel_shap_values, interaction="CRIM")
+
+        tree_values_list = self.run_tree_explainer(estimator, df_test, model_indexes=[0])
+        assert len(tree_values_list) == 1
+        assert len(tree_values_list[0].shape) == 2
+        TestShapExplainer.run_plot(tree_values_list[0], interaction="CRIM")
+
+    def test_binary_cv_ensemble_plot(self):
+        estimator, df_test = self.get_binary_model(cv=True)
+        kernel_shap_values = self.run_kernel_explainer(estimator, df_test)
+        assert len(kernel_shap_values) == 2  # 2 outputs
+        assert len(kernel_shap_values[1].shape) == 2
+        TestShapExplainer.run_plot(kernel_shap_values[1], interaction="duration")
+        # index of 0 is None in ensemble
+        tree_values_list = self.run_tree_explainer(estimator, df_test, model_indexes=[1])
+        assert len(tree_values_list) == 1
+        assert len(tree_values_list[0]) == 3  # cv models
+        assert len(tree_values_list[0][0].shape) == 3  # lightgbm model, ndim=3
+
+        TestShapExplainer.run_plot(tree_values_list[0][0][:, :, 1], interaction="duration")
+
+    def test_binary_disable_cv_ensemble_plot(self):
+        estimator, df_test = self.get_binary_model(cv=False)
+
+        kernel_shap_values = self.run_kernel_explainer(estimator, df_test)
+        assert len(kernel_shap_values) == 2  # [0_exp, 1_exp]
+        TestShapExplainer.run_plot(kernel_shap_values[1], interaction="duration")
+
+        # index of 0 is None in ensemble
+        tree_values_list = self.run_tree_explainer(estimator, df_test, model_indexes=[0])
+        assert len(tree_values_list) == 1
+        assert len(tree_values_list[0].shape) == 3  # shape values
+        TestShapExplainer.run_plot(tree_values_list[0][:, :, 1], interaction="duration")
+
+    def test_binary_final_train_cv(self):
+        estimator, df_test = self.get_binary_model(cv=True, ensemble_size=0)
 
         # test tree explainer
         tree_explainer = PipelineTreeExplainer(estimator)
         tree_values_list = tree_explainer(df_test)
-        self.run_plot(tree_values_list[0][0])  # tree_values_list[0][0].shape=(3617,16,2)
+        assert len(tree_values_list) == 3  # cv model
+        TestShapExplainer.run_plot(tree_values_list[0][:, : , 1], interaction='duration')  # tree_values_list[0].shape=(3617,16,2)
 
         # test kernel explainer
         kernel_explainer = PipelineKernelExplainer(estimator, data=df_test.sample(100))
-        kernel_values_list = kernel_explainer(df_test.sample(n=2))
-        self.run_plot(kernel_values_list[0])
+        kernel_shap_values = kernel_explainer(df_test.sample(n=2))
+        assert len(kernel_shap_values) == 2 # 2 outputs
+        assert len(kernel_shap_values[0].shape) == 2
+        TestShapExplainer.run_plot(kernel_shap_values[0], interaction='duration')
+
+    def test_binary_final_train_disable_cv(self):
+        estimator, df_test = self.get_binary_model(cv=False, ensemble_size=0)
+
+        # test tree explainer
+        tree_explainer = PipelineTreeExplainer(estimator)
+        tree_shape_values = tree_explainer(df_test)
+        assert len(tree_shape_values.shape) == 3  #
+        TestShapExplainer.run_plot(tree_shape_values[:, :, 1], interaction='duration')  # tree_values_list[0].shape=(3617,16,2)
+
+        # test kernel explainer
+        kernel_explainer = PipelineKernelExplainer(estimator, data=df_test.sample(100))
+        kernel_shap_values = kernel_explainer(df_test.sample(n=2))
+        assert len(kernel_shap_values) == 2 # 2 outputs
+        assert len(kernel_shap_values[0].shape) == 2
+        TestShapExplainer.run_plot(kernel_shap_values[0], interaction='duration')
+
+    def test_regression_final_train_cv(self):
+        estimator, df_test = self.get_regression_model(cv=True, ensemble_size=0)
+
+        # test tree explainer
+        tree_explainer = PipelineTreeExplainer(estimator)
+        tree_values_list = tree_explainer(df_test)
+        assert len(tree_values_list) == 3  # cv model
+        TestShapExplainer.run_plot(tree_values_list[0], interaction='CRIM')  # tree_values_list[0].shape=(3617,16,2)
+
+        # test kernel explainer
+        kernel_explainer = PipelineKernelExplainer(estimator, data=df_test.sample(100))
+        kernel_shap_values = kernel_explainer(df_test.sample(n=2))
+        assert len(kernel_shap_values.shape) == 2
+        TestShapExplainer.run_plot(kernel_shap_values, interaction='CRIM')
+
+    def test_regression_final_train_disable_cv(self):
+        estimator, df_test = self.get_regression_model(cv=False, ensemble_size=0)
+
+        # test tree explainer
+        tree_explainer = PipelineTreeExplainer(estimator)
+        tree_shap_value = tree_explainer(df_test)
+        assert len(tree_shap_value.shape) == 2  # cv model
+        TestShapExplainer.run_plot(tree_shap_value, interaction='CRIM')  # tree_values_list[0].shape=(3617,16,2)
+
+        # test kernel explainer
+        kernel_explainer = PipelineKernelExplainer(estimator, data=df_test.sample(100))
+        kernel_shap_values = kernel_explainer(df_test.sample(n=2))
+        assert len(kernel_shap_values.shape) == 2
+        TestShapExplainer.run_plot(kernel_shap_values, interaction='CRIM')
+

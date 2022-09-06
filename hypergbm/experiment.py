@@ -380,6 +380,7 @@ class PipelineTreeExplainer:
             data = self._transform(data)
 
         if isinstance(last_step, GreedyEnsemble):
+            self._is_ensemble = True
             hypergbm_explainers = []
             for model_index in model_indexes:
                 estimator = last_step.estimators[model_index]
@@ -391,6 +392,7 @@ class PipelineTreeExplainer:
             self._hypergbm_explainers = hypergbm_explainers
 
         elif isinstance(last_step, HyperGBMEstimator):
+            self._is_ensemble = False
             self._hypergbm_explainers = [HyperGBMShapExplainer(last_step, data=data, **kwargs)]
         else:
             raise RuntimeError(f"Unseen estimator type {type(last_step)}")
@@ -404,5 +406,7 @@ class PipelineTreeExplainer:
 
     def __call__(self, X, **kwargs):
         Xt = self._transform(X)
-        shap_values = [_(Xt, **kwargs) if _ is not None else None for _ in self._hypergbm_explainers]
-        return shap_values
+        if self._is_ensemble is True:
+            return [_(Xt, **kwargs) if _ is not None else None for _ in self._hypergbm_explainers]
+        else:
+            return self._hypergbm_explainers[0](Xt, **kwargs)

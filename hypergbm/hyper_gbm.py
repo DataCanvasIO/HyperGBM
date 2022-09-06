@@ -690,7 +690,10 @@ class HyperGBMShapExplainer:
 
     @property
     def expected_values(self):
-        return [_.expected_value for _ in self._explainers]
+        if self.hypergbm_estimator.cv_ is True:
+            return [_.expected_value for _ in self._explainers]
+        else:
+            return self._explainers[0].expected_value
 
     def __call__(self, X, transform_kwargs=None, **kwargs):
 
@@ -707,10 +710,10 @@ class HyperGBMShapExplainer:
             # pd.Dataframe.values would change the dtype to be a lower-common-denominator dtype (implicit upcasting);
             # see https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.values.html
             return explainer(Xt.to_numpy(dtype='object'), **kwargs)
-
-        shap_values = [f(explainer) for explainer in self._explainers]
-
-        return shap_values
+        if self.hypergbm_estimator.cv_ is True:
+            return [f(explainer) for explainer in self._explainers]
+        else:
+            return f(self._explainers[0])
 
     def transform_data(self, X, **kwargs):
         X = self.hypergbm_estimator.transform_data(X, **kwargs)

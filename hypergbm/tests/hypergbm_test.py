@@ -178,18 +178,23 @@ class TestShapExplainer:
 
     @classmethod
     def setup_class(cls):
-        pass
+        kwargs_list = [
+            dict(enable_lightgbm=True, enable_xgb=False, enable_catboost=False, enable_histgb=False),
+            dict(enable_lightgbm=False, enable_xgb=True, enable_catboost=False, enable_histgb=False),
+            dict(enable_lightgbm=False, enable_xgb=False, enable_catboost=True, enable_histgb=False)
+        ]
+        cls.search_spaces = [GeneralSearchSpaceGenerator(**_) for _ in kwargs_list]
 
-    def _train(self, search_space, is_cv=False):
-        rs = RandomSearcher(search_space, optimize_direction=OptimizeDirection.Maximize)
-        hk = HyperGBM(rs, task='binary', reward_metric='accuracy',
+    def _train(self, df, target, search_space, task, reward_metric, optimize_direction,  is_cv):
+        rs = RandomSearcher(search_space, optimize_direction=optimize_direction)
+        # rs = RandomSearcher(search_space, optimize_direction=OptimizeDirection.Maximize)
+        # binary
+        hk = HyperGBM(rs, task=task,
+                      reward_metric=reward_metric,
                       callbacks=[SummaryCallback(), FileLoggingCallback(rs, output_dir=f'{test_output_dir}/hyn_logs')])
-
-        df = dsutils.load_bank()
-        df.drop(['id'], axis=1, inplace=True)
         X_train, X_test = train_test_split(df.head(1000), test_size=0.2, random_state=42)
-        y_train = X_train.pop('y')
-        y_test = X_test.pop('y')
+        y_train = X_train.pop(target)
+        y_test = X_test.pop(target)
         if is_cv:
             hk.search(X_train, y_train, X_test, y_test, cv=True, num_folds=3, max_trials=2)
         else:
@@ -202,74 +207,101 @@ class TestShapExplainer:
         explainer = HyperGBMShapExplainer(best_estimator)
         return explainer
 
-    def get_random_path(self):
+    @staticmethod
+    def get_random_path():
         import tempfile
-        t_fd, t_path = tempfile.mkstemp(prefix=self.__class__.__name__)
+        t_fd, t_path = tempfile.mkstemp(prefix=TestShapExplainer.__class__.__name__)
         os.close(t_fd)
         return t_path
 
-    def run_plot(self, shap_values):
+    @staticmethod
+    def run_plot(shap_values, interaction):
+
         # water fall
         shap.plots.waterfall(shap_values[0], show=False)
-        plt.savefig(self.get_random_path())
+        plt.savefig(TestShapExplainer.get_random_path())
 
         # beeswarm
         shap.plots.beeswarm(shap_values, show=False)
-        plt.savefig(self.get_random_path(), show=False)
+        plt.savefig(TestShapExplainer.get_random_path(), show=False)
 
         # force
         shap.plots.force(shap_values[0], show=False)
-        plt.savefig(self.get_random_path())
+        plt.savefig(TestShapExplainer.get_random_path())
 
         # plot interaction
-        shap.plots.scatter(shap_values[:, "duration"], color=shap_values, show=False)
-        plt.savefig(self.get_random_path())
+        shap.plots.scatter(shap_values[:, interaction], color=shap_values, show=False)
+        plt.savefig(TestShapExplainer.get_random_path())
 
-    def _explain(self, is_cv):
+    def _explain_gbm_alg(self, df, target, task, reward_metric, optimize_direction, is_cv):
         data_list = []
-        for search_space in self._get_search_spaces():
-
-            explainer = self._train(search_space, is_cv=is_cv)
-            df = dsutils.load_bank().sample(n=100, random_state=1234)
-            df.drop(['y'], axis=1, inplace=True)
-            shap_values_list = explainer(df)
+        # OptimizeDirection.Maximize
+        for search_space in self.search_spaces:
+            explainer = self._train(df=df.copy(), target=target,
+                                    search_space=search_space,
+                                    task=task,
+                                    optimize_direction=optimize_direction,
+                                    reward_metric=reward_metric,
+                                    is_cv=is_cv)
+            df_test = df.sample(n=100, random_state=1234)
+            shap_values_list = explainer(df_test)
             data_list.append((shap_values_list, explainer))
         return data_list
 
-    def test_cv_models(self):
-        data_list = self._explain(False)
-        for shap_values_list, explainer in data_list:
-            if isinstance(explainer.hypergbm_estimator.model, LGBMClassifierWrapper):
-                # LightGBM binary classifier with TreeExplainer shap values output has changed to a list of ndarray
-                # LightGBM output shape: (n_rows, n_cols, n_classes)
-                # other gbm alg output shape: (n_rows, n_cols)
-                assert len(shap_values_list[0].shape) == 3
-                shap_values = shap_values_list[0][:, :, 1]  # shap values of positive label
-            else:
-                shap_values = shap_values_list[0]
-                assert len(shap_values_list) == 1
-            self.run_plot(shap_values)
+    def run_binary(self, func_validation, is_cv):
+        df = dsutils.load_bank()
+        df.drop(['id'], axis=1, inplace=True)
+        data_list = self._explain_gbm_alg(df=df, target='y', task='binary',
+                                          reward_metric='accuracy',
+                                          optimize_direction=OptimizeDirection.Maximize,
+                                          is_cv=is_cv)
 
-    def test_train_test_split_model(self):
-        data_list = self._explain(True)
         for shap_values_list, explainer in data_list:
-            assert len(shap_values_list) == 3
-            assert isinstance(shap_values_list, list)
-            if isinstance(explainer.hypergbm_estimator.model, LGBMClassifierWrapper):
-                # LightGBM binary classifier with TreeExplainer shap values output has changed to a list of ndarray
-                # LightGBM output shape: (n_rows, n_cols, n_classes)
-                # other gbm alg output shape: (n_rows, n_cols)
-                assert len(shap_values_list[0].shape) == 3
-                shap_values = shap_values_list[0][:, :, 1]  # shap values of positive label
-            else:
-                shap_values = shap_values_list[0]
-                assert len(shap_values.shape) == 2
-            self.run_plot(shap_values)
+            func_validation(shap_values_list, explainer, "duration")
 
-    def _get_search_spaces(self):
-        kwargs_list = [
-            dict(enable_lightgbm=True, enable_xgb=False, enable_catboost=False, enable_histgb=False),
-            dict(enable_lightgbm=False, enable_xgb=True, enable_catboost=False, enable_histgb=False),
-            dict(enable_lightgbm=False, enable_xgb=False, enable_catboost=True, enable_histgb=False)
-        ]
-        return [GeneralSearchSpaceGenerator(**_) for _ in kwargs_list]
+    def run_regression(self, func_validation, is_cv):
+        df = dsutils.load_boston()
+        data_list = self._explain_gbm_alg(df=df.copy(), target='target', task='regression',
+                                          reward_metric='rmse',
+                                          optimize_direction=OptimizeDirection.Minimize, is_cv=is_cv)
+
+        for shap_values_list, explainer in data_list:
+            func_validation(shap_values_list, explainer, interaction="CRIM")
+
+    def validate_train_test_split_model(self, shap_values_list, explainer, interaction):
+        if isinstance(explainer.hypergbm_estimator.model, LGBMClassifierWrapper):
+            # LightGBM binary classifier with TreeExplainer shap values output has changed to a list of ndarray
+            # LightGBM output shape: (n_rows, n_cols, n_classes)
+            # other gbm alg output shape: (n_rows, n_cols)
+            assert len(shap_values_list.shape) == 3
+            shap_values = shap_values_list[:, :, 1]  # shap values of positive label
+        else:
+            shap_values = shap_values_list
+        assert len(shap_values.shape) == 2
+        self.run_plot(shap_values, interaction)
+
+    def validate_cv_models(self, shap_values_list, explainer, interaction):
+        assert len(shap_values_list) == 3
+        assert isinstance(shap_values_list, list)
+        if isinstance(explainer.hypergbm_estimator.model, LGBMClassifierWrapper):
+            # LightGBM binary classifier with TreeExplainer shap values output has changed to a list of ndarray
+            # LightGBM output shape: (n_rows, n_cols, n_classes)
+            # other gbm alg output shape: (n_rows, n_cols)
+            assert len(shap_values_list[0].shape) == 3
+            shap_values = shap_values_list[0][:, :, 1]  # shap values of positive label
+        else:
+            shap_values = shap_values_list[0]
+            assert len(shap_values.shape) == 2
+        self.run_plot(shap_values, interaction)
+
+    def test_binary_cv_models(self):
+        self.run_binary(self.validate_cv_models, True)
+
+    def test_binary_train_test_split_model(self):
+        self.run_binary(self.validate_train_test_split_model, is_cv=False)
+
+    def test_regression_cv_models(self):
+        self.run_regression(self.validate_cv_models, is_cv=True)
+
+    def test_regression_train_test_split_model(self):
+        self.run_regression(self.validate_train_test_split_model, is_cv=False)
