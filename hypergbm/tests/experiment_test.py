@@ -341,22 +341,22 @@ class TestPipelineExplainer:
 
         experiment = make_experiment(df_train, target='y',
                                      max_trials=3,
+                                     random_state=1234,
                                      log_level='info', cv=True, num_folds=3)
 
         estimator = experiment.run()
 
-        # test tree explainer
-        tree_explainer = PipelineSHAPExplainer(estimator, model_indexes=model_indexes)
-        tree_values_list = tree_explainer(df_test)
-        assert len(tree_values_list) == len(model_indexes)
-
-        self.run_plot(tree_values_list[0][0])
-
         if enable_kernel:
             # test kernel explainer
-            kernel_explainer = PipelineSHAPExplainer(estimator, data=df_test, method='kernel')
-            kernel_values_list = kernel_explainer(df_test.sample(n=10))
-            self.run_plot(kernel_values_list[0])
+            kernel_explainer = PipelineSHAPExplainer(estimator, data=df_test.sample(100), method='kernel')
+            kernel_values_list = kernel_explainer(df_test.sample(n=1))
+            assert len(kernel_values_list) == 2  # binary classification
+            # self.run_plot(kernel_values_list[0])
+        else:
+            # test tree explainer
+            tree_explainer = PipelineSHAPExplainer(estimator, model_indexes=model_indexes)
+            tree_values_list = tree_explainer(df_test)
+            self.run_plot(tree_values_list[0][1])
 
     def test_cv_plot_shap_value(self):
         self.run_cv_plot_shap_value(model_indexes=[0], enable_kernel=True)

@@ -335,13 +335,19 @@ class PipelineSHAPExplainer:
 
         self.pipeline_model = pipeline_model
         self.hypergbm_explainers = None
+        self.data_columns = None
 
         last_step = pipeline_model.steps[-1][1]
 
         if method == self.METHOD_KERNEL:
             if data is None:
                 raise ValueError("Missing param 'data'")
-            self._hypergbm_explainers = [KernelExplainer(pipeline_model.predict_proba, data=data,
+            if hasattr(pipeline_model, 'predict_proba'):
+                pred_f = pipeline_model.predict_proba
+            else:
+                pred_f = pipeline_model.predict  # regression
+            self.data_columns = data.columns
+            self._hypergbm_explainers = [KernelExplainer(pred_f, data=data,
                                                          keep_index=True, **kwargs)]
         elif method == self.METHOD_TREE:
             hypergbm_explainers = []
@@ -393,7 +399,10 @@ class PipelineSHAPExplainer:
     def _kernel_explain(self, X, shap_kwargs):
         explainer: KernelExplainer = self._hypergbm_explainers[0]
         shap_values = explainer.shap_values(X, **shap_kwargs)
-        return shap_values
+        from shap._explanation import Explanation
+        return Explanation(shap_values, base_values=explainer.expected_value, data=X.values,
+                           feature_names=self.data_columns.tolist())
+        # return Explanation(shap_values, base_values=, feature_names=)
 
     @property
     def method(self):

@@ -30,6 +30,7 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
+        conda install -c conda-forge shap
         pip install -q git+https://github.com/DataCanvasIO/Hypernets
         pip install git+https://github.com/DataCanvasIO/HyperBoard.git#subdirectory=hboard-widget
         pip install git+https://github.com/DataCanvasIO/HyperBoard.git#subdirectory=hboard
