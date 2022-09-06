@@ -23,7 +23,7 @@ from hypernets.searchers import RandomSearcher
 from sklearn.model_selection import train_test_split
 
 from hypergbm import make_experiment
-from hypergbm.experiment import PipelineSHAPExplainer
+from hypergbm.experiment import PipelineKernelExplainer, PipelineTreeExplainer
 from hypernets.tabular.datasets import dsutils
 
 try:
@@ -348,13 +348,13 @@ class TestPipelineExplainer:
 
         if enable_kernel:
             # test kernel explainer
-            kernel_explainer = PipelineSHAPExplainer(estimator, data=df_test.sample(100), method='kernel')
+            kernel_explainer = PipelineKernelExplainer(estimator, data=df_test.sample(100))
             kernel_values_list = kernel_explainer(df_test.sample(n=1))
             assert len(kernel_values_list) == 2  # binary classification
-            # self.run_plot(kernel_values_list[0])
+            self.run_plot(kernel_values_list[0])
         else:
             # test tree explainer
-            tree_explainer = PipelineSHAPExplainer(estimator, model_indexes=model_indexes)
+            tree_explainer = PipelineTreeExplainer(estimator, model_indexes=model_indexes)
             tree_values_list = tree_explainer(df_test)
             self.run_plot(tree_values_list[0][1])
 
@@ -370,16 +370,17 @@ class TestPipelineExplainer:
 
         experiment = make_experiment(df_train, target='y',
                                      max_trials=3,
+                                     random_state=1234,
                                      log_level='info', ensemble=None, cv=True, num_folds=3)
 
         estimator = experiment.run()
 
         # test tree explainer
-        tree_explainer = PipelineSHAPExplainer(estimator)
+        tree_explainer = PipelineTreeExplainer(estimator)
         tree_values_list = tree_explainer(df_test)
-        self.run_plot(tree_values_list[0][0])
+        self.run_plot(tree_values_list[0][0])  # tree_values_list[0][0].shape=(3617,16,2)
 
         # test kernel explainer
-        kernel_explainer = PipelineSHAPExplainer(estimator, data=df_test, method='kernel')
-        kernel_values_list = kernel_explainer(df_test.sample(n=5))
+        kernel_explainer = PipelineKernelExplainer(estimator, data=df_test.sample(100))
+        kernel_values_list = kernel_explainer(df_test.sample(n=2))
         self.run_plot(kernel_values_list[0])

@@ -301,34 +301,21 @@ def _merge_doc():
 _merge_doc()
 
 
-class PipelineSHAPExplainer:
+class PipelineKernelExplainer:
 
-    METHOD_TREE = "tree"
-    METHOD_KERNEL = "kernel"
+    def __init__(self, pipeline_model, data, **kwargs):
+        """SHAP Kernel Explainer for HyperGBM pipeline model
 
-    def __init__(self, pipeline_model, data=None, model_indexes=None, method='tree', **kwargs):
-        """SHAP Explainer for HyperGBM pipeline model
+          Parameters
+          ----------
+          pipeline_model: sklearn.pipeline.Pipeline, required
+              hypergbm pipeline model, training by CompeteExperiment
 
-        Parameters
-        ----------
-        pipeline_model: sklearn.pipeline.Pipeline, required
-            hypergbm pipeline model, training by CompeteExperiment
+          data: pd.DataFrame, optional
+              the background dataset to use for integrating out features, recommend less than 100 rows samples.
 
-        data: pd.DataFrame, optional
-            the background dataset to use for integrating out features.
-            for method='kernel', it's required, recommend less than 100 rows samples.
-
-        model_indexes: model indexes in GreedEnsemble, the option if only for method='tree' and ensemble model,
-                       default is the first model.
-
-        method: str, default is 'tree',  one of 'tree', 'kernel'
-            explanation method
-
-        kwargs: k-v args for KernelExplainer or HyperGBMShapExplainer
-        """
-
-        if model_indexes is None:
-            model_indexes = [0]
+          kwargs: params for shap.KernelExplainer
+          """
 
         if not has_shap:
             raise RuntimeError('Please install `shap` package first. command: pip install shap')
@@ -337,87 +324,85 @@ class PipelineSHAPExplainer:
         self.hypergbm_explainers = None
         self.data_columns = None
 
+        if hasattr(pipeline_model, 'predict_proba'):
+            pred_f = pipeline_model.predict_proba  # output shape values shape = (n_output, n_rows, n_cols)
+        else:
+            pred_f = pipeline_model.predict  # regression, output shape values shape = (n_rows, n_cols)
+
+        self.data_columns = data.columns
+        self._explainer = KernelExplainer(pred_f, data=data, keep_index=True, **kwargs)
+
+    def __call__(self, X, **kwargs):
+        explainer = self._explainer
+        shap_values_data = explainer.shap_values(X, **kwargs)
+        from shap._explanation import Explanation
+        if isinstance(shap_values_data, list):  # usually for classification
+            el_list = []
+            for i, shap_values in enumerate(shap_values_data):
+                el = Explanation(shap_values, base_values=explainer.expected_value[i], data=X.values,
+                                 feature_names=self.data_columns.tolist())
+                el_list.append(el)
+            return el_list
+        else:
+            return Explanation(shap_values_data, base_values=explainer.expected_value,
+                               data=X.values, feature_names=self.data_columns.tolist())
+
+
+class PipelineTreeExplainer:
+
+    def __init__(self, pipeline_model, data=None, model_indexes=None, **kwargs):
+        """SHAP Tree Explainer for HyperGBM pipeline model
+
+          Parameters
+          ----------
+          pipeline_model: sklearn.pipeline.Pipeline, required
+              hypergbm pipeline model, training by CompeteExperiment
+
+          data: pd.DataFrame, optional
+              the background dataset to use for integrating out features.
+
+          model_indexes: model indexes in GreedEnsemble, the option if only for method='tree' and ensemble model,
+                         default is the first model.
+
+          kwargs: params for HyperGBMShapExplainer
+          """
+        if not has_shap:
+            raise RuntimeError('Please install `shap` package first. command: pip install shap')
+
+        if model_indexes is None:
+            model_indexes = [0]
+
+        self.pipeline_model = pipeline_model
+
         last_step = pipeline_model.steps[-1][1]
 
-        if method == self.METHOD_KERNEL:
-            if data is None:
-                raise ValueError("Missing param 'data'")
-            if hasattr(pipeline_model, 'predict_proba'):
-                pred_f = pipeline_model.predict_proba
-            else:
-                pred_f = pipeline_model.predict  # regression
-            self.data_columns = data.columns
-            self._hypergbm_explainers = [KernelExplainer(pred_f, data=data,
-                                                         keep_index=True, **kwargs)]
-        elif method == self.METHOD_TREE:
+        if data is not None:
+            data = self._transform(data)
+
+        if isinstance(last_step, GreedyEnsemble):
             hypergbm_explainers = []
+            for model_index in model_indexes:
+                estimator = last_step.estimators[model_index]
+                if estimator is not None:
+                    hypergbm_explainers.append(HyperGBMShapExplainer(estimator, data=data, **kwargs))
+                else:
+                    logger.warning(f"Index of {model_index} is None ")
+                    hypergbm_explainers.append(None)
+            self._hypergbm_explainers = hypergbm_explainers
 
-            if data is not None:
-                data = self._transform(data)
-
-            if isinstance(last_step, GreedyEnsemble):
-
-                for model_index in model_indexes:
-                    estimator = last_step.estimators[model_index]
-                    if estimator is not None:
-                        hypergbm_explainers.append(HyperGBMShapExplainer(estimator, data=data, **kwargs))
-                    else:
-                        logger.warning(f"Index of {model_index} is None ")
-                        hypergbm_explainers.append(None)
-
-                self._hypergbm_explainers = hypergbm_explainers
-
-            elif isinstance(last_step, HyperGBMEstimator):
-                self._hypergbm_explainers = [HyperGBMShapExplainer(last_step, data=data, **kwargs)]
-            else:
-                raise RuntimeError(f"Unseen estimator type {type(last_step)}")
-
+        elif isinstance(last_step, HyperGBMEstimator):
+            self._hypergbm_explainers = [HyperGBMShapExplainer(last_step, data=data, **kwargs)]
         else:
-            raise ValueError(f"Unseen shap explanation method {method}")
+            raise RuntimeError(f"Unseen estimator type {type(last_step)}")
 
     def _transform(self, X):
         Xt = X
-
         #  "pipeline_model.transform" requires a passthrough estimator , it's not available for hypergbm pipeline
         for i, _, transform in self.pipeline_model._iter(with_final=False):
             Xt = transform.transform(Xt)
-            # if i <= len(self.pipeline_model.steps) - 2:
-            #     Xt = transform.transform(Xt)
-            # else:
-            #     break
-
         return Xt
 
-    def _tree_explain(self, X, shap_kwargs):
-
-        Xt = self._transform(X)
-
-        shap_values = [_(Xt, **shap_kwargs) if _ is not None else None for _ in self._hypergbm_explainers]
-
-        return shap_values
-
-    def _kernel_explain(self, X, shap_kwargs):
-        explainer: KernelExplainer = self._hypergbm_explainers[0]
-        shap_values = explainer.shap_values(X, **shap_kwargs)
-        from shap._explanation import Explanation
-        return Explanation(shap_values, base_values=explainer.expected_value, data=X.values,
-                           feature_names=self.data_columns.tolist())
-        # return Explanation(shap_values, base_values=, feature_names=)
-
-    @property
-    def method(self):
-        if len(self._hypergbm_explainers) == 1 and isinstance(self._hypergbm_explainers[0], KernelExplainer):
-            return self.METHOD_KERNEL
-        else:
-            return self.METHOD_TREE
-
     def __call__(self, X, **kwargs):
-
-        method = self.method
-
-        if method == self.METHOD_KERNEL:
-            return self._kernel_explain(X, kwargs)
-        elif method == self.METHOD_TREE:
-            return self._tree_explain(X, kwargs)
-        else:
-            raise ValueError(f"Unseen shap explanation method {method}")
+        Xt = self._transform(X)
+        shap_values = [_(Xt, **kwargs) if _ is not None else None for _ in self._hypergbm_explainers]
+        return shap_values

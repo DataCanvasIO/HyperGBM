@@ -181,9 +181,6 @@ class TestShapExplainer:
         pass
 
     def _train(self, search_space, is_cv=False):
-        df = dsutils.load_bank()
-        df.drop(['id'], axis=1, inplace=True)
-
         rs = RandomSearcher(search_space, optimize_direction=OptimizeDirection.Maximize)
         hk = HyperGBM(rs, task='binary', reward_metric='accuracy',
                       callbacks=[SummaryCallback(), FileLoggingCallback(rs, output_dir=f'{test_output_dir}/hyn_logs')])
@@ -207,8 +204,7 @@ class TestShapExplainer:
 
     def get_random_path(self):
         import tempfile
-        t_fd, t_path = tempfile.mkstemp(prefix='shap_')
-
+        t_fd, t_path = tempfile.mkstemp(prefix=self.__class__.__name__)
         os.close(t_fd)
         return t_path
 
@@ -229,35 +225,46 @@ class TestShapExplainer:
         shap.plots.scatter(shap_values[:, "duration"], color=shap_values, show=False)
         plt.savefig(self.get_random_path())
 
-    def test_cv_models(self):
+    def _explain(self, is_cv):
+        data_list = []
         for search_space in self._get_search_spaces():
-            explainer = self._train(search_space, is_cv=False)
-            df = dsutils.load_bank().sample(n=100)
+
+            explainer = self._train(search_space, is_cv=is_cv)
+            df = dsutils.load_bank().sample(n=100, random_state=1234)
             df.drop(['y'], axis=1, inplace=True)
             shap_values_list = explainer(df)
-            assert len(shap_values_list) == 1
-            shap_values = shap_values_list[0]
+            data_list.append((shap_values_list, explainer))
+        return data_list
 
+    def test_cv_models(self):
+        data_list = self._explain(False)
+        for shap_values_list, explainer in data_list:
             if isinstance(explainer.hypergbm_estimator.model, LGBMClassifierWrapper):
                 # LightGBM binary classifier with TreeExplainer shap values output has changed to a list of ndarray
-                assert len(shap_values.shape) == 3
-                shap_values = shap_values[:, :, 1]  # shap values of positive label
-
+                # LightGBM output shape: (n_rows, n_cols, n_classes)
+                # other gbm alg output shape: (n_rows, n_cols)
+                assert len(shap_values_list[0].shape) == 3
+                shap_values = shap_values_list[0][:, :, 1]  # shap values of positive label
+            else:
+                shap_values = shap_values_list[0]
+                assert len(shap_values_list) == 1
             self.run_plot(shap_values)
 
     def test_train_test_split_model(self):
-        for search_space in self._get_search_spaces():
-            explainer = self._train(search_space, is_cv=True)
-            df = dsutils.load_bank().sample(n=100)
-            df.drop(['y'], axis=1, inplace=True)
-            shap_values_list = explainer(df)
+        data_list = self._explain(True)
+        for shap_values_list, explainer in data_list:
             assert len(shap_values_list) == 3
-            for shap_values in shap_values_list:
-                if isinstance(explainer.hypergbm_estimator.model, LGBMClassifierWrapper):
-                    # LightGBM binary classifier with TreeExplainer shap values output has changed to a list of ndarray
-                    assert len(shap_values.shape) == 3
-                    shap_values = shap_values[:, :, 1]   # shap values of positive label
-                self.run_plot(shap_values)
+            assert isinstance(shap_values_list, list)
+            if isinstance(explainer.hypergbm_estimator.model, LGBMClassifierWrapper):
+                # LightGBM binary classifier with TreeExplainer shap values output has changed to a list of ndarray
+                # LightGBM output shape: (n_rows, n_cols, n_classes)
+                # other gbm alg output shape: (n_rows, n_cols)
+                assert len(shap_values_list[0].shape) == 3
+                shap_values = shap_values_list[0][:, :, 1]  # shap values of positive label
+            else:
+                shap_values = shap_values_list[0]
+                assert len(shap_values.shape) == 2
+            self.run_plot(shap_values)
 
     def _get_search_spaces(self):
         kwargs_list = [
