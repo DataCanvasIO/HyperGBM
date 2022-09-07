@@ -696,6 +696,21 @@ class HyperGBMShapExplainer:
             return self._explainers[0].expected_value
 
     def __call__(self, X, transform_kwargs=None, **kwargs):
+        """Calc explanation of X using shap tree method.
+
+        Parameters
+        ----------
+        X
+        transform_kwargs
+        kwargs
+
+        Returns
+        -------
+            For cv training, output type is List[Explanation], length is num folds of CV.
+            For train-test split training, output type is Explanation. if it's a LightGBM training one
+                classification task the output shape is (Xt_n_rows, Xt_n_cols, n_classes), for other algorithms
+                output shape is (Xt_n_rows, Xt_n_cols)
+        """
 
         if transform_kwargs is None:
             transform_kwargs = {}

@@ -333,6 +333,20 @@ class PipelineKernelExplainer:
         self._explainer = KernelExplainer(pred_f, data=data, keep_index=True, **kwargs)
 
     def __call__(self, X, **kwargs):
+        """Calc explanation of X using shap kernel method.
+
+        Parameters
+        ----------
+        X
+        kwargs
+
+        Returns
+        -------
+            For classification task, output type is List[Explanation], length is `n_classes` in the model,
+                and shape of each element is equal to X.shape.
+            For regression task, output type is Explanation, shape is equal to X.shape
+        """
+
         explainer = self._explainer
         shap_values_data = explainer.shap_values(X, **kwargs)
         from shap._explanation import Explanation
