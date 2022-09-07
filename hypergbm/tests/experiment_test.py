@@ -10,17 +10,18 @@ from hypergbm.estimators import CatBoostClassifierWrapper
 """
 import os
 from datetime import datetime
+
+import numpy as np
 import pandas as pd
-from sklearn.metrics import get_scorer
 import pytest
+from sklearn.metrics import get_scorer
+from sklearn.model_selection import train_test_split
 
 from hypergbm import HyperGBM, CompeteExperiment
 from hypergbm.search_space import search_space_general, GeneralSearchSpaceGenerator
 from hypernets.core import OptimizeDirection, EarlyStoppingCallback
 from hypernets.experiment import GeneralExperiment, ExperimentCallback, ConsoleCallback, StepNames
 from hypernets.searchers import RandomSearcher
-
-from sklearn.model_selection import train_test_split
 
 from hypergbm import make_experiment
 from hypergbm.experiment import PipelineKernelExplainer, PipelineTreeExplainer
@@ -389,12 +390,10 @@ class TestPipelineExplainer:
         assert len(kernel_shap_values[1].shape) == 2
         TestShapExplainer.run_plot(kernel_shap_values[1], interaction="duration")
         # index of 0 is None in ensemble
-        tree_values_list = self.run_tree_explainer(estimator, df_test, model_indexes=[1])
+        max_weight_index = np.argmax(estimator.steps[-1][1].weights_)
+        tree_values_list = self.run_tree_explainer(estimator, df_test, model_indexes=[max_weight_index])
         assert len(tree_values_list) == 1
-        assert len(tree_values_list[0]) == 3  # cv models
-        assert len(tree_values_list[0][0].shape) == 3  # lightgbm model, ndim=3
-
-        TestShapExplainer.run_plot(tree_values_list[0][0][:, :, 1], interaction="duration")
+        assert tree_values_list[0] is not None
 
     def test_binary_disable_cv_ensemble_plot(self):
         estimator, df_test = self.get_binary_model(cv=False)
