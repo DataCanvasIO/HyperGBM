@@ -181,23 +181,23 @@ def make_experiment(train_data,
 
     def default_experiment_callbacks():
         if isnotebook():
-            # if is_notebook_widget_ready():
-            #     from hypergbm.experiment_callbacks import create_notebook_experiment_callback
-            #     cbs = [create_notebook_experiment_callback()]
-            # else:
-            logger.info("you can install experiment notebook widget by command "
-                        "\"pip install hboard-widget\" for better user experience in jupyter notebook")
-            cbs = default_experiment_callbacks_()
+            if is_notebook_widget_ready():
+                from hypergbm.experiment_callbacks import create_notebook_experiment_callback
+                cbs = [create_notebook_experiment_callback()]
+            else:
+                logger.info("you can install experiment notebook widget by command "
+                            "\"pip install hboard-widget\" for better user experience in jupyter notebook")
+                cbs = default_experiment_callbacks_()
         else:
             cbs = default_experiment_callbacks_()
         return cbs
 
     def default_search_callbacks():
-        # if isnotebook() and is_notebook_widget_ready():
-        #     from hypergbm.experiment_callbacks import create_notebook_hyper_model_callback
-        #     cbs = [create_notebook_hyper_model_callback()]
-        # else:
-        cbs = default_search_callbacks_()
+        if isnotebook() and is_notebook_widget_ready():
+            from hypergbm.experiment_callbacks import create_notebook_hyper_model_callback
+            cbs = [create_notebook_hyper_model_callback()]
+        else:
+            cbs = default_search_callbacks_()
         return cbs
 
     if callbacks is None:
@@ -375,8 +375,7 @@ class PipelineTreeExplainer:
           data: pd.DataFrame, optional
               the background dataset to use for integrating out features.
 
-          model_indexes: model indexes in GreedEnsemble, the option if only for method='tree' and ensemble model,
-                         default is the first model.
+          model_indexes: model indexes in GreedEnsemble, default is the first model.
 
           kwargs: params for HyperGBMShapExplainer
           """
