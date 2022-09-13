@@ -1,8 +1,8 @@
 From python:3.8-buster
 
-ARG PIP_PKGS="hypergbm[all] pandas<1.4"
-ARG PIP_OPTS="--disable-pip-version-check --no-cache-dir"
-#ARG PIP_OPTS="--disable-pip-version-check --no-cache-dir -i https://pypi.tuna.tsinghua.edu.cn/simple/"
+ARG PIP_PKGS="hypergbm[all]"
+#ARG PIP_OPTS="--disable-pip-version-check --no-cache-dir"
+ARG PIP_OPTS="--disable-pip-version-check --no-cache-dir -i https://pypi.tuna.tsinghua.edu.cn/simple/"
 
 RUN pip install $PIP_OPTS $PIP_PKGS\
     && mkdir -p /opt/datacanvas \

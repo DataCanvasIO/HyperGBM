@@ -2,13 +2,13 @@
 FROM nvidia/cuda:11.0.3-base-ubuntu18.04 as builder
 
 ARG VER_CUDA=11.0
-ARG VER_RAPIDS=22.02
+ARG VER_RAPIDS=22.08
 ARG CONDA_INSTALLER=Miniconda3-latest-Linux-x86_64.sh
 ARG CONDA_ROOT=/opt/miniconda3
 ARG PYENV_ROOT=/opt/pyenv
 
-#ARG PIP_OPTS="--disable-pip-version-check --no-cache-dir"
-ARG PIP_OPTS="--disable-pip-version-check --no-cache-dir -i https://pypi.tuna.tsinghua.edu.cn/simple/"
+ARG PIP_OPTS="--disable-pip-version-check --no-cache-dir"
+# ARG PIP_OPTS="--disable-pip-version-check  --no-cache-dir -i https://pypi.tuna.tsinghua.edu.cn/simple/"
 
 RUN echo building... \
     && cd /tmp/ \
