@@ -1,1 +1,2 @@
 shap
+matplotlib<3.6
