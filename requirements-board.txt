@@ -1,1 +1,1 @@
-hboard
+hboard>=0.1.1
