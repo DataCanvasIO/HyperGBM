@@ -24,7 +24,12 @@ def _merge_dict(*args):
     d = {}
     for a in args:
         if isinstance(a, dict):
-            d.update(a)
+            # d.update(a)
+            for k, v in a.items():
+                if isinstance(v, (list, tuple)):
+                    d[k] = Choice(list(v))
+                else:
+                    d[k] = v
     return d
 
 
@@ -53,10 +58,9 @@ class SearchSpaceGenerator(object):
         raise NotImplementedError()
 
     def __call__(self, *args, **kwargs):
-        options = _merge_dict(self.options, kwargs)
-
         space = HyperSpace()
         with space.as_default():
+            options = _merge_dict(self.options, kwargs)
             hyper_input = HyperInput(name='input1')
             self.create_estimators(self.create_preprocessor(hyper_input, options), options)
             space.set_inputs(hyper_input)

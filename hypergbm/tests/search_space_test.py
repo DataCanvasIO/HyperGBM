@@ -6,6 +6,8 @@ __author__ = 'yangjian'
 import numpy as np
 import pandas as pd
 
+from hypergbm.search_space import GeneralSearchSpaceGenerator
+
 ids = []
 
 
@@ -33,3 +35,18 @@ def get_df():
     )
     y = np.array([1, 1, 0])
     return X, y
+
+
+def test_list_options():
+    n_estimators = [111, 222, 333]
+    space = GeneralSearchSpaceGenerator(n_estimators=n_estimators)
+    r = set()
+    for _ in range(20):
+        s = space()
+        s.random_sample()
+        for p in s.get_assigned_params():
+            alias = p.alias
+            if alias.endswith('.n_estimators'):
+                r.add(p.value)
+
+    assert r == set(n_estimators)
