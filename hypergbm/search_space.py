@@ -24,12 +24,7 @@ def _merge_dict(*args):
     d = {}
     for a in args:
         if isinstance(a, dict):
-            # d.update(a)
-            for k, v in a.items():
-                if isinstance(v, (list, tuple)):
-                    d[k] = Choice(list(v))
-                else:
-                    d[k] = v
+            d.update(a)
     return d
 
 
@@ -113,22 +108,29 @@ class BaseSearchSpaceGenerator(SearchSpaceGenerator):
         return preprocessor
 
     def create_estimators(self, hyper_input, options):
-        assert len(self.estimators.keys()) > 0
+        estimators = self.estimators
+        assert len(estimators.keys()) > 0
 
         creators = [_HyperEstimatorCreator(pairs[0],
                                            init_kwargs=_merge_dict(pairs[1], options.pop(f'{k}_init_kwargs', None)),
                                            fit_kwargs=_merge_dict(pairs[2], options.pop(f'{k}_fit_kwargs', None)))
-                    for k, pairs in self.estimators.items()]
+                    for k, pairs in estimators.items()]
 
         unused = {}
         for k, v in options.items():
             used = False
             for c in creators:
                 if k in c.estimator_init_kwargs.keys():
-                    c.estimator_init_kwargs[k] = v
+                    if isinstance(v, (list, tuple)):
+                        c.estimator_init_kwargs[k] = Choice(list(v))
+                    else:
+                        c.estimator_init_kwargs[k] = v
                     used = True
                 if k in c.estimator_fit_kwargs.keys():
-                    c.estimator_fit_kwargs[k] = v
+                    if isinstance(v, (list, tuple)):
+                        c.estimator_fit_kwargs[k] = Choice(list(v))
+                    else:
+                        c.estimator_fit_kwargs[k] = v
                     used = True
             if not used:
                 # logger.warn(f'Unused parameter: {k} = {v}')
