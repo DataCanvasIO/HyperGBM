@@ -382,9 +382,6 @@ class PipelineTreeExplainer:
         if not has_shap:
             raise RuntimeError('Please install `shap` package first. command: pip install shap')
 
-        if model_indexes is None:
-            model_indexes = [0]
-
         self.pipeline_model = pipeline_model
 
         last_step = pipeline_model.steps[-1][1]
@@ -395,6 +392,8 @@ class PipelineTreeExplainer:
         if isinstance(last_step, GreedyEnsemble):
             self._is_ensemble = True
             hypergbm_explainers = []
+            if model_indexes is None:
+                model_indexes = [0]
             for model_index in model_indexes:
                 estimator = last_step.estimators[model_index]
                 if estimator is not None:
@@ -405,6 +404,9 @@ class PipelineTreeExplainer:
             self._hypergbm_explainers = hypergbm_explainers
 
         elif isinstance(last_step, HyperGBMEstimator):
+            if model_indexes is not None:
+                logger.warning(f"model indexes is ignored since this is not a ensemble model.")
+
             self._is_ensemble = False
             self._hypergbm_explainers = [HyperGBMShapExplainer(last_step, data=data, **kwargs)]
         else:

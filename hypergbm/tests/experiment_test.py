@@ -314,42 +314,80 @@ class Test_Experiment():
 @need_shap
 class TestPipelineExplainer:
 
-    def run_kernel_explainer(self, estimator, df_test):
-        kernel_explainer = PipelineKernelExplainer(estimator, data=df_test.sample(100))
-        return kernel_explainer(df_test.sample(n=1))
+    def run_kernel_explainer(self, estimator, df_test, interaction_feature, task):
+        kernel_explainer = PipelineKernelExplainer(estimator, data=df_test.sample(10))
+        X_exp = df_test.head(n=2)
+        kernel_shap_values = kernel_explainer(X_exp)
+        if task == 'regression':
+            assert kernel_shap_values.shape == X_exp.shape
+            TestShapExplainer.run_plot(kernel_shap_values, interaction=interaction_feature)
+        elif task == 'binary':
+            # for binary task, the shape is (n_classes, n_rows, n_cols)
+            assert len(kernel_shap_values) == 2  # 2 outputs
+            assert kernel_shap_values[0].shape == X_exp.shape
+            TestShapExplainer.run_plot(kernel_shap_values[1], interaction=interaction_feature)
+        else:
+            assert kernel_shap_values is not None
 
     def run_tree_explainer(self, estimator, df_test, model_indexes):
-        # test tree explainer
         tree_explainer = PipelineTreeExplainer(estimator, model_indexes=model_indexes)
         return tree_explainer(df_test)
 
-    def get_regression_model(self, cv, ensemble_size=20):
+    def get_regression_model(self, cv, estimator_type:str, enable_ensemble: bool):
+        """
+        estimator_type: is one of lightgbm, xgb, catboost
+        """
+
         if cv is True:
             num_folds = 3
         else:
             num_folds = None
 
+        if enable_ensemble:
+            ensemble_size = 20
+        else:
+            ensemble_size = 0
+
         df = dsutils.load_boston()
         df_train, df_test = train_test_split(df, test_size=0.8, random_state=42)
+        
+        search_space_options = dict(enable_lightgbm=False, enable_xgb=False, enable_catboost=False, enable_histgb=False)
+        search_space_options[f'enable_{estimator_type}'] = True
+
+        from hypergbm.search_space import GeneralSearchSpaceGenerator
+        search_space = GeneralSearchSpaceGenerator(**search_space_options)
 
         experiment = make_experiment(df_train, target='target',
                                      max_trials=3,
                                      random_state=1234,
+                                     search_space=search_space,
                                      log_level='info', cv=cv, ensemble_size=ensemble_size, num_folds=num_folds)
 
         estimator = experiment.run()
         return estimator, df_test
 
-    def get_binary_model(self, cv, ensemble_size=20):
+    def get_binary_model(self, cv, estimator_type, enable_ensemble):
         if cv is True:
             num_folds = 3
         else:
             num_folds = None
 
+        if enable_ensemble:
+            ensemble_size = 20
+        else:
+            ensemble_size = 0
+
+        search_space_options = dict(enable_lightgbm=False, enable_xgb=False, enable_catboost=False, enable_histgb=False)
+        search_space_options[f'enable_{estimator_type}'] = True
+
+        from hypergbm.search_space import GeneralSearchSpaceGenerator
+        search_space = GeneralSearchSpaceGenerator(**search_space_options)
+
         df = dsutils.load_bank().sample(1000, random_state=1234)
         df_train, df_test = train_test_split(df, test_size=0.8, random_state=42)
         experiment = make_experiment(df_train.copy(), target='y',
                                      max_trials=3,
+                                     search_space=search_space,
                                      reward_metric='accuracy',
                                      optimize_direction='max',
                                      random_state=1234,
@@ -361,112 +399,92 @@ class TestPipelineExplainer:
         estimator = experiment.run()
         return estimator, df_test.copy()
 
-    def test_regression_cv_ensemble_plot(self):
-        estimator, df_test = self.get_regression_model(cv=True)
-        kernel_shap_values = self.run_kernel_explainer(estimator, df_test)
-        assert len(kernel_shap_values.shape) == 2
-        TestShapExplainer.run_plot(kernel_shap_values, interaction="CRIM")
-
-        tree_values_list = self.run_tree_explainer(estimator, df_test, model_indexes=[0])
-        assert len(tree_values_list) == 1
-        assert len(tree_values_list[0]) == 3  # cv models
-        TestShapExplainer.run_plot(tree_values_list[0][0], interaction="CRIM")
-
-    def test_regression_disable_cv_ensemble_plot(self):
-        estimator, df_test = self.get_regression_model(cv=False)
-        kernel_shap_values = self.run_kernel_explainer(estimator, df_test)
-        assert len(kernel_shap_values.shape) == 2
-        TestShapExplainer.run_plot(kernel_shap_values, interaction="CRIM")
-
-        tree_values_list = self.run_tree_explainer(estimator, df_test, model_indexes=[0])
-        assert len(tree_values_list) == 1
-        assert len(tree_values_list[0].shape) == 2
-        TestShapExplainer.run_plot(tree_values_list[0], interaction="CRIM")
-
-    def test_binary_cv_ensemble_plot(self):
-        estimator, df_test = self.get_binary_model(cv=True)
-        kernel_shap_values = self.run_kernel_explainer(estimator, df_test)
-        assert len(kernel_shap_values) == 2  # 2 outputs
-        assert len(kernel_shap_values[1].shape) == 2
-        TestShapExplainer.run_plot(kernel_shap_values[1], interaction="duration")
-        # index of 0 is None in ensemble
+    @staticmethod
+    def get_max_weight_index(estimator):
         max_weight_index = np.argmax(estimator.steps[-1][1].weights_)
-        tree_values_list = self.run_tree_explainer(estimator, df_test, model_indexes=[max_weight_index])
-        assert len(tree_values_list) == 1
-        assert tree_values_list[0] is not None
+        return max_weight_index
 
-    def test_binary_disable_cv_ensemble_plot(self):
-        estimator, df_test = self.get_binary_model(cv=False)
+    @pytest.mark.parametrize('estimator_type', ['lightgbm', 'xgb', 'catboost'])
+    @pytest.mark.parametrize('enable_ensemble', [True, False])
+    @pytest.mark.parametrize('enable_cv', [True, False])
+    def test_regression_plot(self, estimator_type: str, enable_ensemble: bool, enable_cv: bool):
 
-        kernel_shap_values = self.run_kernel_explainer(estimator, df_test)
-        assert len(kernel_shap_values) == 2  # [0_exp, 1_exp]
-        TestShapExplainer.run_plot(kernel_shap_values[1], interaction="duration")
+        estimator, df_test = self.get_regression_model(cv=enable_cv, enable_ensemble=enable_ensemble,
+                                                       estimator_type=estimator_type)
 
-        # index of 0 is None in ensemble
-        tree_values_list = self.run_tree_explainer(estimator, df_test, model_indexes=[0])
-        assert len(tree_values_list) == 1
-        assert len(tree_values_list[0].shape) == 3  # shape values
-        TestShapExplainer.run_plot(tree_values_list[0][:, :, 1], interaction="duration")
+        self.run_kernel_explainer(estimator, df_test, interaction_feature='CRIM', task='regression')
 
-    def test_binary_final_train_cv(self):
-        estimator, df_test = self.get_binary_model(cv=True, ensemble_size=0)
+        if enable_ensemble:
+            max_weight_index = self.get_max_weight_index(estimator)  # index of 0 maybe None in ensemble
+        else:
+            max_weight_index = None
 
-        # test tree explainer
-        tree_explainer = PipelineTreeExplainer(estimator)
-        tree_values_list = tree_explainer(df_test)
-        assert len(tree_values_list) == 3  # cv model
-        TestShapExplainer.run_plot(tree_values_list[0][:, : , 1], interaction='duration')  # tree_values_list[0].shape=(3617,16,2)
+        if enable_cv:
+            if enable_ensemble:
+                tree_values_list = self.run_tree_explainer(estimator, df_test, model_indexes=[max_weight_index])
+                assert len(tree_values_list) == 1
+                assert len(tree_values_list[0]) == 3  # cv models
+                # On regression task it's the same shape of lightgbm or other estimators
+                TestShapExplainer.run_plot(tree_values_list[0][0], interaction="CRIM")
+            else:
+                tree_values_list = self.run_tree_explainer(estimator, df_test, model_indexes=None)
+                assert len(tree_values_list) == 3  # cv models
+                assert len(tree_values_list[0].shape) == 2
+                TestShapExplainer.run_plot(tree_values_list[0], interaction="CRIM")
+        else:
+            if enable_ensemble:
+                tree_values_list = self.run_tree_explainer(estimator, df_test, model_indexes=[max_weight_index])
+                assert len(tree_values_list) == 1
+                # tree_values_list[0].shape=(3617,16,2)
+                TestShapExplainer.run_plot(tree_values_list[0], interaction='CRIM')
+            else:
+                tree_values_list = self.run_tree_explainer(estimator, df_test, model_indexes=None)
+                assert len(tree_values_list.shape) == 2
+                # tree_values_list[0].shape=(3617,1)
+                TestShapExplainer.run_plot(tree_values_list, interaction='CRIM')
 
-        # test kernel explainer
-        kernel_explainer = PipelineKernelExplainer(estimator, data=df_test.sample(100))
-        kernel_shap_values = kernel_explainer(df_test.sample(n=2))
-        assert len(kernel_shap_values) == 2 # 2 outputs
-        assert len(kernel_shap_values[0].shape) == 2
-        TestShapExplainer.run_plot(kernel_shap_values[0], interaction='duration')
+    @pytest.mark.parametrize('estimator_type', ['lightgbm', 'xgb', 'catboost'])
+    @pytest.mark.parametrize('enable_ensemble', [True, False])
+    @pytest.mark.parametrize('enable_cv', [True, False])
+    def test_binary_plot(self, estimator_type: str, enable_ensemble: bool, enable_cv: bool):
 
-    def test_binary_final_train_disable_cv(self):
-        estimator, df_test = self.get_binary_model(cv=False, ensemble_size=0)
+        estimator, df_test = self.get_binary_model(cv=enable_cv,
+                                                   estimator_type=estimator_type, enable_ensemble=enable_ensemble)
 
-        # test tree explainer
-        tree_explainer = PipelineTreeExplainer(estimator)
-        tree_shape_values = tree_explainer(df_test)
-        assert len(tree_shape_values.shape) == 3  #
-        TestShapExplainer.run_plot(tree_shape_values[:, :, 1], interaction='duration')  # tree_values_list[0].shape=(3617,16,2)
+        self.run_kernel_explainer(estimator, df_test, interaction_feature="duration", task='binary')
 
-        # test kernel explainer
-        kernel_explainer = PipelineKernelExplainer(estimator, data=df_test.sample(100))
-        kernel_shap_values = kernel_explainer(df_test.sample(n=2))
-        assert len(kernel_shap_values) == 2 # 2 outputs
-        assert len(kernel_shap_values[0].shape) == 2
-        TestShapExplainer.run_plot(kernel_shap_values[0], interaction='duration')
+        def assert_shap_value(shape_values):
+            if estimator_type == 'lightgbm':
+                assert len(shape_values.shape) == 3
+                TestShapExplainer.run_plot(shape_values[:, :, 1],
+                                           interaction='duration')  # tree_values_list[0].shape=(3617,16,2)
+            else:
+                assert len(shape_values.shape) == 2
+                # tree_values_list[0].shape=(3617,16)
+                TestShapExplainer.run_plot(shape_values, interaction='duration')
 
-    def test_regression_final_train_cv(self):
-        estimator, df_test = self.get_regression_model(cv=True, ensemble_size=0)
+        if enable_ensemble:
+            max_weight_index = self.get_max_weight_index(estimator)  # index of 0 maybe None in ensemble
+        else:
+            max_weight_index = None
 
-        # test tree explainer
-        tree_explainer = PipelineTreeExplainer(estimator)
-        tree_values_list = tree_explainer(df_test)
-        assert len(tree_values_list) == 3  # cv model
-        TestShapExplainer.run_plot(tree_values_list[0], interaction='CRIM')  # tree_values_list[0].shape=(3617,16,2)
+        if enable_cv:
+            if enable_ensemble:
 
-        # test kernel explainer
-        kernel_explainer = PipelineKernelExplainer(estimator, data=df_test.sample(100))
-        kernel_shap_values = kernel_explainer(df_test.sample(n=2))
-        assert len(kernel_shap_values.shape) == 2
-        TestShapExplainer.run_plot(kernel_shap_values, interaction='CRIM')
-
-    def test_regression_final_train_disable_cv(self):
-        estimator, df_test = self.get_regression_model(cv=False, ensemble_size=0)
-
-        # test tree explainer
-        tree_explainer = PipelineTreeExplainer(estimator)
-        tree_shap_value = tree_explainer(df_test)
-        assert len(tree_shap_value.shape) == 2  # cv model
-        TestShapExplainer.run_plot(tree_shap_value, interaction='CRIM')  # tree_values_list[0].shape=(3617,16,2)
-
-        # test kernel explainer
-        kernel_explainer = PipelineKernelExplainer(estimator, data=df_test.sample(100))
-        kernel_shap_values = kernel_explainer(df_test.sample(n=2))
-        assert len(kernel_shap_values.shape) == 2
-        TestShapExplainer.run_plot(kernel_shap_values, interaction='CRIM')
-
+                tree_values_list = self.run_tree_explainer(estimator, df_test, model_indexes=[max_weight_index])
+                assert len(tree_values_list) == 1
+                assert len(tree_values_list[0]) == 3  # cv models
+                assert_shap_value(tree_values_list[0][0])
+            else:
+                tree_values_list = self.run_tree_explainer(estimator, df_test, model_indexes=None)
+                assert len(tree_values_list) == 3  # cv models
+                assert_shap_value(tree_values_list[0])
+        else:
+            if enable_ensemble:
+                tree_values_list = self.run_tree_explainer(estimator, df_test, model_indexes=[max_weight_index])
+                assert len(tree_values_list) == 1
+                assert_shap_value(tree_values_list[0])
+            else:
+                tree_values_list = self.run_tree_explainer(estimator, df_test, model_indexes=None)
+                # tree_values_list[0].shape=(3617,1)
+                assert_shap_value(tree_values_list)
