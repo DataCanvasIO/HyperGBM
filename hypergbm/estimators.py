@@ -2,8 +2,10 @@
 """
 
 """
-import catboost
 import contextlib
+import os
+
+import catboost
 import lightgbm
 import numpy as np
 import pandas as pd
@@ -13,6 +15,7 @@ from hypernets.core.search_space import ModuleSpace
 from hypernets.discriminators import UnPromisingTrial
 from hypernets.tabular import get_tool_box
 from hypernets.tabular.cache import cache
+from hypernets.tabular.cfg import TabularCfg as tcfg
 from hypernets.tabular.column_selector import column_object_category_bool, column_zero_or_positive_int32
 from hypernets.utils import const, logging, to_repr, Version
 from .gbm_callbacks import LightGBMDiscriminationCallback, CatboostDiscriminationCallback
@@ -78,6 +81,19 @@ def _default_early_stopping_rounds(estimator):
         return max(5, n_estimators // 20)
     else:
         return None
+
+
+def _build_estimator_with_njobs(est_cls, kwargs, n_jobs_key='n_jobs'):
+    assert isinstance(kwargs, dict)
+
+    n_jobs = tcfg.joblib_njobs
+    if n_jobs_key not in kwargs.keys() \
+            and n_jobs is not None and n_jobs > 0 \
+            and os.environ.get('OMP_NUM_THREADS', '-1') != str(n_jobs):
+        kwargs[n_jobs_key] = n_jobs
+
+    est = est_cls(**kwargs)
+    return est
 
 
 class HyperEstimator(ModuleSpace):
@@ -401,9 +417,9 @@ class LightGBMEstimator(HyperEstimator):
 
     def _build_estimator(self, task, kwargs):
         if task == const.TASK_REGRESSION:
-            lgbm = LGBMRegressorWrapper(**kwargs)
+            lgbm = _build_estimator_with_njobs(LGBMRegressorWrapper, kwargs, n_jobs_key='n_jobs')
         else:
-            lgbm = LGBMClassifierWrapper(**kwargs)
+            lgbm = _build_estimator_with_njobs(LGBMClassifierWrapper, kwargs, n_jobs_key='n_jobs')
         return lgbm
 
 
@@ -590,9 +606,9 @@ class XGBoostEstimator(HyperEstimator):
 
     def _build_estimator(self, task, kwargs):
         if task == const.TASK_REGRESSION:
-            xgb = XGBRegressorWrapper(**kwargs)
+            xgb = _build_estimator_with_njobs(XGBRegressorWrapper, kwargs, n_jobs_key='n_jobs')
         else:
-            xgb = XGBClassifierWrapper(**kwargs)
+            xgb = _build_estimator_with_njobs(XGBClassifierWrapper, kwargs, n_jobs_key='n_jobs')
         xgb.__dict__['task'] = task
         return xgb
 
@@ -754,8 +770,8 @@ class CatBoostEstimator(HyperEstimator):
 
     def _build_estimator(self, task, kwargs):
         if task == const.TASK_REGRESSION:
-            cat = CatBoostRegressionWrapper(**kwargs)
+            cat = _build_estimator_with_njobs(CatBoostRegressionWrapper, kwargs, n_jobs_key='thread_count')
         else:
-            cat = CatBoostClassifierWrapper(**kwargs)
+            cat = _build_estimator_with_njobs(CatBoostClassifierWrapper, kwargs, n_jobs_key='thread_count')
         cat.__dict__['task'] = task
         return cat
