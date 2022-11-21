@@ -1,4 +1,4 @@
-Advanced applications
+Advanced Usages
 =========================
 
 HyperGBM *make_experiment* create an instance of *CompeteExperiment* in Hypernets. There are many advanced features of *CompeteExperiment* which will be covered in this section.

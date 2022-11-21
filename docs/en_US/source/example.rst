@@ -4,8 +4,8 @@ Examples
 .. toctree::
    :maxdepth: 2
 
-   Basic applications<example_basic.md>
-   Advanced applications<example_advanced.rst>
+   Basic Usages<example_basic.md>
+   Advanced Usages<example_advanced.rst>
    Handling Imbalanced Data<example_imbalance.md>
    Defining SearchSpace<example_customize.md>
    GPU acceleration<example_cuml.md>

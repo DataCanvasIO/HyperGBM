@@ -193,6 +193,17 @@ print(estimator)
 ```
 
 
+### 启用trial库
+
+在利用HyperGBM进行实验时，可在优化搜索时将每个trial的信息保存到trial库中；对于相同数据集，后续实验在优化过程中如果遇到相同参数的trial时，HyperGBM会直接复用之前训练的结果而不需要重新训练模型。 使用 `make_experiment` 创建实验时可通过 `trial_store` 指定trail库的存储路径。
+
+
+```python
+train_data = ...
+experiment = make_experiment(train_data, trial_store='/tmp/trial_store', ...)
+
+```
+
 ### 模型融合
 
 为了获取较好的模型效果，`make_experiment`创建实验时默认开启了模型融合的特性，并使用效果最好的20个模型进行融合，可通过参数`ensemble_size`指定参与融合的模型的数量。当`ensemble_size`设置为`0`时则表示禁用模型融合。
@@ -204,6 +215,15 @@ experiment = make_experiment(train_data, ensemble_size=10, ...)
 
 ```
 
+### 调整并行度
+
+在并行计算的环节，HyperGBM 默认将会使用所有CPU进行计算。在使用 `make_experiment` 创建实验时可通过参数 `n_jobs` 控制 HyperGBM 的线程数（或进程数）。
+
+```python
+train_data = ...
+experiment = make_experiment(train_data, n_jobs=10, ...)
+
+```
 
 
 ### 调整日志级别

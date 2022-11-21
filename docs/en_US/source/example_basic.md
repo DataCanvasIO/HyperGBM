@@ -1,4 +1,4 @@
-## Basic Applications
+## Basic Usages
 
 In this section, we are going to provide an example to show how to train a model using the tool `make_experiment`. In this example, we use the `blood` dataset, which is loaded from `hypernets.tabular`. The columns of this dataset can be shown as follows:
 ```text
@@ -193,6 +193,17 @@ print(estimator)
 ```
 
 
+### Enable TrialStore
+
+In HyperGBM experiments, one can save trial information into trail store. For the same dataset, HyperGBM will reuse the trial results if it was found from the trial store. Enable trail store with option `trial_store`.
+
+```python
+train_data = ...
+experiment = make_experiment(train_data, trial_store='/tmp/trial_store', ...)
+
+```
+
+
 ### Ensemble Models
 
 `make_experiment` automatically turns on the model ensemble function to achieve a better model. It will ensemble the best 20 models while the number for ensembling can be changed by setting `ensemble_size` as the following code, where `ensemble_size=0` means no ensembling wii be made.
@@ -203,7 +214,15 @@ experiment = make_experiment(train_data, ensemble_size=10, ...)
 
 ```
 
+### Set Parallelism
 
+By default, HyperGBM will use all CPUs in the parallel computing. One can control the number of threads or processes with option `n_jobs`.
+
+```python
+train_data = ...
+experiment = make_experiment(train_data, n_jobs=10, ...)
+
+```
 
 ### Set Log Levels
 
