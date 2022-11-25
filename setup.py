@@ -2,10 +2,14 @@
 
 from __future__ import absolute_import
 
-from setuptools import find_packages
-from setuptools import setup
 import os
 from os import path as P
+
+from setuptools import find_packages
+from setuptools import setup
+
+my_name = 'hypergbm'
+home_url = 'https://github.com/DataCanvasIO/HyperGBM'
 
 
 def read_requirements(file_path='requirements.txt'):
@@ -39,6 +43,41 @@ def read_extra_requirements():
     return extra
 
 
+def read_description(file_path='README.md',
+                     image_root=f'{home_url}/raw/main',
+                     embed_size_limit=1024 * 120):
+    import re
+    import os
+
+    def _encode_image(m):
+        assert len(m.groups()) == 3
+
+        pre, src, post = m.groups()
+        src = src.rstrip().lstrip()
+
+        # if embed_size_limit is not None and embed_size_limit > os.path.getsize(src):
+        #     import base64
+        #     ext = src[src.rfind('.') + 1:].lower()
+        #     data = open(src, 'rb').read()
+        #     txt = base64.b64encode(data).decode()
+        #     return f'{pre}data:image/{ext};base64,{txt}{post}'
+        # else:
+        #     remote_src = os.path.join(image_root, src)
+        #     return f'{pre}{remote_src}{post}'
+        remote_src = os.path.join(image_root, os.path.relpath(src))
+        return f'{pre}{remote_src}{post}'
+
+    desc = open(file_path, encoding='utf-8').read()
+
+    # substitute html image
+    desc = re.sub(r'(<img\s+src\s*=\s*\")(docs/static/images/[^"]+)(\")', _encode_image, desc)
+
+    # substitute markdown image
+    desc = re.sub(r'(\!\[.*\]\()(docs/static/images/.+)(\))', _encode_image, desc)
+
+    return desc
+
+
 try:
     execfile
 except NameError:
@@ -56,18 +95,19 @@ print("__version__=" + version)
 
 MIN_PYTHON_VERSION = '>=3.6.*'
 
-long_description = open('README.md', encoding='utf-8').read()
+# long_description = open('README.md', encoding='utf-8').read()
+long_description = read_description('README.md')
 
 requires = read_requirements()
 extras_require = read_extra_requirements()
 
 setup(
-    name='hypergbm',
+    name=my_name,
     version=version,
     description='A full pipeline AutoML tool integrated various GBM models',
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url='',
+    url=home_url,
     author='DataCanvas Community',
     author_email='yangjian@zetyun.com',
     license='Apache License 2.0',
