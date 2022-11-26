@@ -159,14 +159,16 @@ def main(argv=None):
                         help='alias of "--searcher evolution"')
         sg.add_argument('-random', dest='searcher', action='store_const', const='random',
                         help='alias of "--searcher random"')
+        sg.add_argument('--trial-store', type=str, default=None,
+                        help='trial store location, default %(default)s')
 
         eg = a.add_argument_group('Early stopping settings')
         eg.add_argument('--early-stopping-time-limit', '--es-time-limit', type=int, default=3600,
                         help='time limit to search and train, set 0 to disable, default %(default)s seconds')
         eg.add_argument('--early-stopping-rounds', '--es-rounds', type=int, default=10,
                         help='default %(default)s ')
-        eg.add_argument('--early-stopping-reward', '--es-reward', type=float, default=0.0)
-
+        eg.add_argument('--early-stopping-reward', '--es-reward', type=float, default=0.0,
+                        help='default %(default)s')
         eg.add_argument('--estimator_early_stopping_rounds', type=int, default=None,
                         help='default %(default)s')
 
@@ -326,8 +328,6 @@ def main(argv=None):
                             f'use when task="{const.TASK_BINARY}" only, default %(default)s')
         a.add_argument('--pos-label', type=str, default=None,
                        help='pos label')
-        a.add_argument('--jobs', type=int, default=-1,
-                       help='job process count, default %(default)s')
 
     def setup_predict_args(a):
         a.add_argument('--data', '--data-file', type=str, required=True,
@@ -341,8 +341,6 @@ def main(argv=None):
         a.add_argument('--threshold', type=float, default=0.5,
                        help=f'probability threshold to detect pos label, '
                             f'use when task="{const.TASK_BINARY}" only, default %(default)s')
-        a.add_argument('--jobs', type=int, default=-1,
-                       help='job process count, default %(default)s')
 
         a.add_argument('--target', '--y', type=str, default='y',
                        help='target feature name for output, default is %(default)s')
@@ -356,6 +354,13 @@ def main(argv=None):
                        help='alias of "--output-with-data *"')
 
     def setup_global_args(a):
+        a.add_argument('--version', type=to_bool, default=False,
+                       help='print version number')
+        a.add_argument('-version', '-version+', dest='version', action='store_true',
+                       help='alias of "--version true"')
+        a.add_argument('--n-jobs', type=int, default=None,
+                       help='the number of parallel job processes or threads, default %(default)s')
+
         # console output
         logging_group = a.add_argument_group('Console outputs')
 
@@ -374,11 +379,6 @@ def main(argv=None):
                                    help='verbose level, default is %(default)s')
         logging_group.add_argument('-v', '-v+', dest='verbose', action='count',
                                    help='increase verbose level')
-
-        logging_group.add_argument('--version', type=to_bool, default=False,
-                                   help='print version number')
-        logging_group.add_argument('-version', '-version+', dest='version', action='store_true',
-                                   help='alias of "--version true"')
 
         # dask settings
         dask_group = a.add_argument_group('Dask settings')
@@ -534,7 +534,7 @@ def evaluate(args):
 
     assert os.path.exists(model_file), f'Not found {model_file}'
     assert os.path.exists(eval_data), f'Not found {eval_data}'
-    assert not (args.enable_dask and args.jobs > 1)
+    assert not (args.enable_dask and args.n_jobs is not None and args.n_jobs > 1)
 
     tb = get_tool_box(args)
 
@@ -546,7 +546,7 @@ def evaluate(args):
     if args.verbose:
         print(f'>>> evaluate {model_file} with {metrics}')
     scores = tb.metrics.evaluate(model_file, X, y, metrics,
-                                 pos_label=args.pos_label, threshold=args.threshold, n_jobs=args.jobs)
+                                 pos_label=args.pos_label, threshold=args.threshold, n_jobs=args.n_jobs)
 
     print(scores)
 
@@ -560,7 +560,7 @@ def predict(args):
 
     assert os.path.exists(model_file), f'Not found {model_file}'
     assert os.path.exists(data_file), f'Not found {data_file}'
-    assert not (args.enable_dask and args.jobs > 1)
+    assert not (args.enable_dask and args.n_jobs is not None and args.n_jobs > 1)
 
     tb = get_tool_box(args)
 
@@ -583,11 +583,11 @@ def predict(args):
     if args.proba:
         if args.verbose:
             print(f'>>> run predict_proba')
-        pred = tb.metrics.predict_proba(model_file, X, n_jobs=args.jobs)
+        pred = tb.metrics.predict_proba(model_file, X, n_jobs=args.n_jobs)
     else:
         if args.verbose:
             print(f'>>> run predict')
-        pred = tb.metrics.predict(model_file, X, n_jobs=args.jobs, threshold=args.threshold)
+        pred = tb.metrics.predict(model_file, X, n_jobs=args.n_jobs, threshold=args.threshold)
 
     if args.verbose:
         print(f'>>> save prediction to {output_file}')
