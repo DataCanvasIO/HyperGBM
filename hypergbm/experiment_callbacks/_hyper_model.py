@@ -126,6 +126,7 @@ class HyperGBMNotebookHyperModelCallback(ABSExpVisHyperModelCallback):
             self.send_action(ActionType.EarlyStopped, payload)
 
     def on_trial_end(self, hyper_model, space, trial_no, reward, improved, elapsed):
+        reward = reward[0]
         self.assert_ready()
         trial_event_data = _parse_trial_end_event(hyper_model, space, trial_no, reward, improved, elapsed,
                                                   self.max_trials, self.current_running_step_index)
