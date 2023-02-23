@@ -4,7 +4,7 @@
 
 ### 快速实验
 
-HyperGBM支持使用Dask进行分布式训练，在运行实验之前您需要部署Dask集群并初始化Dask客户端`Client`对象；如果您的训练数据是csv或parquet格式，而且数据文件的扩展名是“.csv”或“.parquet”的话，可以直接使用文件路径创建实验，make_experiment在检测到Dask环境是会自动将数据加载为Dask的DataFrame对象并进行搜索和训练。
+HyperGBM支持使用Dask进行分布式训练，在运行实验之前您需要部署Dask集群并初始化Dask客户端`Client`对象；如果您的训练数据是csv或parquet格式，而且数据文件的扩展名是“.csv”或“.parquet”的话，可以直接使用文件路径创建实验，make_experiment在检测到Dask环境时会自动将数据加载为Dask的DataFrame对象并进行搜索和训练。
 
 示例代码（以单节点为例，假设您的训练数据文件是‘/opt/data/my_data.csv’）：
 
