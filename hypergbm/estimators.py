@@ -11,6 +11,7 @@ import numpy as np
 import pandas as pd
 import xgboost
 
+from hypergbm.utils.detect_estimator import detect_with_process
 from hypernets.core.search_space import ModuleSpace
 from hypernets.discriminators import UnPromisingTrial
 from hypernets.tabular import get_tool_box
@@ -56,9 +57,9 @@ def detect_lgbm_gpu():
         #                                  fit_kwargs={})()
         # logger.info(f'detect_estimator lightgbm.LGBMClassifier as {detected}')
         # _detected_lgbm_gpu = detected
-        _detected_lgbm_gpu = _tb_detect_estimator('lightgbm.LGBMClassifier', const.TASK_BINARY,
-                                                  init_kwargs={'device': 'GPU', 'verbose': -1},
-                                                  fit_kwargs={})
+        _detected_lgbm_gpu = detect_with_process('lightgbm.LGBMClassifier', const.TASK_BINARY,
+                                                 init_kwargs={'device': 'GPU', 'verbose': -1},
+                                                 fit_kwargs={})
 
     return 'fitted' in _detected_lgbm_gpu
 
