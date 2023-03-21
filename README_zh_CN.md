@@ -127,6 +127,16 @@ hypergbm train --train-file=blood.csv --target=Class --model-file=model.pkl
 
 ![Gpu Acceleration](docs/static/images/gpu_speedup.png)
 
+## 参考文档
+
+* [概览](https://hypergbm.readthedocs.io/zh_CN/latest/overview.html)
+* [安装](https://hypergbm.readthedocs.io/zh_CN/latest/installation.html)
+* [快速开始](https://hypergbm.readthedocs.io/zh_CN/latest/quick_start.html)
+* [使用示例](https://hypergbm.readthedocs.io/zh_CN/latest/example.html)
+* [How-To](https://hypergbm.readthedocs.io/zh_CN/latest/how_to.html)
+* [Release Notes](https://hypergbm.readthedocs.io/zh_CN/latest/release_note.html)
+
+
 ## 相关文章
 
 * [HyperGBM用4记组合拳提升AutoML模型泛化能力](https://zhuanlan.zhihu.com/p/349824150)
@@ -134,6 +144,7 @@ hypergbm train --train-file=blood.csv --target=Class --model-file=model.pkl
 * [HyperGBM的三种Early Stopping方式](https://zhuanlan.zhihu.com/p/350051541)
 * [如何HyperGBM解决分类样本不均衡问题](https://zhuanlan.zhihu.com/p/350052055)
 * [HyperGBM轻松实现Pseudo-labeling半监督学习](https://zhuanlan.zhihu.com/p/355419632)
+
 
 ## Hypernets 相关项目
  
@@ -148,14 +159,25 @@ hypergbm train --train-file=blood.csv --target=Class --model-file=model.pkl
 ![DataCanvas AutoML Toolkit](docs/static/images/DAT_logo.png)
 
 
-## 参考文档
+## 引用
 
-* [概览](https://hypergbm.readthedocs.io/zh_CN/latest/overview.html)
-* [安装](https://hypergbm.readthedocs.io/zh_CN/latest/installation.html)
-* [快速开始](https://hypergbm.readthedocs.io/zh_CN/latest/quick_start.html)
-* [使用示例](https://hypergbm.readthedocs.io/zh_CN/latest/example.html)
-* [How-To](https://hypergbm.readthedocs.io/zh_CN/latest/how_to.html)
-* [Release Notes](https://hypergbm.readthedocs.io/zh_CN/latest/release_note.html)
+如果您想引用HyperGBM在您的研究中，请使用下面信息:
+
+   Jian Yang, Xuefeng Li, Haifeng Wu. 
+   **HyperGBM: A full pipeline AutoML tool integrated with various GBM models.** https://github.com/DataCanvasIO/HyperGBM. 2020. Version 0.2.x.
+
+BibTex:
+
+```
+@misc{hypergbm,
+  author={Jian Yang, Xuefeng Li, Haifeng Wu},
+  title={{HyperGBM}: { A Full Pipeline AutoML Tool Integrated With Various GBM Models}},
+  howpublished={https://github.com/DataCanvasIO/HyperGBM},
+  note={Version 0.2.x},
+  year={2020}
+}
+```
+
 
 ## DataCanvas
 HyperGBM是由数据科学平台领导厂商 [DataCanvas](https://www.datacanvas.com/) 创建的开源项目.

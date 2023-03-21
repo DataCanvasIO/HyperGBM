@@ -124,6 +124,15 @@ Hypergbm supports full pipeline GPU acceleration, including all steps from data 
 
 ![Gpu Acceleration](docs/static/images/gpu_speedup.png)
 
+## Documents
+
+* [Overview](https://hypergbm.readthedocs.io/en/latest/overview.html)
+* [Installation](https://hypergbm.readthedocs.io/en/latest/installation.html)
+* [Quick Start](https://hypergbm.readthedocs.io/en/latest/quick_start.html)
+* [Examples](https://hypergbm.readthedocs.io/en/latest/example.html)
+* [How-To](https://hypergbm.readthedocs.io/en/latest/how_to.html)
+* [Release Notes](https://hypergbm.readthedocs.io/en/latest/release_note.html)
+
 ## HyperGBM related projects
 * [Hypernets](https://github.com/DataCanvasIO/Hypernets): A general automated machine learning (AutoML) framework.
 * [HyperGBM](https://github.com/DataCanvasIO/HyperGBM): A full pipeline AutoML tool integrated various GBM models.
@@ -135,14 +144,26 @@ Hypergbm supports full pipeline GPU acceleration, including all steps from data 
 
 ![DataCanvas AutoML Toolkit](docs/static/images/DAT_logo.png)
 
-## Documents
+## Citation
 
-* [Overview](https://hypergbm.readthedocs.io/en/latest/overview.html)
-* [Installation](https://hypergbm.readthedocs.io/en/latest/installation.html)
-* [Quick Start](https://hypergbm.readthedocs.io/en/latest/quick_start.html)
-* [Examples](https://hypergbm.readthedocs.io/en/latest/example.html)
-* [How-To](https://hypergbm.readthedocs.io/en/latest/how_to.html)
-* [Release Notes](https://hypergbm.readthedocs.io/en/latest/release_note.html)
+If you use HyperGBM in your research, please cite us as follows:
+
+   Jian Yang, Xuefeng Li, Haifeng Wu. 
+   **HyperGBM: A full pipeline AutoML tool integrated with various GBM models.** https://github.com/DataCanvasIO/HyperGBM. 2020. Version 0.2.x.
+
+BibTex:
+
+```
+@misc{hypergbm,
+  author={Jian Yang, Xuefeng Li, Haifeng Wu},
+  title={{HyperGBM}: { A Full Pipeline AutoML Tool Integrated With Various GBM Models}},
+  howpublished={https://github.com/DataCanvasIO/HyperGBM},
+  note={Version 0.2.x},
+  year={2020}
+}
+```
+
+
 
 ## DataCanvas
 HyperGBM is an open source project created by [DataCanvas](https://www.datacanvas.com/). 
