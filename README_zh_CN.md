@@ -15,6 +15,19 @@ HyperGBM是一款全Pipeline自动机器学习工具，可以端到端的完整�
 大部分的自动机器学习工具主要解决的是算法的超参数优化问题，而HyperGBM是将从数据清洗到算法优化整个的过程放入同一个搜索空间中统一优化。这种端到端的优化过程更接近于SDP(Sequential Decision Process)场景，因此HyperGBM采用了强化学习、蒙特卡洛树搜索等算法并且结合一个meta-leaner来更加高效的解决全Pipeline优化的问题，并且取得了非常出色的效果。
 
 正如名字中的含义，HyperGBM中的机器学习算法使用了目前最流行的几种GBM算法（更准确的说是梯度提升树模型），目前包括XGBoost、LightGBM和Catboos。HyperGBM中的优化算法和搜索空间表示技术由 [Hypernets](https://github.com/DataCanvasIO/Hypernets) 项目提供支撑。同时HyeprGBM复用了Hypernets提供的许多高级建模特性，如数据漂移检测、特征生成、特征筛选、伪标签、模型融合等。
+	
+### 特性
+
+* 自动建模全流程：数据清洗、数据预处理、特征工程、超参数优化、模型选择、模型融合
+
+* 多种运行模式：分布式训练、CPU训练、GPU加速训练
+
+* 最流行的GBM算法：XGBoost、LightGBM、Catboost，HistGradientBoosting（Scikit-Learn）
+
+* 先进的搜索算法：多目标优化（MOEA/D、NSGA-II、R-NSGA-II）、蒙特卡洛搜索（MCTS）、进化搜索（Evolution search）、随机搜索（Random search）
+
+* 高级特性：数据漂移检测、样本不均衡处理、共线性检测、大规模数据适应、伪标签样本增强、二阶段特征工程等
+		
 
 ## 安装
 
