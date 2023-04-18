@@ -93,7 +93,7 @@ version = version_ns['__version__']
 
 print("__version__=" + version)
 
-MIN_PYTHON_VERSION = '>=3.6.*'
+MIN_PYTHON_VERSION = '>=3.6'
 
 # long_description = open('README.md', encoding='utf-8').read()
 long_description = read_description('README.md')
