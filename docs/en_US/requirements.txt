@@ -1,5 +1,6 @@
-# 这个里面的依赖项必须安装，否则无法正常编译文档
 sphinx_rtd_theme
 recommonmark
 sphinxcontrib-mermaid
 ipython
+pypandoc
+nbsphinx
