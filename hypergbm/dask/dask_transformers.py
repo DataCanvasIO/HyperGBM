@@ -36,7 +36,7 @@ class StandardScaler(HyperTransformer):
 
 
 class SafeOneHotEncoder(HyperTransformer):
-    def __init__(self, categories='auto', drop=None, sparse=True, dtype=np.float64, space=None,
+    def __init__(self, categories='auto', drop=None, sparse_output=True, dtype=np.float64, space=None,
                  name=None, **kwargs):
         if categories is not None and categories != 'auto':
             kwargs['categories'] = categories
@@ -44,8 +44,8 @@ class SafeOneHotEncoder(HyperTransformer):
         #     kwargs['categories'] = 'object'
         if drop is not None:
             kwargs['drop'] = drop
-        if sparse is not None and sparse != True:
-            kwargs['sparse'] = sparse
+        if sparse_output is not None and sparse_output != True:
+            kwargs['sparse_output'] = sparse_output
         if dtype is not None and dtype != True:
             kwargs['dtype'] = dtype
         # if handle_unknown is not None and handle_unknown != 'error':
