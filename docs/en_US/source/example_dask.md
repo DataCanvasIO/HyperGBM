@@ -2,11 +2,13 @@
 
 ### Quick Experiment
 
-HyperGBM supports performing distributed training with Dask. Before training, the Dask collections should be deployed and `Client` object of Dask should be initialized. Training data file with extensions such as csv and parquet can be adopted by `make_experiment` directly with the file path. And `make_experiment` will automatically load the data as DataFrame object of Dask if the environment of Dask is detected.
+HyperGBM supports performing distributed training with Dask. Before training, the Dask collections should be deployed and `Client` object of Dask should be initialized. 
+
 
 Suppose that your training data file is '/opt/data/my_data.csv', the following code shows how to load data for a single node:
 
 ```python
+from dask import dataframe as dd
 from dask.distributed import LocalCluster, Client
 
 from hypergbm import make_experiment
@@ -16,8 +18,10 @@ def train():
     cluster = LocalCluster(processes=True)
     client = Client(cluster)
 
-    train_data = '/opt/data/my_data.csv'
-
+    train_data_file = '/opt/data/my_data.csv'
+    train_data = dd.read_csv(train_data_file)
+    train_data = train_data.persist()
+    
     experiment = make_experiment(train_data, target='...')
     estimator = experiment.run()
     print(estimator)
@@ -30,9 +34,10 @@ if __name__ == '__main__':
 
 
 
-We recommend splitting the data to multiple files and save them in a single location such as '/opt/data/my_data' for large-scale data to speed up the loading process. After doing this, one can create an exmperiment with the splited files:
+We recommend splitting the data to multiple files and save them in a single location such as '/opt/data/my_data' for large-scale data to speed up the loading process. After doing this, one can create an experiment with these files:
 
 ```python
+from dask import dataframe as dd
 from dask.distributed import LocalCluster, Client
 
 from hypergbm import make_experiment
@@ -42,8 +47,10 @@ def train():
     cluster = LocalCluster(processes=True)
     client = Client(cluster)
 
-    train_data = '/opt/data/my_data/*.parquet'
-
+    train_data_files = '/opt/data/my_data/*.parquet'
+    train_data = dd.read_parquet(train_data_files)
+    train_data = train_data.persist()
+    
     experiment = make_experiment(train_data, target='...')
     estimator = experiment.run()
     print(estimator)
