@@ -222,7 +222,7 @@ def make_experiment(train_data,
 
     # objectives
     objectives_new = None if objectives is None else \
-        map(lambda _: FeatureUsageObjective() if _ == 'feature_usage' else _, objectives)
+        list(map(lambda _: FeatureUsageObjective() if _ == 'feature_usage' else _, objectives))
 
     experiment = _make_experiment(hyper_model_cls, train_data,
                                   target=target,
