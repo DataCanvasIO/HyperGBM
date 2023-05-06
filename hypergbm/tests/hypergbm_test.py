@@ -12,12 +12,15 @@ from sklearn.model_selection import train_test_split
 from hypergbm import HyperGBM
 from hypergbm.estimators import LGBMClassifierWrapper
 from hypergbm.hyper_gbm import HyperGBMShapExplainer
+from hypergbm.objectives import FeatureUsageObjective
 from hypergbm.search_space import search_space_general, GeneralSearchSpaceGenerator
 from hypergbm.tests import test_output_dir
 from hypernets.core import set_random_state
 from hypernets.core.callbacks import SummaryCallback, FileLoggingCallback
 from hypernets.core.searcher import OptimizeDirection
 from hypernets.discriminators import PercentileDiscriminator
+from hypernets.model.objectives import PredictionObjective
+from hypernets.searchers import NSGAIISearcher
 from hypernets.searchers.random_searcher import RandomSearcher
 from hypernets.tabular.datasets import dsutils
 from hypernets.utils import fs
@@ -305,3 +308,33 @@ class TestShapExplainer:
 
     def test_regression_train_test_split_model(self):
         self.run_regression(self.validate_train_test_split_model, is_cv=False)
+
+
+class TestObjectivesInHyperGBM:
+
+    def test_feature_usage(self):
+        from hypernets.tabular.datasets import dsutils
+        df = dsutils.load_bank().head(1000)
+
+        rs = NSGAIISearcher(search_space_general, objectives=[PredictionObjective.create('accuracy'),
+                                                              FeatureUsageObjective()])
+
+        hk = HyperGBM(rs, task='binary',
+                      reward_metric='accuracy',
+                      callbacks=[SummaryCallback(), FileLoggingCallback(rs, output_dir=f'{test_output_dir}/hyn_logs')])
+        X_train, X_test = train_test_split(df.head(1000), test_size=0.2, random_state=42)
+        target = 'y'
+        y_train = X_train.pop(target)
+        y_test = X_test.pop(target)
+        is_cv = True
+
+        if is_cv:
+            hk.search(X_train, y_train, X_test, y_test, cv=True, num_folds=3, max_trials=2)
+        else:
+            hk.search(X_train, y_train, X_test, y_test, cv=False, max_trials=2)
+
+        best_trials = hk.get_best_trial()
+        assert best_trials
+        best_estimator = best_trials[0].get_model()
+        assert best_estimator.predict(X_test.copy()) is not None
+

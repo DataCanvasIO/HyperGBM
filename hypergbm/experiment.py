@@ -1,6 +1,7 @@
 # -*- coding:utf-8 -*-
 __author__ = 'yangjian'
 
+from hypergbm.objectives import FeatureUsageObjective
 from hypernets.core import Callback
 
 """
@@ -42,6 +43,7 @@ def make_experiment(train_data,
                     search_space=None,
                     search_space_options=None,
                     search_callbacks=None,
+                    objectives=None,
                     early_stopping_rounds=10,
                     early_stopping_time_limit=3600,
                     early_stopping_reward=None,
@@ -218,6 +220,10 @@ def make_experiment(train_data,
             logger.warning("No web visualization module detected, please install by command:"
                            "\"pip install hboard\"")
 
+    # objectives
+    objectives_new = None if objectives is None else \
+        map(lambda _: FeatureUsageObjective() if _ == 'feature_usage' else _, objectives)
+
     experiment = _make_experiment(hyper_model_cls, train_data,
                                   target=target,
                                   eval_data=eval_data,
@@ -228,6 +234,7 @@ def make_experiment(train_data,
                                   searcher=searcher,
                                   search_space=search_space,
                                   search_callbacks=search_callbacks,
+                                  objectives=objectives_new,
                                   early_stopping_rounds=early_stopping_rounds,
                                   early_stopping_time_limit=early_stopping_time_limit,
                                   early_stopping_reward=early_stopping_reward,

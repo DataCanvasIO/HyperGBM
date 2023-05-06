@@ -43,6 +43,7 @@ def detect_estimator(name_or_cls, task, *,
 def detect_with_process(name_or_cls, task, *,
                         toolbox='default', init_kwargs=None, fit_kwargs=None, n_samples=100, n_features=5):
     from hypernets.dispatchers.process import LocalProcess
+    from hypernets.utils import is_os_windows
     import tempfile
 
     my_mod = _stub.__module__
@@ -61,10 +62,17 @@ def detect_with_process(name_or_cls, task, *,
     err_file = tempfile.mktemp(prefix='detect_estimator', suffix='err')
     proc = LocalProcess(cmd, in_file='', out_file=out_file, err_file=err_file)
     proc.run()
-    assert proc.exitcode == 0, f'Failed to run cmd: {cmd}'
+    exitcode = proc.exitcode
 
-    with open(out_file, 'r') as f:
-        result = json.loads(f.read())
+    if is_os_windows:
+        assert exitcode is None or exitcode == 0, f'Failed to run cmd: {cmd}'
+    else:
+        assert exitcode == 0, f'Failed to run cmd: {cmd}'
+
+    with open(out_file, 'r', encoding="UTF-8") as f:
+        data = f.read()
+        index = data.find("]")
+        result = json.loads(data[: index+1])
 
     try:
         os.remove(out_file)

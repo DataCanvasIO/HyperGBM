@@ -273,6 +273,8 @@ class HyperGBMEstimator(Estimator):
         cv_models_ = []
         x_vals = []
         y_vals = []
+        X_trains = []
+        y_trains = []
         self.pos_label = pos_label
         if pbar is not None:
             pbar.set_description('cross_validation')
@@ -334,8 +336,12 @@ class HyperGBMEstimator(Estimator):
             x_vals.append(x_val_fold)
             y_vals.append(y_val_fold)
 
+            X_trains.append(x_train_fold)
+            y_trains.append(y_train_fold)
+
             del fit_kwargs, sample_weight
-            del x_train_fold, y_train_fold, proba
+            # del x_train_fold, y_train_fold, proba
+            del proba
             tb.gc()
 
             if verbose > 0:
@@ -355,7 +361,7 @@ class HyperGBMEstimator(Estimator):
         self.cv_ = True
         self.cv_models_ = cv_models_
 
-        return scores, oof_, oof_scores, x_vals, y_vals
+        return scores, oof_, oof_scores, X_trains, y_trains, x_vals, y_vals
 
     def get_scores(self, y, oof_, metrics):
         tb = get_tool_box(y)

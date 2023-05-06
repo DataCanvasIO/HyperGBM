@@ -488,3 +488,40 @@ class TestPipelineExplainer:
                 tree_values_list = self.run_tree_explainer(estimator, df_test, model_indexes=None)
                 # tree_values_list[0].shape=(3617,1)
                 assert_shap_value(tree_values_list)
+
+
+class TestObjectives:
+
+    def test_feature_usage(self):
+
+        from hypergbm import make_experiment
+
+        from hypernets.tabular import get_tool_box
+        from hypernets.tabular.datasets import dsutils
+        from hypernets.core.random_state import get_random_state
+
+        # hyn_logging.set_level(hyn_logging.WARN)
+        random_state = get_random_state()
+
+        df = dsutils.load_bank().head(1000)
+        tb = get_tool_box(df)
+        df_train, df_test = tb.train_test_split(df, test_size=0.2, random_state=9527)
+        experiment = make_experiment(df_train,
+                                     eval_data=df_test.copy(),
+                                     callbacks=[],
+                                     cv=False,
+                                     num_folds=3,
+                                     random_state=1234,
+                                     search_callbacks=[],
+                                     target='y',
+                                     searcher='nsga2',  # available MOO searcher: moead, nsga2, rnsga2
+                                     searcher_options={'population_size': 3},
+                                     reward_metric='logloss',
+                                     objectives=['feature_usage'],
+                                     early_stopping_rounds=10)
+
+        estimators = experiment.run(max_trials=5)
+        hyper_model = experiment.hyper_model_
+
+        assert hyper_model.history.get_best() is not None
+

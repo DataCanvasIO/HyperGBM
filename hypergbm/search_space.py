@@ -12,9 +12,12 @@ from hypergbm.sklearn.sklearn_ops import numeric_pipeline_simple, numeric_pipeli
     datetime_pipeline_simple, text_pipeline_simple
 from hypernets.core import randint
 from hypernets.core.ops import ModuleChoice, HyperInput
-from hypernets.core.search_space import HyperSpace, Choice, Int
+from hypernets.core.search_space import HyperSpace, Choice, Int, Real
 from hypernets.pipeline.base import DataFrameMapper
 from hypernets.tabular.column_selector import column_object
+from hypernets.pipeline.transformers import FeatureImportanceSelection
+from hypernets.tabular import column_selector
+
 from hypernets.utils import logging, get_params
 
 logger = logging.get_logger(__name__)
@@ -49,6 +52,9 @@ class SearchSpaceGenerator(object):
     def create_preprocessor(self, hyper_input, options):
         raise NotImplementedError()
 
+    def create_feature_selection(self, hyper_input, options):
+        return None
+
     def create_estimators(self, hyper_input, options):
         raise NotImplementedError()
 
@@ -57,7 +63,13 @@ class SearchSpaceGenerator(object):
         with space.as_default():
             options = _merge_dict(self.options, kwargs)
             hyper_input = HyperInput(name='input1')
-            self.create_estimators(self.create_preprocessor(hyper_input, options), options)
+
+            if "importances" in options and options["importances"] is not None:
+                importances = options.pop("importances")
+                ss = self.create_feature_selection(hyper_input, importances)
+                self.create_estimators(self.create_preprocessor(ss, options), options)
+            else:
+                self.create_estimators(self.create_preprocessor(hyper_input, options), options)
             space.set_inputs(hyper_input)
 
         return space
@@ -143,6 +155,19 @@ class BaseSearchSpaceGenerator(SearchSpaceGenerator):
 
         estimators = [c() for c in creators]
         return ModuleChoice(estimators, name='estimator_options')(hyper_input)
+
+    def create_feature_selection(self, hyper_input, importances, seq_no=0):
+        from hypernets.pipeline.base import Pipeline
+        selection = FeatureImportanceSelection(name=f'feature_importance_selection_{seq_no}',
+                                               importances=importances,
+                                               quantile=Real(0, 1, step=0.1))
+        pipeline = Pipeline([selection],
+                            name=f'feature_selection_{seq_no}',
+                            columns=column_selector.column_all)(hyper_input)
+
+        preprocessor = DataFrameMapper(default=False, input_df=True, df_out=True,
+                                       df_out_dtype_transforms=None)([pipeline])
+        return preprocessor
 
 
 class GeneralSearchSpaceGenerator(BaseSearchSpaceGenerator):
