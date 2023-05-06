@@ -35,7 +35,7 @@ jobs:
         pip install git+https://github.com/DataCanvasIO/HyperBoard.git#subdirectory=hboard-widget
         pip install git+https://github.com/DataCanvasIO/HyperBoard.git#subdirectory=hboard
         pip install -q -r requirements.txt -r requirements-dask.txt -r requirements-shap.txt 
-        pip install -q pytest-cov==2.4.0  python-coveralls  codacy-coverage
+        pip install -q numpy<=1.23.5 pytest-cov==2.4.0  python-coveralls  codacy-coverage # NOTE: shap is not working with numpy==1.24 now, for further info: https://github.com/slundberg/shap/pull/1890
         pip list
     - name: Test with pytest
       run: |
@@ -84,7 +84,7 @@ jobs:
         pip install -q "featuretools<1.0" "scikit-learn<1.0" "catboost<1.0"
         pip install -q git+https://github.com/DataCanvasIO/Hypernets
         pip install -q -r requirements.txt
-        pip install -q pytest-cov==2.4.0  python-coveralls  codacy-coverage
+        pip install -q  numpy<=1.23.5 pytest-cov==2.4.0  python-coveralls  codacy-coverage  # TODO remove numpy version limit
         pip list
     - name: Test with pytest
       run: |
