@@ -22,6 +22,7 @@ from hypergbm.search_space import search_space_general, GeneralSearchSpaceGenera
 from hypernets.core import OptimizeDirection, EarlyStoppingCallback
 from hypernets.experiment import GeneralExperiment, ExperimentCallback, ConsoleCallback, StepNames
 from hypernets.searchers import RandomSearcher
+from hypernets.tabular.feature_generators import is_feature_generator_ready
 
 from hypergbm import make_experiment
 from hypergbm.experiment import PipelineKernelExplainer, PipelineTreeExplainer
@@ -254,6 +255,7 @@ class Test_Experiment():
         preq_split = PrequentialSplit(PrequentialSplit.STRATEGY_PREQ_BLS, n_splits=3)
         self.run_binary(cv=True, cross_validator=preq_split)
 
+    @pytest.mark.skipif(not is_feature_generator_ready, reason='feature_generator is not ready')
     def test_feature_generation(self):
         from hypernets.tabular.cfg import TabularCfg as tcfg
         tcfg.tfidf_primitive_output_feature_count = 5
@@ -350,7 +352,7 @@ class TestPipelineExplainer:
 
         df = dsutils.load_boston()
         df_train, df_test = train_test_split(df, test_size=0.8, random_state=42)
-        
+
         search_space_options = dict(enable_lightgbm=False, enable_xgb=False, enable_catboost=False, enable_histgb=False)
         search_space_options[f'enable_{estimator_type}'] = True
 
