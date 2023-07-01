@@ -17,10 +17,13 @@ jobs:
       matrix:
         os: [windows-latest, ubuntu-latest]
 #        python-version: ["3.7", "3.8", "3.9", "3.10", "3.11"] #catboost not release for py311 yet
-        python-version: ["3.7", "3.8", "3.9", "3.10", "3.11"]
+        python-version: ["3.7", "3.8", "3.9", "3.10"]
 #        include:
 #          - os: ubuntu-20.04
 #            python-version: 3.6
+        include:
+          - os: ubuntu-latest
+            python-version: "3.11"
 
     steps:
     - uses: actions/checkout@v2
@@ -83,7 +86,7 @@ jobs:
         python -m pip install --upgrade pip
         pip install -q "featuretools<1.0" "scikit-learn<1.0" "catboost<1.0"
         pip install -q git+https://github.com/DataCanvasIO/Hypernets
-        pip install -q -r requirements.txt
+        pip install -q -r requirements.txt "scikit-learn<1.0"
         pip install -q  "numpy<=1.23.5" pytest-cov==2.4.0  python-coveralls  codacy-coverage  # TODO remove numpy version limit
         pip list
     - name: Test with pytest
