@@ -10,3 +10,4 @@
    自定义SearchSpace<example_customize.md>
    GPU加速<example_cuml.md>
    分布式训练<example_dask.md>
+   多目标优化<multi_objectives_optimization.rst>

@@ -44,6 +44,9 @@ The overview of supported features for different running types are displayed in 
    Search algorithms,MCTS,√,√,√,√
     ,Evolution,√,√,√,√
     ,Random search,√,√,√,√
+    ,NSGA-II,√,,,
+    ,R-NSGA-II,√,,,
+    ,MOEA/D,√,,,
     ,Play back,√,√,√,√
    Early stopping,time limit,√,√,√,√
     ,"no improvements are made after n trials",√,√,√,√
