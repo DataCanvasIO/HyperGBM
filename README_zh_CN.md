@@ -169,7 +169,7 @@ hypergbm train --train-file=blood.csv --target=Class --model-file=model.pkl
 * [HyperBoard](https://github.com/DataCanvasIO/HyperBoard): 一个为Hypernets提供可视化界面的工具.
 * [Cooka](https://github.com/DataCanvasIO/Cooka): 一个交互式的轻量级自动机器学习系统.
 
-![DataCanvas AutoML Toolkit](https://raw.githubusercontent.com/DataCanvasIO/HyperGBM/main/docs/static/images/DAT_logo.png)
+![DataCanvas AutoML Toolkit](https://raw.githubusercontent.com/DataCanvasIO/HyperGBM/main/docs/static/images/DAT_latest.png)
 
 
 ## 引用
