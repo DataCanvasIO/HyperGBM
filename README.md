@@ -137,7 +137,7 @@ Hypergbm supports full pipeline GPU acceleration, including all steps from data 
 * [HyperBoard](https://github.com/DataCanvasIO/HyperBoard): A visualization tool for Hypernets.
 * [Cooka](https://github.com/DataCanvasIO/Cooka): Lightweight interactive AutoML system.
 
-![DataCanvas AutoML Toolkit](docs/static/images/DAT_logo.png)
+![DataCanvas AutoML Toolkit](https://raw.githubusercontent.com/DataCanvasIO/HyperGBM/main/docs/static/images/DAT_logo.png)
 
 ## Citation
 
