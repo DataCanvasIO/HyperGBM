@@ -18,6 +18,7 @@ from hypernets.core.search_space import HyperSpace, Real
 from hypernets.pipeline.base import DataFrameMapper
 from hypernets.tabular import get_tool_box
 from hypernets.tabular.datasets import dsutils
+from hypernets.utils import Version
 
 
 def get_space_multi_dataframemapper(default=False):
@@ -133,8 +134,12 @@ class Test_Estimator():
         X = get_tool_box(df).general_preprocessor(df).fit_transform(df)
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, stratify=y, random_state=9527)
         import lightgbm as lgbm
-        clf = lgbm.LGBMClassifier(n_estimators=1000)
-        clf.fit(X_train, y_train, eval_set=[(X_test, y_test)], early_stopping_rounds=5)
+        if Version(lgbm.__version__) >= Version('4.0.0'):
+            clf = lgbm.LGBMClassifier(n_estimators=1000, early_stopping_rounds=5)
+            clf.fit(X_train, y_train, eval_set=[(X_test, y_test)])
+        else:
+            clf = lgbm.LGBMClassifier(n_estimators=1000)
+            clf.fit(X_train, y_train, eval_set=[(X_test, y_test)], early_stopping_rounds=5)
 
         assert clf.best_iteration_ == 11
 
