@@ -3,6 +3,7 @@
 
 """
 import contextlib
+import inspect
 import os
 
 import catboost
@@ -320,6 +321,15 @@ class LGBMEstimatorMixin:
             kwargs['categorical_feature'] = cat_cols if len(cat_cols) > 0 else None
         if kwargs.get('early_stopping_rounds') is None and kwargs.get('eval_set') is not None:
             kwargs['early_stopping_rounds'] = _default_early_stopping_rounds(self)
+
+        lgbm_fit_args = inspect.signature(lightgbm.LGBMClassifier.fit).parameters.keys()
+        if 'verbose' in kwargs.keys() and 'verbose' not in lgbm_fit_args:
+            verbosity = kwargs.pop('verbose')
+            if verbosity == 0:
+                verbosity = -1
+            self.set_params(verbosity=verbosity)
+        if 'early_stopping_rounds' in kwargs.keys() and 'early_stopping_rounds' not in lgbm_fit_args:
+            self.set_params(early_stopping_rounds=kwargs.pop('early_stopping_rounds'))
 
         self.feature_names_in_ = X.columns.tolist()
         return kwargs
