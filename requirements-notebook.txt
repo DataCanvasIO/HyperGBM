@@ -1,4 +1,4 @@
 jupyterlab
 ipywidgets
 jupyterlab_widgets
-hboard-widget
+# hboard-widget

@@ -58,7 +58,7 @@ pip install hypergbm[notebook]
 ```
 可选的, 如果您希望使用基于Web的实验可视化，可通过如下命令安装HyperGBM:
 ```bash
-pip install hypergbm[board]
+pip install hypergbm[board] # 在版本0.3.x暂不可用
 ```
 
 可选的,  如果您希望在DASK集群中运行HyperGBM, 可通过如下命令安装HyperGBM:

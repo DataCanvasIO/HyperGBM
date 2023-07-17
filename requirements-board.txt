@@ -1,1 +1,2 @@
-hboard>=0.1.1
+# hboard>=0.1.1
+ipywidgets

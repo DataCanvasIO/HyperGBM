@@ -48,7 +48,7 @@ pip install hypergbm[notebook]
 
 * To support experiment visualization base on web, install with command:
 ```bash
-pip install hypergbm[board]
+pip install hypergbm[board] # Temporarily unavailable in version 0.3.x
 ```
 
 * To run HyperGBM in distributed Dask cluster, install with command:
