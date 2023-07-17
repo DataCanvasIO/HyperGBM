@@ -9,12 +9,6 @@
 conda install -c conda-forge hypergbm
 ```
 
-对于Windows系统, 安装HyperGBM时建议将pyarrow(hypernets的依赖)的版本限制在4.0或更早:
-
-```bash
-conda install -c conda-forge hypergbm "pyarrow<=4.0"
-```
-
 ### 使用Pip
 
 基本的，使用如下`pip`命令安装HyperGBM:

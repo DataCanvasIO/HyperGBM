@@ -11,13 +11,6 @@ Install HyperGBM with `conda` from the channel *conda-forge*:
 conda install -c conda-forge hypergbm
 ```
 
-On the Windows system, recommend install pyarrow(required by hypernets) 4.0 or earlier version with HyperGBM:
-
-```bash
-conda install -c conda-forge hypergbm "pyarrow<=4.0"
-```
-
-
 ### Using Pip
 Install HyperGBM with different `pip` options:
 
