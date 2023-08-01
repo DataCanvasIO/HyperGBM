@@ -105,7 +105,6 @@ class HyperGBMExplainer:
         return X
 
 
-
 class HyperGBMEstimator(Estimator):
     def __init__(self, task, reward_metric, space_sample, data_cleaner_params=None):
         super(HyperGBMEstimator, self).__init__(space_sample=space_sample, task=task)
@@ -658,8 +657,12 @@ class HyperGBMEstimator(Estimator):
             state = super().__getstate__()
         except AttributeError:
             state = self.__dict__.copy()
-        # Don't pickle eval_set and sample_weight
+
+        state = state.copy()
         state['transients_'] = {}
+
+        if 'discriminator' in state.keys():
+            state['discriminator'] = None
 
         fit_kwargs = state.get('fit_kwargs')
         if fit_kwargs is not None and 'eval_set' in fit_kwargs.keys():
@@ -685,7 +688,7 @@ class HyperGBMEstimator(Estimator):
 
 class HyperGBMShapExplainer:
 
-    def __init__(self, hypergbm_estimator: HyperGBMEstimator,  data=None, **kwargs):
+    def __init__(self, hypergbm_estimator: HyperGBMEstimator, data=None, **kwargs):
 
         if not has_shap:
             raise RuntimeError('Please install `shap` package first. command: pip install shap')
@@ -735,6 +738,7 @@ class HyperGBMShapExplainer:
             # pd.Dataframe.values would change the dtype to be a lower-common-denominator dtype (implicit upcasting);
             # see https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.values.html
             return explainer(Xt.to_numpy(dtype='object'), **kwargs)
+
         if self.hypergbm_estimator.cv_ is True:
             return [f(explainer) for explainer in self._explainers]
         else:
