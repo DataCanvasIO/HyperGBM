@@ -87,14 +87,13 @@ def make_experiment(train_data,
     >>> experiment = make_experiment('/opt/data01/test.csv', target='y', log_level='info')
     >>> estimator = experiment.run()
 
-    Create experiment with parquet data files '/opt/data02/*.parquet', and run it with Dask
-    >>> from dask.distributed import Client
-    >>>
-    >>> client = Client()
-    >>> experiment = make_experiment('/opt/data02/*.parquet', target='y')
-    >>> estimator = experiment.run()
-
     """
+    # Create experiment with parquet data files '/opt/data02/*.parquet', and run it with Dask
+    # >>> from dask.distributed import Client
+    # >>>
+    # >>> client = Client()
+    # >>> experiment = make_experiment('/opt/data02/*.parquet', target='y')
+    # >>> estimator = experiment.run()
 
     assert train_data is not None, 'train_data is required.'
     assert eval_data is None or type(eval_data) is type(train_data)
