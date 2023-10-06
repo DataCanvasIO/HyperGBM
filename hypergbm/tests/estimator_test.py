@@ -122,10 +122,11 @@ class Test_Estimator():
         booster = clf.get_booster()
         assert booster.best_iteration <= 8
 
-        clf = xgb.XGBClassifier(n_estimators=booster.best_ntree_limit)
-        clf.fit(X_train, y_train)
-        booster = clf.get_booster()
-        assert booster.best_iteration <= 8
+        if hasattr(booster, 'best_ntree_limit'):  # xgboost 2.0.0 remove best_ntree_limit
+            clf = xgb.XGBClassifier(n_estimators=booster.best_ntree_limit)
+            clf.fit(X_train, y_train)
+            booster = clf.get_booster()
+            assert booster.best_iteration <= 8
 
     def test_lightgbm_early_stoping(self):
         df = dsutils.load_bank().head(1000)
