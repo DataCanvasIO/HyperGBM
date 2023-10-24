@@ -96,8 +96,14 @@ if xgb_dask_distributed:
             return self.fit_with_encoder(super().fit, X, y, kwargs)
 
         def predict_proba(self, X, ntree_limit=None, **kwargs):
+            import inspect
+
             X = self.prepare_predict_X(X)
-            proba = super().predict_proba(X, ntree_limit=ntree_limit)
+            arg_names = inspect.signature(super().predict_proba).parameters.keys()
+            if 'ntree_limit' in arg_names:
+                proba = super().predict_proba(X, ntree_limit=ntree_limit)
+            else:
+                proba = super().predict_proba(X)
 
             if self.n_classes_ == 2:
                 proba = DaskToolBox.fix_binary_predict_proba_result(proba)
