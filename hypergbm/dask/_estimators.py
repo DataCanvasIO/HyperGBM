@@ -2,7 +2,7 @@
 """
 
 """
-
+import inspect
 import lightgbm
 import xgboost
 
@@ -40,6 +40,10 @@ if lgbm_dask_distributed:
     class LGBMClassifierDaskWrapper(lightgbm.DaskLGBMClassifier, LGBMEstimatorDaskMixin):
         def fit(self, X, y, sample_weight=None, **kwargs):
             kwargs = self.prepare_fit_kwargs(X, y, kwargs)
+            if 'verbose' in kwargs.keys():
+                arg_names = inspect.signature(super().fit).parameters.keys()
+                if 'verbose' not in arg_names:
+                    kwargs.pop('verbose')
             super(LGBMClassifierDaskWrapper, self).fit(X, y, sample_weight=sample_weight, **kwargs)
 
         def predict(self, X, **kwargs):
@@ -54,6 +58,10 @@ if lgbm_dask_distributed:
     class LGBMRegressorDaskWrapper(lightgbm.DaskLGBMRegressor, LGBMEstimatorDaskMixin):
         def fit(self, X, y, sample_weight=None, **kwargs):
             kwargs = self.prepare_fit_kwargs(X, y, kwargs)
+            if 'verbose' in kwargs.keys():
+                arg_names = inspect.signature(super().fit).parameters.keys()
+                if 'verbose' not in arg_names:
+                    kwargs.pop('verbose')
             super().fit(X, y, sample_weight=sample_weight, **kwargs)
 
         def predict(self, X, **kwargs):
@@ -96,8 +104,6 @@ if xgb_dask_distributed:
             return self.fit_with_encoder(super().fit, X, y, kwargs)
 
         def predict_proba(self, X, ntree_limit=None, **kwargs):
-            import inspect
-
             X = self.prepare_predict_X(X)
             arg_names = inspect.signature(super().predict_proba).parameters.keys()
             if 'ntree_limit' in arg_names:
