@@ -76,6 +76,17 @@ class FitCrossValidationCallback(Callback):
     def on_search_error(self, hyper_model):
         self.on_search_end(hyper_model)
 
+    def __getstate__(self):
+        try:
+            state = super().__getstate__()
+        except AttributeError:
+            state = self.__dict__
+
+        state = state.copy()
+        state['pbar'] = None
+
+        return state
+
 
 class HyperGBMExplainer:
     def __init__(self, hypergbm_estimator, data=None):
