@@ -4,19 +4,13 @@
 """
 import copy
 import hashlib
-import numpy as np
-import pandas as pd
 import pickle
 import re
+import sys
 import time
-from imblearn.over_sampling import RandomOverSampler, SMOTE, ADASYN
-from imblearn.under_sampling import RandomUnderSampler, NearMiss, TomekLinks, EditedNearestNeighbours
-from sklearn import pipeline as sk_pipeline
-from sklearn.inspection import permutation_importance as sk_pi
-from sklearn.utils import Bunch
-from tqdm.auto import tqdm
 
-from hypergbm.gbm_callbacks import FileMonitorCallback
+import numpy as np
+import pandas as pd
 from hypernets.core import Callback, ProgressiveCallback
 from hypernets.model.estimator import Estimator
 from hypernets.model.hyper_model import HyperModel
@@ -24,6 +18,12 @@ from hypernets.pipeline.base import ComposeTransformer
 from hypernets.tabular import get_tool_box
 from hypernets.tabular.cache import cache
 from hypernets.utils import logging, fs, const
+from sklearn import pipeline as sk_pipeline
+from sklearn.inspection import permutation_importance as sk_pi
+from sklearn.utils import Bunch
+from tqdm.auto import tqdm
+
+from hypergbm.gbm_callbacks import FileMonitorCallback
 from .cfg import HyperGBMCfg as cfg
 from .estimators import HyperEstimator
 
@@ -39,19 +39,31 @@ logger = logging.get_logger(__name__)
 
 GB = 1024 ** 3
 
+try:
+    from imblearn.over_sampling import RandomOverSampler, SMOTE, ADASYN
+    from imblearn.under_sampling import RandomUnderSampler, NearMiss, TomekLinks, EditedNearestNeighbours
+
+    imblearn_istalled = True
+except:
+    logger.warning('Failed to load imbalanced-learn', exc_info=sys.exc_info())
+    imblearn_istalled = False
+
 
 def get_sampler(sampler):
-    samplers = {'RandomOverSampler': RandomOverSampler,
-                'SMOTE': SMOTE,
-                'ADASYN': ADASYN,
-                'RandomUnderSampler': RandomUnderSampler,
-                'NearMiss': NearMiss,
-                'TomekLinks': TomekLinks,
-                'EditedNearestNeighbours': EditedNearestNeighbours
-                }
-    sampler_cls = samplers.get(sampler)
-    if sampler_cls is not None:
-        return sampler_cls()
+    if imblearn_istalled:
+        samplers = {'RandomOverSampler': RandomOverSampler,
+                    'SMOTE': SMOTE,
+                    'ADASYN': ADASYN,
+                    'RandomUnderSampler': RandomUnderSampler,
+                    'NearMiss': NearMiss,
+                    'TomekLinks': TomekLinks,
+                    'EditedNearestNeighbours': EditedNearestNeighbours
+                    }
+        sampler_cls = samplers.get(sampler)
+        if sampler_cls is not None:
+            return sampler_cls()
+        else:
+            return None
     else:
         return None
 
