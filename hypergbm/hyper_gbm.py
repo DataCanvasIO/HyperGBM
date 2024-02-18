@@ -43,14 +43,14 @@ try:
     from imblearn.over_sampling import RandomOverSampler, SMOTE, ADASYN
     from imblearn.under_sampling import RandomUnderSampler, NearMiss, TomekLinks, EditedNearestNeighbours
 
-    imblearn_istalled = True
+    imblearn_installed = True
 except:
     logger.warning('Failed to load imbalanced-learn', exc_info=sys.exc_info())
-    imblearn_istalled = False
+    imblearn_installed = False
 
 
 def get_sampler(sampler):
-    if imblearn_istalled:
+    if imblearn_installed:
         samplers = {'RandomOverSampler': RandomOverSampler,
                     'SMOTE': SMOTE,
                     'ADASYN': ADASYN,
