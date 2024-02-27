@@ -38,32 +38,29 @@ except:
 logger = logging.get_logger(__name__)
 
 GB = 1024 ** 3
+SAMPLERS = {}
 
 try:
     from imblearn.over_sampling import RandomOverSampler, SMOTE, ADASYN
     from imblearn.under_sampling import RandomUnderSampler, NearMiss, TomekLinks, EditedNearestNeighbours
 
-    imblearn_installed = True
+    im_samplers = {'RandomOverSampler': RandomOverSampler,
+                   'SMOTE': SMOTE,
+                   'ADASYN': ADASYN,
+                   'RandomUnderSampler': RandomUnderSampler,
+                   'NearMiss': NearMiss,
+                   'TomekLinks': TomekLinks,
+                   'EditedNearestNeighbours': EditedNearestNeighbours
+                   }
+    SAMPLERS.update(im_samplers)
 except:
     logger.warning('Failed to load imbalanced-learn', exc_info=sys.exc_info())
-    imblearn_installed = False
 
 
 def get_sampler(sampler):
-    if imblearn_installed:
-        samplers = {'RandomOverSampler': RandomOverSampler,
-                    'SMOTE': SMOTE,
-                    'ADASYN': ADASYN,
-                    'RandomUnderSampler': RandomUnderSampler,
-                    'NearMiss': NearMiss,
-                    'TomekLinks': TomekLinks,
-                    'EditedNearestNeighbours': EditedNearestNeighbours
-                    }
-        sampler_cls = samplers.get(sampler)
-        if sampler_cls is not None:
-            return sampler_cls()
-        else:
-            return None
+    sampler_cls = SAMPLERS.get(sampler)
+    if sampler_cls is not None:
+        return sampler_cls()
     else:
         return None
 
