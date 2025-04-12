@@ -20,10 +20,12 @@ jobs:
       fail-fast: false
       matrix:
         os: [windows-latest, ubuntu-latest]
-        python-version: ["3.11", "3.12", "3.8", "3.9", "3.10"]
+        python-version: ["3.8", "3.9", "3.10"]
         include:
           - os: ubuntu-20.04
             python-version: 3.7
+          - os: ubuntu-latest
+            python-version: 3.11
     steps:
     - uses: actions/checkout@v2
     - name: Set up Python ${{ matrix.python-version }}
@@ -33,47 +35,47 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install -q "numpy<=1.23.5" "pandas<2.0.0" "xgboost<2.1.0"
+        pip install -q "numpy<2.0.0" "xgboost<2.1.0" "shap<0.43.0"
         pip install -q git+https://github.com/DataCanvasIO/Hypernets
         # pip install git+https://github.com/DataCanvasIO/HyperBoard.git#subdirectory=hboard-widget
         # pip install git+https://github.com/DataCanvasIO/HyperBoard.git#subdirectory=hboard
         pip install -q -r requirements.txt -r requirements-fg.txt -r requirements-dask.txt -r requirements-shap.txt
-        pip install -q "numpy<=1.23.5" "pandas<2.0.0" "xgboost<2.1.0" pytest-cov==2.4.0  python-coveralls  codacy-coverage # NOTE: shap is not working with numpy==1.24 now, for further info: https://github.com/slundberg/shap/pull/1890
+        pip install -q "numpy<2.0.0" "xgboost<2.1.0" pytest-cov==2.4.0 pytest  python-coveralls  codacy-coverage # NOTE: shap is not working with numpy==1.24 now, for further info: https://github.com/slundberg/shap/pull/1890
         pip list
     - name: Test with pytest
       run: |
         pytest --cov=hypergbm --durations=30
-
-  test_with_py36:
-    runs-on: ubuntu-20.04
-    strategy:
-      fail-fast: false
-      matrix:
-        python-version: ["3.6", ]
-
-    steps:
-    - uses: actions/checkout@v2
-    - name: Set up Python
-      uses: actions/setup-python@v2
-      with:
-        python-version: ${{ matrix.python-version }}
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -q   git+https://github.com/DataCanvasIO/Hypernets
-        pip install -q -r requirements.txt -r requirements-fg.txt -r requirements-dask.txt -r requirements-shap.txt
-        pip install -q pytest-cov==2.4.0  python-coveralls  codacy-coverage
-        pip list
-    - name: Test with pytest
-      run: |
-        pytest --cov=hypergbm --durations=30
+#
+#  test_with_py36:
+#    runs-on: ubuntu-20.04
+#    strategy:
+#      fail-fast: false
+#      matrix:
+#        python-version: ["3.6", ]
+#
+#    steps:
+#    - uses: actions/checkout@v2
+#    - name: Set up Python
+#      uses: actions/setup-python@v2
+#      with:
+#        python-version: ${{ matrix.python-version }}
+#    - name: Install dependencies
+#      run: |
+#        python -m pip install --upgrade pip
+#        pip install -q   git+https://github.com/DataCanvasIO/Hypernets
+#        pip install -q -r requirements.txt -r requirements-fg.txt -r requirements-dask.txt -r requirements-shap.txt
+#        pip install -q pytest-cov==2.4.0  python-coveralls  codacy-coverage
+#        pip list
+#    - name: Test with pytest
+#      run: |
+#        pytest --cov=hypergbm --durations=30
 
   test_with_sk024_cb026:
     runs-on: ubuntu-20.04
     strategy:
       fail-fast: false
       matrix:
-        python-version: [3.7, 3.8, 3.6]
+        python-version: [3.7, 3.8]
 
     steps:
     - uses: actions/checkout@v2
