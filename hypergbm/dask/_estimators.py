@@ -33,8 +33,13 @@ if lgbm_dask_distributed:
             # lightgbm.dask does not support early_stopping_rounds
             if 'early_stopping_rounds' in kwargs.keys():
                 kwargs.pop('early_stopping_rounds')
-            self.feature_names_in_ = X.columns.tolist()
+            # self.feature_names_in_ = X.columns.tolist()
             return kwargs
+
+
+    def post_fit(self, X, y, sample_weight=None, **kwargs):
+        if getattr(self, 'feature_names_in_', None) is None:
+            self.feature_names_in_ = X.columns.tolist()
 
 
     class LGBMClassifierDaskWrapper(lightgbm.DaskLGBMClassifier, LGBMEstimatorDaskMixin):
@@ -45,6 +50,7 @@ if lgbm_dask_distributed:
                 if 'verbose' not in arg_names:
                     kwargs.pop('verbose')
             super(LGBMClassifierDaskWrapper, self).fit(X, y, sample_weight=sample_weight, **kwargs)
+            self.post_fit(X, y, **kwargs)
 
         def predict(self, X, **kwargs):
             X = self.prepare_predict_X(X)
@@ -63,6 +69,7 @@ if lgbm_dask_distributed:
                 if 'verbose' not in arg_names:
                     kwargs.pop('verbose')
             super().fit(X, y, sample_weight=sample_weight, **kwargs)
+            self.post_fit(X, y, **kwargs)
 
         def predict(self, X, **kwargs):
             X = self.prepare_predict_X(X)

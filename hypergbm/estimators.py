@@ -32,6 +32,7 @@ except ImportError:
 logger = logging.get_logger(__name__)
 
 _detected_lgbm_gpu = None
+_xgb_version = xgboost.__version__
 
 
 @cache()
@@ -331,12 +332,16 @@ class LGBMEstimatorMixin:
         if 'early_stopping_rounds' in kwargs.keys() and 'early_stopping_rounds' not in lgbm_fit_args:
             self.set_params(early_stopping_rounds=kwargs.pop('early_stopping_rounds'))
 
-        self.feature_names_in_ = X.columns.tolist()
+        # self.feature_names_in_ = X.columns.tolist()
         return kwargs
+
+    def post_fit(self, X, y, sample_weight=None, **kwargs):
+        if getattr(self, 'feature_names_in_', None) is None:
+            self.feature_names_in_ = X.columns.tolist()
 
     def prepare_predict_X(self, X):
         feature_names = self.feature_names_in_
-        if feature_names != X.columns.tolist():
+        if list(feature_names) != X.columns.tolist():
             X = X[feature_names]
         return X
 
@@ -345,6 +350,7 @@ class LGBMClassifierWrapper(lightgbm.LGBMClassifier, LGBMEstimatorMixin):
     def fit(self, X, y, sample_weight=None, **kwargs):
         kwargs = self.prepare_fit_kwargs(X, y, kwargs)
         super(LGBMClassifierWrapper, self).fit(X, y, sample_weight=sample_weight, **kwargs)
+        self.post_fit(X, y, **kwargs)
 
     def predict(self, X, raw_score=False, start_iteration=0, num_iteration=None,
                 pred_leaf=False, pred_contrib=False, **kwargs):
@@ -365,6 +371,7 @@ class LGBMRegressorWrapper(lightgbm.LGBMRegressor, LGBMEstimatorMixin):
     def fit(self, X, y, sample_weight=None, **kwargs):
         kwargs = self.prepare_fit_kwargs(X, y, kwargs)
         super().fit(X, y, sample_weight=sample_weight, **kwargs)
+        self.post_fit(X, y, **kwargs)
 
     def predict(self, X, raw_score=False, start_iteration=0, num_iteration=None,
                 pred_leaf=False, pred_contrib=False, **kwargs):
@@ -494,12 +501,22 @@ class XGBEstimatorMixin:
             if eval_metric == 'logloss' and task == const.TASK_MULTICLASS:
                 eval_metric = 'mlogloss'
             if eval_metric is not None:
-                kwargs['eval_metric'] = eval_metric
+                if Version(_xgb_version) < Version('2.1'):
+                    kwargs['eval_metric'] = eval_metric
+                else:
+                    self.eval_metric = eval_metric
 
         if kwargs.get('early_stopping_rounds') is None and kwargs.get('eval_set') is not None:
-            kwargs['early_stopping_rounds'] = _default_early_stopping_rounds(self)
+            if Version(_xgb_version) < Version('2.1'):
+                kwargs['early_stopping_rounds'] = _default_early_stopping_rounds(self)
+            else:
+                self.early_stopping_rounds = _default_early_stopping_rounds(self)
 
-        if Version(xgboost.__version__) < Version('1.6'):
+        if Version(_xgb_version) >= Version('2.1') and 'callbacks' in kwargs.keys():
+            cbs = kwargs.pop('callbacks')
+            self.callbacks = cbs
+
+        if Version(_xgb_version) < Version('1.6'):
             self.feature_names_in_ = X.columns.tolist()
 
         return kwargs

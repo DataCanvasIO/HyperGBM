@@ -117,8 +117,12 @@ class Test_Estimator():
         X = get_tool_box(df).general_preprocessor(df).fit_transform(df)
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, stratify=y, random_state=9527)
         import xgboost as xgb
-        clf = xgb.XGBClassifier(n_estimators=1000)
-        clf.fit(X_train, y_train, eval_set=[(X_test, y_test)], early_stopping_rounds=5)
+        if Version(xgb.__version__) < Version('2.1'):
+            clf = xgb.XGBClassifier(n_estimators=1000)
+            clf.fit(X_train, y_train, eval_set=[(X_test, y_test)], early_stopping_rounds=5)
+        else:
+            clf = xgb.XGBClassifier(n_estimators=1000, early_stopping_rounds=5)
+            clf.fit(X_train, y_train, eval_set=[(X_test, y_test)])
         booster = clf.get_booster()
         assert booster.best_iteration <= 8
 
