@@ -22,10 +22,10 @@ jobs:
         os: [windows-latest, ubuntu-latest]
         python-version: ["3.8", "3.9", "3.10"]
         include:
-          - os: ubuntu-20.04
-            python-version: 3.7
           - os: ubuntu-latest
             python-version: 3.11
+#          - os: ubuntu-20.04
+#            python-version: 3.7
     steps:
     - uses: actions/checkout@v2
     - name: Set up Python ${{ matrix.python-version }}
@@ -72,11 +72,11 @@ jobs:
 #        pytest --cov=hypergbm --durations=30
 
   test_with_sk024_cb026:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     strategy:
       fail-fast: false
       matrix:
-        python-version: [3.7, 3.8]
+        python-version: [3.8,]
 
     steps:
     - uses: actions/checkout@v2
